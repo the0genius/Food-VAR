@@ -186,23 +186,27 @@ export async function extractNutritionFromImages(
 
 Return JSON format:
 {
-  "confident": true/false,
   "name": "Product Name",
   "brand": "Brand Name",
   "category": "Category",
   "servingSize": "serving size text",
-  "calories": number,
-  "protein": number,
-  "carbohydrates": number,
-  "sugar": number,
-  "fat": number,
-  "saturatedFat": number,
-  "fiber": number,
-  "sodium": number,
+  "calories": number or null,
+  "protein": number or null,
+  "carbohydrates": number or null,
+  "sugar": number or null,
+  "fat": number or null,
+  "saturatedFat": number or null,
+  "fiber": number or null,
+  "sodium": number or null,
   "allergens": ["allergen1", "allergen2"]
 }
 
-If any value cannot be extracted confidently, set "confident" to false and include what you can extract.`,
+IMPORTANT RULES:
+- Extract as much as you can from the images. Do your best even if the image is blurry or partially obscured.
+- For any value you cannot read, use null.
+- You MUST always provide the product "name" - if you cannot read it clearly, make your best guess from what is visible.
+- Use the front image for name, brand, and category. Use the back image for nutrition facts.
+- Do NOT include a "confident" field. Just extract what you can.`,
             },
             {
               inlineData: {
@@ -228,14 +232,15 @@ If any value cannot be extracted confidently, set "confident" to false and inclu
     const text = response.text || "";
     const parsed = JSON.parse(text);
 
-    if (!parsed.confident) {
+    if (!parsed.name || parsed.name === "Unknown" || parsed.name === "") {
       return {
         success: false,
         data: parsed,
-        error: "Could not extract all values confidently. Please retake the photos.",
+        error: "Could not identify the product. Please retake the front photo with the product name clearly visible.",
       };
     }
 
+    delete parsed.confident;
     return { success: true, data: parsed };
   } catch (error) {
     console.error("Gemini Vision extraction failed:", error);
