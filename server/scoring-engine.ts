@@ -108,7 +108,7 @@ export async function computeScore(
     };
   }
 
-  let score = 70;
+  let score = 50;
 
   const rules = await db
     .select()
@@ -135,9 +135,11 @@ export async function computeScore(
     ) {
       applies = true;
     } else if (rule.condition.startsWith("goal_")) {
-      applies = rule.condition === goalKey;
+      applies = rule.condition === goalKey || rule.condition.startsWith(goalKey + "_");
     } else {
-      applies = userConditions.includes(rule.condition);
+      applies = userConditions.some(
+        (c) => rule.condition === c || rule.condition.startsWith(c + "_")
+      );
     }
 
     if (!applies) continue;
@@ -163,6 +165,15 @@ export async function computeScore(
       );
       score += penalty;
     }
+  }
+
+  const fiberVal = getNutrientValue(product, "fiber");
+
+  if (fiberVal !== null && fiberVal < 1) {
+    if (userConditions.includes("high_cholesterol")) score -= 2;
+    if (goalKey === "goal_weight_loss") score -= 1.5;
+    if (userConditions.includes("diabetes_type2")) score -= 1;
+    if (userConditions.includes("diabetes_type1")) score -= 1;
   }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
