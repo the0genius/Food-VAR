@@ -11,7 +11,17 @@ import { eq, and, ilike, or, desc, sql, asc } from "drizzle-orm";
 import { computeScore, computeClusterId } from "./scoring-engine";
 import { getAdvice, extractNutritionFromImages } from "./ai-advice";
 
+function paramId(req: Request, name: string = "id"): string {
+  const v = req.params[name];
+  return Array.isArray(v) ? v[0] : v;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Content-Type", "application/json");
+    next();
+  });
+
   // ========== USER PROFILE ==========
   app.post("/api/users", async (req: Request, res: Response) => {
     try {
@@ -37,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/users/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       const [user] = await db.select().from(users).where(eq(users.id, id));
       if (!user) return res.status(404).json({ error: "User not found" });
       res.json(user);
@@ -48,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/users/:id/profile", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       const {
         name,
         age,
@@ -106,7 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [product] = await db
         .select()
         .from(products)
-        .where(eq(products.barcode, req.params.barcode));
+        .where(eq(products.barcode, paramId(req, "barcode")));
       if (!product) return res.status(404).json({ error: "Product not found" });
       res.json(product);
     } catch (error) {
@@ -175,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       const [product] = await db.select().from(products).where(eq(products.id, id));
       if (!product) return res.status(404).json({ error: "Product not found" });
       res.json(product);
@@ -393,7 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== SCAN HISTORY ==========
   app.get("/api/history/:userId", async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = parseInt(paramId(req, "userId"));
       const sort = (req.query.sort as string) || "date";
       const search = req.query.search as string;
       const limit = parseInt((req.query.limit as string) || "20");
@@ -445,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/history/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       await db.delete(scanHistory).where(eq(scanHistory.id, id));
       res.status(204).send();
     } catch (error) {
@@ -457,7 +467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/history/user/:userId/all",
     async (req: Request, res: Response) => {
       try {
-        const userId = parseInt(req.params.userId);
+        const userId = parseInt(paramId(req, "userId"));
         await db.delete(scanHistory).where(eq(scanHistory.userId, userId));
         res.status(204).send();
       } catch (error) {
@@ -468,7 +478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/history/entry/:id", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       const [entry] = await db
         .select({
           id: scanHistory.id,
@@ -510,7 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "/api/scans/today/:userId",
     async (req: Request, res: Response) => {
       try {
-        const userId = parseInt(req.params.userId);
+        const userId = parseInt(paramId(req, "userId"));
         const today = new Date().toISOString().split("T")[0];
         const result = await db
           .select({ count: sql<number>`count(*)` })
@@ -528,10 +538,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ========== USER STATS ==========
+  app.get("/api/stats/:userId", async (req: Request, res: Response) => {
+    try {
+      const userId = parseInt(paramId(req, "userId"));
+
+      const totalScansResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(scanHistory)
+        .where(eq(scanHistory.userId, userId));
+      const totalScans = Number(totalScansResult[0]?.count || 0);
+
+      const avgScoreResult = await db
+        .select({ avg: sql<number>`COALESCE(ROUND(AVG(${scanHistory.score})), 0)` })
+        .from(scanHistory)
+        .where(eq(scanHistory.userId, userId));
+      const avgScore = Number(avgScoreResult[0]?.avg || 0);
+
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weeklyScansResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(scanHistory)
+        .where(
+          and(
+            eq(scanHistory.userId, userId),
+            sql`${scanHistory.createdAt} >= ${weekAgo.toISOString()}`
+          )
+        );
+      const weeklyScans = Number(weeklyScansResult[0]?.count || 0);
+
+      const bestProducts = await db
+        .select({
+          productName: products.name,
+          productBrand: products.brand,
+          score: scanHistory.score,
+          productId: scanHistory.productId,
+        })
+        .from(scanHistory)
+        .innerJoin(products, eq(scanHistory.productId, products.id))
+        .where(eq(scanHistory.userId, userId))
+        .orderBy(desc(scanHistory.score))
+        .limit(3);
+
+      const worstProducts = await db
+        .select({
+          productName: products.name,
+          productBrand: products.brand,
+          score: scanHistory.score,
+          productId: scanHistory.productId,
+        })
+        .from(scanHistory)
+        .innerJoin(products, eq(scanHistory.productId, products.id))
+        .where(eq(scanHistory.userId, userId))
+        .orderBy(asc(scanHistory.score))
+        .limit(3);
+
+      res.json({
+        totalScans,
+        avgScore,
+        weeklyScans,
+        bestProducts,
+        worstProducts,
+      });
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
+  });
+
   // ========== PRODUCT REPORT ==========
   app.post("/api/products/:id/report", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(paramId(req));
       await db
         .update(products)
         .set({
