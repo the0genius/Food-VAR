@@ -24,9 +24,9 @@ function interpolate(
 
 function getScoreLabel(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "Allergen Alert";
-  if (score <= 30) return "Strongly Avoid";
-  if (score <= 60) return "Consume with Caution";
-  if (score <= 80) return "Generally Good";
+  if (score <= 25) return "Strongly Avoid";
+  if (score <= 50) return "Consume with Caution";
+  if (score <= 74) return "Generally Good";
   return "Excellent Fit";
 }
 
@@ -54,7 +54,7 @@ export async function computeScore(
     };
   }
 
-  let score = 70;
+  let score = 82;
 
   const rules = await db
     .select()
