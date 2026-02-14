@@ -9,7 +9,19 @@ interface ScoreResult {
   matchedAllergens: string[];
 }
 
-function interpolate(
+const BAD_NUTRIENTS = new Set([
+  "sugar",
+  "fat",
+  "saturatedFat",
+  "saturated_fat",
+  "sodium",
+  "calories",
+  "carbohydrates",
+]);
+
+const GOOD_NUTRIENTS = new Set(["protein", "fiber"]);
+
+function penaltyInterpolate(
   value: number,
   lowerThreshold: number,
   upperThreshold: number,
@@ -20,6 +32,28 @@ function interpolate(
   if (value >= upperThreshold) return maxDeduction;
   const ratio = (value - lowerThreshold) / (upperThreshold - lowerThreshold);
   return minDeduction + ratio * (maxDeduction - minDeduction);
+}
+
+function bonusInterpolate(
+  value: number,
+  lowerThreshold: number,
+  upperThreshold: number,
+  minBonus: number,
+  maxBonus: number,
+  isBadNutrient: boolean
+): number {
+  if (isBadNutrient) {
+    if (value <= lowerThreshold) return maxBonus;
+    if (value >= upperThreshold) return 0;
+    const ratio =
+      (upperThreshold - value) / (upperThreshold - lowerThreshold);
+    return minBonus + ratio * (maxBonus - minBonus);
+  } else {
+    if (value <= lowerThreshold) return 0;
+    if (value >= upperThreshold) return maxBonus;
+    const ratio = (value - lowerThreshold) / (upperThreshold - lowerThreshold);
+    return minBonus + ratio * (maxBonus - minBonus);
+  }
 }
 
 function getScoreLabel(score: number, isAllergenAlert: boolean): string {
@@ -54,7 +88,7 @@ export async function computeScore(
     };
   }
 
-  let score = 82;
+  let score = 70;
 
   const rules = await db
     .select()
@@ -75,7 +109,10 @@ export async function computeScore(
 
     let applies = false;
 
-    if (rule.condition.startsWith("general_bonus")) {
+    if (
+      rule.condition.startsWith("general_bonus") ||
+      rule.condition === "general_penalty"
+    ) {
       applies = true;
     } else if (rule.condition.startsWith("goal_")) {
       applies = rule.condition === goalKey;
@@ -85,15 +122,27 @@ export async function computeScore(
 
     if (!applies) continue;
 
-    const adjustment = interpolate(
-      nutrientValue,
-      rule.lowerThreshold,
-      rule.upperThreshold,
-      rule.minDeduction,
-      rule.maxDeduction
-    );
-
-    score += adjustment;
+    if (rule.isBonus) {
+      const isBad = BAD_NUTRIENTS.has(rule.nutrient);
+      const bonus = bonusInterpolate(
+        nutrientValue,
+        rule.lowerThreshold,
+        rule.upperThreshold,
+        rule.minDeduction,
+        rule.maxDeduction,
+        isBad
+      );
+      score += bonus;
+    } else {
+      const penalty = penaltyInterpolate(
+        nutrientValue,
+        rule.lowerThreshold,
+        rule.upperThreshold,
+        rule.minDeduction,
+        rule.maxDeduction
+      );
+      score += penalty;
+    }
   }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
