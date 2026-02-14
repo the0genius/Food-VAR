@@ -10,28 +10,78 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Dimensions,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+  withDelay,
+} from "react-native-reanimated";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SCAN_COOLDOWN_MS = 2500;
+
+function ScanLineOverlay() {
+  const translateY = useSharedValue(0);
+
+  useState(() => {
+    translateY.value = withRepeat(
+      withSequence(
+        withTiming(180, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 2800, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  });
+
+  const lineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <View style={styles.scanOverlay}>
+      <View style={styles.scanFrame}>
+        <View style={[styles.scanCorner, styles.scanCornerTL]} />
+        <View style={[styles.scanCorner, styles.scanCornerTR]} />
+        <View style={[styles.scanCorner, styles.scanCornerBL]} />
+        <View style={[styles.scanCorner, styles.scanCornerBR]} />
+        <Animated.View style={[styles.scanLine, lineStyle]} />
+      </View>
+    </View>
+  );
+}
+
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
-  const [mode, setMode] = useState<"search" | "barcode">("search");
+  const [mode, setMode] = useState<"search" | "scanner">("search");
   const [searchQuery, setSearchQuery] = useState("");
-  const [barcodeInput, setBarcodeInput] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const [lookingUp, setLookingUp] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [lastScannedBarcode, setLastScannedBarcode] = useState("");
+  const [scanStatus, setScanStatus] = useState<"scanning" | "found" | "not_found">("scanning");
+  const [foundProductName, setFoundProductName] = useState("");
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const lastScanTime = useRef(0);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -39,6 +89,9 @@ export default function ScanScreen() {
     useCallback(() => {
       setSearchQuery("");
       setSearchResults([]);
+      setScanStatus("scanning");
+      setLastScannedBarcode("");
+      setProcessing(false);
     }, [])
   );
 
@@ -68,41 +121,83 @@ export default function ScanScreen() {
     }, 300);
   }
 
-  async function handleBarcodeLookup() {
-    if (!barcodeInput.trim() || !user) return;
+  async function handleBarcodeScanned({ data: barcode }: { data: string }) {
+    const now = Date.now();
+    if (now - lastScanTime.current < SCAN_COOLDOWN_MS) return;
+    if (barcode === lastScannedBarcode && processing) return;
+    if (processing) return;
+
+    lastScanTime.current = now;
+    setLastScannedBarcode(barcode);
+    setProcessing(true);
+    setScanStatus("scanning");
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setLookingUp(true);
+
     try {
       const baseUrl = getApiUrl();
-      const url = new URL(`/api/products/barcode/${barcodeInput.trim()}`, baseUrl);
+      const url = new URL(`/api/products/barcode/${barcode}`, baseUrl);
       const res = await fetch(url.toString());
+
       if (res.ok) {
         const product = await res.json();
-        router.push({
-          pathname: "/result",
-          params: { productId: product.id, userId: user.id, accessMethod: "scan" },
-        });
+        setScanStatus("found");
+        setFoundProductName(product.name);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        setTimeout(() => {
+          if (user) {
+            router.push({
+              pathname: "/result",
+              params: { productId: product.id, userId: user.id, accessMethod: "scan" },
+            });
+          }
+          setTimeout(() => {
+            setProcessing(false);
+            setScanStatus("scanning");
+            setLastScannedBarcode("");
+          }, 1000);
+        }, 1200);
       } else {
-        Alert.alert(
-          "Product Not Found",
-          "This barcode isn't in our database yet. Would you like to add it?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Add Product",
-              onPress: () =>
-                router.push({
-                  pathname: "/contribute",
-                  params: { barcode: barcodeInput.trim() },
-                }),
-            },
-          ]
-        );
+        setScanStatus("not_found");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+        setTimeout(() => {
+          Alert.alert(
+            "Product Not Found",
+            `Barcode ${barcode} isn't in our database yet. Would you like to add it?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => {
+                  setProcessing(false);
+                  setScanStatus("scanning");
+                  setLastScannedBarcode("");
+                },
+              },
+              {
+                text: "Add Product",
+                onPress: () => {
+                  router.push({
+                    pathname: "/contribute",
+                    params: { barcode },
+                  });
+                  setProcessing(false);
+                  setScanStatus("scanning");
+                  setLastScannedBarcode("");
+                },
+              },
+            ]
+          );
+        }, 800);
       }
     } catch (e) {
       console.error(e);
+      setProcessing(false);
+      setScanStatus("scanning");
+      setLastScannedBarcode("");
     }
-    setLookingUp(false);
   }
 
   async function handleProductSelect(product: any) {
@@ -112,6 +207,108 @@ export default function ScanScreen() {
       pathname: "/result",
       params: { productId: product.id, userId: user.id, accessMethod: "search" },
     });
+  }
+
+  function renderCameraScanner() {
+    if (Platform.OS === "web") {
+      return (
+        <View style={styles.webFallback}>
+          <Ionicons name="camera-outline" size={64} color={Colors.primaryLight} />
+          <Text style={styles.webFallbackTitle}>Camera not available on web</Text>
+          <Text style={styles.webFallbackText}>
+            Use the Search tab or scan the QR code with your phone to use the camera scanner
+          </Text>
+        </View>
+      );
+    }
+
+    if (!permission) {
+      return (
+        <View style={styles.permissionState}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      );
+    }
+
+    if (!permission.granted) {
+      return (
+        <View style={styles.permissionState}>
+          <Ionicons name="camera-outline" size={56} color={Colors.primaryLight} />
+          <Text style={styles.permissionTitle}>Camera Access Needed</Text>
+          <Text style={styles.permissionText}>
+            Allow camera access to scan product barcodes
+          </Text>
+          {permission.status === "denied" && !permission.canAskAgain ? (
+            <Text style={styles.permissionHint}>
+              Please enable camera access in your device settings
+            </Text>
+          ) : (
+            <TouchableOpacity
+              style={styles.permissionBtn}
+              onPress={requestPermission}
+            >
+              <Ionicons name="camera" size={20} color={Colors.white} />
+              <Text style={styles.permissionBtnText}>Allow Camera</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.cameraContainer}>
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: [
+              "ean13",
+              "ean8",
+              "upc_a",
+              "upc_e",
+              "code128",
+              "code39",
+              "code93",
+              "itf14",
+              "codabar",
+            ],
+          }}
+          onBarcodeScanned={processing ? undefined : handleBarcodeScanned}
+        />
+        <ScanLineOverlay />
+
+        <View style={styles.scanStatusBar}>
+          {scanStatus === "scanning" && !processing && (
+            <Animated.View entering={FadeIn.duration(400)} style={styles.statusRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Point at a barcode to scan</Text>
+            </Animated.View>
+          )}
+          {processing && scanStatus === "scanning" && (
+            <Animated.View entering={FadeIn.duration(300)} style={styles.statusRow}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <Text style={styles.statusText}>Looking up barcode...</Text>
+            </Animated.View>
+          )}
+          {scanStatus === "found" && (
+            <Animated.View entering={FadeIn.duration(300)} style={[styles.statusRow, styles.statusFound]}>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.scoreGreen} />
+              <Text style={[styles.statusText, { color: Colors.scoreGreen }]}>
+                {foundProductName}
+              </Text>
+            </Animated.View>
+          )}
+          {scanStatus === "not_found" && (
+            <Animated.View entering={FadeIn.duration(300)} style={[styles.statusRow, styles.statusNotFound]}>
+              <Ionicons name="help-circle" size={20} color={Colors.scoreAmber} />
+              <Text style={[styles.statusText, { color: Colors.scoreAmber }]}>
+                Product not in database
+              </Text>
+            </Animated.View>
+          )}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -149,24 +346,24 @@ export default function ScanScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.modeBtn, mode === "barcode" && styles.modeBtnActive]}
+            style={[styles.modeBtn, mode === "scanner" && styles.modeBtnActive]}
             onPress={() => {
-              setMode("barcode");
+              setMode("scanner");
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
             <Ionicons
-              name="barcode-outline"
+              name="scan-outline"
               size={16}
-              color={mode === "barcode" ? Colors.white : Colors.primary}
+              color={mode === "scanner" ? Colors.white : Colors.primary}
             />
             <Text
               style={[
                 styles.modeBtnText,
-                mode === "barcode" && styles.modeBtnTextActive,
+                mode === "scanner" && styles.modeBtnTextActive,
               ]}
             >
-              Barcode
+              Scanner
             </Text>
           </TouchableOpacity>
         </View>
@@ -275,44 +472,12 @@ export default function ScanScreen() {
         </View>
       )}
 
-      {mode === "barcode" && (
-        <Animated.View entering={FadeIn.duration(300)} style={styles.barcodeArea}>
-          <View style={styles.barcodeVisual}>
-            <Ionicons name="barcode" size={80} color={Colors.primaryLight} />
-            <Text style={styles.barcodeHint}>
-              Enter the barcode number printed on the product
-            </Text>
-          </View>
-          <View style={styles.barcodeInputWrap}>
-            <TextInput
-              style={styles.barcodeInput}
-              value={barcodeInput}
-              onChangeText={setBarcodeInput}
-              placeholder="e.g., 5449000000996"
-              placeholderTextColor={Colors.mediumGray}
-              keyboardType="number-pad"
-              testID="barcode-input"
-            />
-            <TouchableOpacity
-              style={[
-                styles.lookupBtn,
-                (!barcodeInput.trim() || lookingUp) && styles.lookupBtnDisabled,
-              ]}
-              onPress={handleBarcodeLookup}
-              disabled={!barcodeInput.trim() || lookingUp}
-            >
-              {lookingUp ? (
-                <ActivityIndicator color={Colors.white} size="small" />
-              ) : (
-                <Ionicons name="arrow-forward" size={22} color={Colors.white} />
-              )}
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      )}
+      {mode === "scanner" && renderCameraScanner()}
     </KeyboardAvoidingView>
   );
 }
+
+const SCAN_FRAME_SIZE = SCREEN_WIDTH * 0.7;
 
 const styles = StyleSheet.create({
   container: {
@@ -323,6 +488,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: Colors.white,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 28,
@@ -437,50 +603,156 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.primary,
   },
-  barcodeArea: {
+  cameraContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    alignItems: "center",
+    backgroundColor: "#000",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: "hidden",
   },
-  barcodeVisual: {
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 40,
-  },
-  barcodeHint: {
-    fontSize: 15,
-    color: Colors.mediumGray,
-    textAlign: "center",
-    maxWidth: 280,
-  },
-  barcodeInputWrap: {
-    flexDirection: "row",
-    width: "100%",
-    gap: 10,
-  },
-  barcodeInput: {
+  camera: {
     flex: 1,
-    height: 52,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    fontSize: 17,
-    color: Colors.charcoal,
-    backgroundColor: Colors.softWhite,
-    letterSpacing: 1,
-    fontWeight: "600",
   },
-  lookupBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: Colors.primary,
+  scanOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },
-  lookupBtnDisabled: {
-    opacity: 0.5,
+  scanFrame: {
+    width: SCAN_FRAME_SIZE,
+    height: SCAN_FRAME_SIZE * 0.6,
+    position: "relative",
+  },
+  scanCorner: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    borderColor: Colors.primary,
+  },
+  scanCornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 10,
+  },
+  scanCornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopRightRadius: 10,
+  },
+  scanCornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomLeftRadius: 10,
+  },
+  scanCornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomRightRadius: 10,
+  },
+  scanLine: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    height: 2,
+    backgroundColor: Colors.primary,
+    opacity: 0.7,
+    borderRadius: 1,
+  },
+  scanStatusBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  statusFound: {},
+  statusNotFound: {},
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+  },
+  statusText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.charcoal,
+  },
+  permissionState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.charcoal,
+    marginTop: 8,
+  },
+  permissionText: {
+    fontSize: 15,
+    color: Colors.mediumGray,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  permissionHint: {
+    fontSize: 13,
+    color: Colors.mediumGray,
+    textAlign: "center",
+    marginTop: 8,
+  },
+  permissionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    marginTop: 12,
+  },
+  permissionBtnText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  webFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  webFallbackTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.charcoal,
+    marginTop: 8,
+  },
+  webFallbackText: {
+    fontSize: 14,
+    color: Colors.mediumGray,
+    textAlign: "center",
+    lineHeight: 22,
   },
 });
