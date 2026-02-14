@@ -1,52 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Platform,
-  ScrollView,
-  Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
-const CATEGORIES = [
-  "Beverages",
-  "Dairy",
-  "Snacks",
-  "Breakfast",
-  "Meals",
-  "Bakery",
-  "Frozen",
-  "Canned",
-  "Condiments",
-  "Pasta",
-  "Dairy Alternatives",
-  "Other",
-];
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const ALLERGEN_OPTIONS = [
-  "gluten",
-  "lactose",
-  "nuts",
-  "peanuts",
-  "soy",
-  "eggs",
-  "shellfish",
-  "fish",
-  "wheat",
-];
+type FlowStep = "front_photo" | "back_photo" | "analyzing" | "error";
+
+function PulsingDot({ delay }: { delay: number }) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return <Animated.View style={[styles.pulsingDot, dotStyle, { marginLeft: delay > 0 ? 6 : 0 }]} />;
+}
 
 export default function ContributeScreen() {
   const router = useRouter();
@@ -54,167 +60,192 @@ export default function ContributeScreen() {
   const { user } = useUser();
   const params = useLocalSearchParams<{ barcode?: string }>();
 
-  const [barcode, setBarcode] = useState(params.barcode || "");
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
-  const [category, setCategory] = useState("");
-  const [servingSize, setServingSize] = useState("");
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [sugar, setSugar] = useState("");
-  const [fat, setFat] = useState("");
-  const [saturatedFat, setSaturatedFat] = useState("");
-  const [fiber, setFiber] = useState("");
-  const [sodium, setSodium] = useState("");
-  const [allergens, setAllergens] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [extracting, setExtracting] = useState(false);
+  const [step, setStep] = useState<FlowStep>("front_photo");
+  const [frontImage, setFrontImage] = useState<{ uri: string; base64: string } | null>(null);
+  const [backImage, setBackImage] = useState<{ uri: string; base64: string } | null>(null);
+  const [analyzeStatus, setAnalyzeStatus] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const hasLaunched = useRef(false);
 
+  const barcode = params.barcode || "";
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
-  function toggleAllergen(id: string) {
-    if (allergens.includes(id)) {
-      setAllergens(allergens.filter((a) => a !== id));
-    } else {
-      setAllergens([...allergens, id]);
+  useEffect(() => {
+    if (!hasLaunched.current) {
+      hasLaunched.current = true;
+      launchFrontCamera();
+    }
+  }, []);
+
+  async function launchFrontCamera() {
+    setStep("front_photo");
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.7,
+        base64: true,
+        allowsEditing: false,
+      });
+
+      if (result.canceled) {
+        router.back();
+        return;
+      }
+
+      const asset = result.assets[0];
+      setFrontImage({ uri: asset.uri, base64: asset.base64 || "" });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      setTimeout(() => {
+        launchBackCamera();
+      }, 600);
+    } catch (e) {
+      console.error("Front camera error:", e);
+      fallbackToLibrary("front");
     }
   }
 
-  async function handleExtractFromPhotos() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  async function launchBackCamera() {
+    setStep("back_photo");
     try {
-      const frontResult = await ImagePicker.launchImageLibraryAsync({
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        quality: 0.7,
+        base64: true,
+        allowsEditing: false,
+      });
+
+      if (result.canceled) {
+        setStep("front_photo");
+        return;
+      }
+
+      const asset = result.assets[0];
+      setBackImage({ uri: asset.uri, base64: asset.base64 || "" });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      setTimeout(() => {
+        processImages(frontImage!.base64, asset.base64 || "");
+      }, 400);
+    } catch (e) {
+      console.error("Back camera error:", e);
+      fallbackToLibrary("back");
+    }
+  }
+
+  async function fallbackToLibrary(which: "front" | "back") {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         quality: 0.7,
         base64: true,
       });
 
-      if (frontResult.canceled) return;
+      if (result.canceled) {
+        if (which === "front") {
+          router.back();
+        }
+        return;
+      }
 
-      Alert.alert("Back of Package", "Now select the nutrition label photo");
-
-      const backResult = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.7,
-        base64: true,
-      });
-
-      if (backResult.canceled) return;
-
-      setExtracting(true);
-
-      const res = await apiRequest("POST", "/api/products/extract", {
-        frontImage: frontResult.assets[0].base64,
-        backImage: backResult.assets[0].base64,
-      });
-
-      const data = await res.json();
-
-      if (data.success && data.data) {
-        const d = data.data;
-        if (d.name) setName(d.name);
-        if (d.brand) setBrand(d.brand);
-        if (d.category) setCategory(d.category);
-        if (d.servingSize) setServingSize(d.servingSize);
-        if (d.calories != null) setCalories(String(d.calories));
-        if (d.protein != null) setProtein(String(d.protein));
-        if (d.carbohydrates != null) setCarbs(String(d.carbohydrates));
-        if (d.sugar != null) setSugar(String(d.sugar));
-        if (d.fat != null) setFat(String(d.fat));
-        if (d.saturatedFat != null) setSaturatedFat(String(d.saturatedFat));
-        if (d.fiber != null) setFiber(String(d.fiber));
-        if (d.sodium != null) setSodium(String(d.sodium));
-        if (d.allergens) setAllergens(d.allergens);
-
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const asset = result.assets[0];
+      if (which === "front") {
+        setFrontImage({ uri: asset.uri, base64: asset.base64 || "" });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setTimeout(() => launchBackCamera(), 600);
       } else {
-        Alert.alert(
-          "Extraction Issue",
-          data.error || "Could not extract all values. Please fill in manually."
-        );
+        setBackImage({ uri: asset.uri, base64: asset.base64 || "" });
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setTimeout(() => processImages(frontImage!.base64, asset.base64 || ""), 400);
       }
     } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to process images. Please enter values manually.");
+      console.error("Library fallback error:", e);
+      setStep("error");
+      setErrorMsg("Could not access photos. Please try again.");
     }
-    setExtracting(false);
   }
 
-  async function handleSubmit() {
-    if (!barcode.trim() || !name.trim()) {
-      Alert.alert("Required", "Please enter at least a barcode and product name.");
-      return;
-    }
+  async function processImages(frontBase64: string, backBase64: string) {
+    setStep("analyzing");
+    setAnalyzeStatus("Reading packaging...");
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setSubmitting(true);
     try {
-      const res = await apiRequest("POST", "/api/products/contribute", {
-        barcode: barcode.trim(),
-        name: name.trim(),
-        brand: brand.trim(),
-        category,
-        servingSize: servingSize.trim(),
-        calories: calories ? parseFloat(calories) : null,
-        protein: protein ? parseFloat(protein) : null,
-        carbohydrates: carbs ? parseFloat(carbs) : null,
-        sugar: sugar ? parseFloat(sugar) : null,
-        fat: fat ? parseFloat(fat) : null,
-        saturatedFat: saturatedFat ? parseFloat(saturatedFat) : null,
-        fiber: fiber ? parseFloat(fiber) : null,
-        sodium: sodium ? parseFloat(sodium) : null,
-        allergens,
+      setTimeout(() => setAnalyzeStatus("Extracting nutrition facts..."), 2000);
+      setTimeout(() => setAnalyzeStatus("Identifying allergens..."), 4500);
+
+      const extractRes = await apiRequest("POST", "/api/products/extract", {
+        frontImage: frontBase64,
+        backImage: backBase64,
+      });
+      const extractData = await extractRes.json();
+
+      if (!extractData.success || !extractData.data) {
+        setStep("error");
+        setErrorMsg(extractData.error || "Could not read the packaging clearly. Please try with better lighting.");
+        return;
+      }
+
+      const d = extractData.data;
+      setAnalyzeStatus("Adding to database...");
+
+      const contributeRes = await apiRequest("POST", "/api/products/contribute", {
+        barcode: barcode || `USR${Date.now()}`,
+        name: d.name || "Unknown Product",
+        brand: d.brand || "",
+        category: d.category || "",
+        servingSize: d.servingSize || "",
+        calories: d.calories ?? null,
+        protein: d.protein ?? null,
+        carbohydrates: d.carbohydrates ?? null,
+        sugar: d.sugar ?? null,
+        fat: d.fat ?? null,
+        saturatedFat: d.saturatedFat ?? null,
+        fiber: d.fiber ?? null,
+        sodium: d.sodium ?? null,
+        allergens: d.allergens || [],
         contributedBy: user?.id,
       });
 
-      const data = await res.json();
-
+      const contributeData = await contributeRes.json();
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      if (data.isNew) {
-        Alert.alert("Product Added", "Thank you for contributing to the community database!", [
-          {
-            text: "Check Score",
-            onPress: () => {
-              if (user && data.product) {
-                router.replace({
-                  pathname: "/result",
-                  params: {
-                    productId: data.product.id,
-                    userId: user.id,
-                    accessMethod: "contribute",
-                  },
-                });
-              }
+      setAnalyzeStatus("Getting your score...");
+
+      const product = contributeData.product;
+      if (user && product) {
+        setTimeout(() => {
+          router.replace({
+            pathname: "/result",
+            params: {
+              productId: product.id,
+              userId: user.id,
+              accessMethod: "contribute",
             },
-          },
-          { text: "Done", onPress: () => router.back() },
-        ]);
+          });
+        }, 800);
       } else {
-        Alert.alert("Already Exists", "This barcode is already in the database.", [
-          { text: "OK", onPress: () => router.back() },
-        ]);
+        router.back();
       }
     } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to submit product. Please try again.");
+      console.error("Process error:", e);
+      setStep("error");
+      setErrorMsg("Something went wrong while analyzing the product. Please try again.");
     }
-    setSubmitting(false);
+  }
+
+  function handleRetry() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setFrontImage(null);
+    setBackImage(null);
+    setErrorMsg("");
+    hasLaunched.current = false;
+    launchFrontCamera();
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View
-        style={[
-          styles.header,
-          { paddingTop: (insets.top || webTopInset) + 8 },
-        ]}
-      >
+    <View style={[styles.container, { paddingTop: (insets.top || webTopInset) + 8 }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <Ionicons name="close" size={24} color={Colors.charcoal} />
         </TouchableOpacity>
@@ -222,154 +253,102 @@ export default function ContributeScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 100,
-        }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <TouchableOpacity
-          style={styles.extractBtn}
-          onPress={handleExtractFromPhotos}
-          disabled={extracting}
-        >
-          {extracting ? (
-            <ActivityIndicator color={Colors.primary} />
-          ) : (
-            <Ionicons name="camera-outline" size={22} color={Colors.primary} />
-          )}
-          <Text style={styles.extractBtnText}>
-            {extracting ? "Analyzing photos..." : "Extract from photos"}
+      {step === "front_photo" && (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.captureState}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>Step 1 of 2</Text>
+          </View>
+          <Ionicons name="cube-outline" size={72} color={Colors.primaryLight} />
+          <Text style={styles.captureTitle}>Front of Package</Text>
+          <Text style={styles.captureSubtitle}>
+            Take a photo of the front of the product so we can identify it
           </Text>
-        </TouchableOpacity>
+          {frontImage && (
+            <Image source={{ uri: frontImage.uri }} style={styles.previewThumb} />
+          )}
+          {!frontImage && (
+            <TouchableOpacity style={styles.captureBtn} onPress={launchFrontCamera}>
+              <Ionicons name="camera" size={22} color={Colors.white} />
+              <Text style={styles.captureBtnText}>Open Camera</Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      )}
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or enter manually</Text>
-          <View style={styles.dividerLine} />
-        </View>
+      {step === "back_photo" && (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.captureState}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepBadgeText}>Step 2 of 2</Text>
+          </View>
+          <View style={styles.thumbRow}>
+            {frontImage && (
+              <View style={styles.thumbDone}>
+                <Image source={{ uri: frontImage.uri }} style={styles.thumbDoneImg} />
+                <View style={styles.thumbCheck}>
+                  <Ionicons name="checkmark" size={12} color={Colors.white} />
+                </View>
+              </View>
+            )}
+          </View>
+          <Ionicons name="document-text-outline" size={72} color={Colors.primaryLight} />
+          <Text style={styles.captureTitle}>Nutrition Label</Text>
+          <Text style={styles.captureSubtitle}>
+            Now take a photo of the nutrition facts on the back
+          </Text>
+          <TouchableOpacity style={styles.captureBtn} onPress={launchBackCamera}>
+            <Ionicons name="camera" size={22} color={Colors.white} />
+            <Text style={styles.captureBtnText}>Open Camera</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
-        <Animated.View entering={FadeInDown.duration(300)}>
-          <InputField label="Barcode *" value={barcode} onChangeText={setBarcode} keyboardType="number-pad" />
-          <InputField label="Product Name *" value={name} onChangeText={setName} />
-          <InputField label="Brand" value={brand} onChangeText={setBrand} />
-
-          <Text style={styles.fieldLabel}>Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-            {CATEGORIES.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.categoryChip, category === c && styles.categoryChipActive]}
-                onPress={() => setCategory(c)}
-              >
-                <Text style={[styles.categoryChipText, category === c && styles.categoryChipTextActive]}>
-                  {c}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <InputField label="Serving Size" value={servingSize} onChangeText={setServingSize} placeholder="e.g., 100g" />
-
-          <Text style={styles.sectionLabel}>Nutrition (per serving)</Text>
-          <View style={styles.nutritionGrid}>
-            <NutritionInput label="Calories" value={calories} onChangeText={setCalories} />
-            <NutritionInput label="Protein (g)" value={protein} onChangeText={setProtein} />
-            <NutritionInput label="Carbs (g)" value={carbs} onChangeText={setCarbs} />
-            <NutritionInput label="Sugar (g)" value={sugar} onChangeText={setSugar} />
-            <NutritionInput label="Fat (g)" value={fat} onChangeText={setFat} />
-            <NutritionInput label="Sat. Fat (g)" value={saturatedFat} onChangeText={setSaturatedFat} />
-            <NutritionInput label="Fiber (g)" value={fiber} onChangeText={setFiber} />
-            <NutritionInput label="Sodium (mg)" value={sodium} onChangeText={setSodium} />
+      {step === "analyzing" && (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.analyzingState}>
+          <View style={styles.imagePreviewRow}>
+            {frontImage && (
+              <Image source={{ uri: frontImage.uri }} style={styles.analyzeThumb} />
+            )}
+            {backImage && (
+              <Image source={{ uri: backImage.uri }} style={styles.analyzeThumb} />
+            )}
           </View>
 
-          <Text style={styles.sectionLabel}>Allergens</Text>
-          <View style={styles.allergenGrid}>
-            {ALLERGEN_OPTIONS.map((a) => (
-              <TouchableOpacity
-                key={a}
-                style={[styles.allergenChip, allergens.includes(a) && styles.allergenChipActive]}
-                onPress={() => toggleAllergen(a)}
-              >
-                <Text style={[styles.allergenChipText, allergens.includes(a) && styles.allergenChipTextActive]}>
-                  {a}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.analyzingContent}>
+            <View style={styles.pulsingRow}>
+              <PulsingDot delay={0} />
+              <PulsingDot delay={1} />
+              <PulsingDot delay={2} />
+            </View>
+            <Animated.Text
+              entering={FadeInDown.duration(300)}
+              style={styles.analyzingText}
+            >
+              {analyzeStatus}
+            </Animated.Text>
+            <Text style={styles.analyzingHint}>
+              Our AI is reading your photos to extract all the nutrition details
+            </Text>
           </View>
         </Animated.View>
-      </ScrollView>
+      )}
 
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 8 },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting || !barcode.trim() || !name.trim()}
-        >
-          <Text style={styles.submitBtnText}>
-            {submitting ? "Submitting..." : "Submit Product"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder?: string;
-  keyboardType?: "default" | "number-pad" | "numeric";
-}) {
-  return (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.fieldInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.mediumGray}
-        keyboardType={keyboardType || "default"}
-      />
-    </View>
-  );
-}
-
-function NutritionInput({
-  label,
-  value,
-  onChangeText,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-}) {
-  return (
-    <View style={styles.nutritionInputWrap}>
-      <Text style={styles.nutritionInputLabel}>{label}</Text>
-      <TextInput
-        style={styles.nutritionInput}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType="numeric"
-        placeholderTextColor={Colors.lightGray}
-        placeholder="0"
-      />
+      {step === "error" && (
+        <Animated.View entering={FadeIn.duration(400)} style={styles.errorState}>
+          <Ionicons name="alert-circle" size={56} color={Colors.scoreAmber} />
+          <Text style={styles.errorTitle}>Couldn't Read Package</Text>
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
+            <Ionicons name="camera" size={20} color={Colors.white} />
+            <Text style={styles.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -385,8 +364,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.lightGray,
   },
   closeBtn: {
     width: 36,
@@ -401,165 +378,171 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.charcoal,
   },
-  extractBtn: {
-    flexDirection: "row",
+  captureState: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: Colors.primaryPale,
-    marginTop: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderStyle: "dashed",
+    paddingHorizontal: 40,
+    gap: 14,
   },
-  extractBtnText: {
-    fontSize: 15,
+  stepBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryPale,
+    marginBottom: 8,
+  },
+  stepBadgeText: {
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.primary,
   },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.lightGray,
-  },
-  dividerText: {
-    fontSize: 12,
-    color: Colors.mediumGray,
-    fontWeight: "500",
-  },
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.charcoal,
-    marginBottom: 6,
-  },
-  fieldInput: {
-    height: 46,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: Colors.charcoal,
-    backgroundColor: Colors.softWhite,
-  },
-  categoryScroll: {
-    marginBottom: 16,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.softWhite,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-    marginRight: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  categoryChipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: Colors.charcoal,
-  },
-  categoryChipTextActive: {
-    color: Colors.white,
-  },
-  sectionLabel: {
-    fontSize: 16,
+  captureTitle: {
+    fontSize: 24,
     fontWeight: "700",
     color: Colors.charcoal,
-    marginTop: 8,
-    marginBottom: 12,
+    textAlign: "center",
+    letterSpacing: -0.3,
+    marginTop: 4,
   },
-  nutritionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
-  },
-  nutritionInputWrap: {
-    width: "47%",
-  },
-  nutritionInputLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: Colors.mediumGray,
-    marginBottom: 4,
-  },
-  nutritionInput: {
-    height: 42,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+  captureSubtitle: {
     fontSize: 15,
-    color: Colors.charcoal,
-    backgroundColor: Colors.softWhite,
-    fontWeight: "600",
+    color: Colors.mediumGray,
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 280,
   },
-  allergenGrid: {
+  captureBtn: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
-  },
-  allergenChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.softWhite,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-  },
-  allergenChipActive: {
-    backgroundColor: Colors.dangerPale,
-    borderColor: Colors.danger,
-  },
-  allergenChipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: Colors.charcoal,
-    textTransform: "capitalize",
-  },
-  allergenChipTextActive: {
-    color: Colors.danger,
-    fontWeight: "600",
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.lightGray,
-    backgroundColor: Colors.white,
-  },
-  submitBtn: {
-    width: "100%",
-    height: 52,
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: 16,
+    backgroundColor: Colors.primary,
+    marginTop: 16,
+  },
+  captureBtnText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  previewThumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 14,
+    marginTop: 8,
+  },
+  thumbRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  thumbDone: {
+    position: "relative",
+  },
+  thumbDoneImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  thumbCheck: {
+    position: "absolute",
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  submitBtnDisabled: {
-    opacity: 0.5,
+  analyzingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 24,
   },
-  submitBtnText: {
-    fontSize: 17,
+  imagePreviewRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  analyzeThumb: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.primaryPale,
+  },
+  analyzingContent: {
+    alignItems: "center",
+    gap: 12,
+  },
+  pulsingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pulsingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+  },
+  analyzingText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.charcoal,
+    textAlign: "center",
+  },
+  analyzingHint: {
+    fontSize: 14,
+    color: Colors.mediumGray,
+    textAlign: "center",
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.charcoal,
+    marginTop: 4,
+  },
+  errorText: {
+    fontSize: 15,
+    color: Colors.mediumGray,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  retryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    marginTop: 12,
+  },
+  retryBtnText: {
+    fontSize: 16,
     fontWeight: "700",
     color: Colors.white,
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+  },
+  cancelBtnText: {
+    fontSize: 15,
+    color: Colors.mediumGray,
+    fontWeight: "500",
   },
 });
