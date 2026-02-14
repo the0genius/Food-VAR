@@ -55,6 +55,8 @@ export const products = pgTable(
     fiber: real("fiber"),
     sodium: real("sodium"),
     allergens: jsonb("allergens").$type<string[]>().default([]),
+    ingredients: text("ingredients"),
+    nutritionFacts: jsonb("nutrition_facts").$type<Record<string, number | string | null>>(),
     frontImageUrl: text("front_image_url"),
     nutritionImageUrl: text("nutrition_image_url"),
     contributedBy: integer("contributed_by"),
