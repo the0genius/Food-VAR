@@ -314,6 +314,42 @@ const gaugeStyles = StyleSheet.create({
   },
 });
 
+const NUTRITION_LABEL_MAP: Record<string, { label: string; unit: string }> = {
+  transFat: { label: "Trans Fat", unit: "g" },
+  cholesterol: { label: "Cholesterol", unit: "mg" },
+  potassium: { label: "Potassium", unit: "mg" },
+  calcium: { label: "Calcium", unit: "mg" },
+  iron: { label: "Iron", unit: "mg" },
+  vitaminA: { label: "Vitamin A", unit: "mcg" },
+  vitaminC: { label: "Vitamin C", unit: "mg" },
+  vitaminD: { label: "Vitamin D", unit: "mcg" },
+  vitaminB12: { label: "Vitamin B12", unit: "mcg" },
+  vitaminB6: { label: "Vitamin B6", unit: "mg" },
+  addedSugars: { label: "Added Sugars", unit: "g" },
+  sugarAlcohols: { label: "Sugar Alcohols", unit: "g" },
+  magnesium: { label: "Magnesium", unit: "mg" },
+  zinc: { label: "Zinc", unit: "mg" },
+  folate: { label: "Folate", unit: "mcg" },
+  phosphorus: { label: "Phosphorus", unit: "mg" },
+};
+
+function formatNutrientKey(key: string): string {
+  const mapped = NUTRITION_LABEL_MAP[key];
+  if (mapped) return mapped.label;
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .replace(/Pct$/, " %")
+    .trim();
+}
+
+function getNutrientUnit(key: string): string {
+  const mapped = NUTRITION_LABEL_MAP[key];
+  if (mapped) return mapped.unit;
+  if (key.endsWith("Pct")) return "%";
+  return "";
+}
+
 function NutrientRow({
   label,
   value,
@@ -389,6 +425,8 @@ export default function ResultScreen() {
               sodium: entry.productSodium,
               allergens: entry.productAllergens,
               servingSize: entry.productServingSize,
+              ingredients: entry.productIngredients,
+              nutritionFacts: entry.productNutritionFacts,
             },
           });
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -573,6 +611,30 @@ export default function ResultScreen() {
           </View>
         </Animated.View>
 
+        {product.nutritionFacts && Object.keys(product.nutritionFacts).filter(
+          (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
+        ).length > 0 && (
+          <Animated.View
+            entering={FadeInDown.delay(550).duration(400)}
+            style={styles.nutritionCard}
+          >
+            <Text style={styles.nutritionTitle}>Additional Nutrition</Text>
+            <View style={styles.nutritionGrid}>
+              {Object.entries(product.nutritionFacts)
+                .filter(([_, v]) => v !== null && v !== undefined && typeof v === "number")
+                .map(([key, val], i) => (
+                  <NutrientRow
+                    key={key}
+                    label={formatNutrientKey(key)}
+                    value={val as number}
+                    unit={getNutrientUnit(key)}
+                    index={i}
+                  />
+                ))}
+            </View>
+          </Animated.View>
+        )}
+
         {product.allergens && product.allergens.length > 0 && (
           <Animated.View
             entering={FadeInDown.delay(600).duration(400)}
@@ -591,6 +653,19 @@ export default function ResultScreen() {
             </View>
           </Animated.View>
         )}
+
+        {product.ingredients ? (
+          <Animated.View
+            entering={FadeInDown.delay(650).duration(400)}
+            style={styles.ingredientsCard}
+          >
+            <View style={styles.ingredientsHeader}>
+              <Ionicons name="list-outline" size={16} color={Colors.primary} />
+              <Text style={styles.ingredientsTitle}>Ingredients</Text>
+            </View>
+            <Text style={styles.ingredientsText}>{product.ingredients}</Text>
+          </Animated.View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -868,6 +943,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: Colors.danger,
-    textTransform: "capitalize",
+    textTransform: "capitalize" as const,
+  },
+  ingredientsCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.primaryPale,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  ingredientsHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    marginBottom: 10,
+  },
+  ingredientsTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  ingredientsText: {
+    fontSize: 13,
+    color: Colors.charcoal,
+    lineHeight: 20,
   },
 });

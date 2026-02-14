@@ -507,6 +507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productSodium: products.sodium,
           productAllergens: products.allergens,
           productServingSize: products.servingSize,
+          productIngredients: products.ingredients,
+          productNutritionFacts: products.nutritionFacts,
         })
         .from(scanHistory)
         .innerJoin(products, eq(scanHistory.productId, products.id))
