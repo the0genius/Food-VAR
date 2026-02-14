@@ -8,11 +8,14 @@ import {
   ScrollView,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
@@ -34,6 +37,27 @@ const GOALS_MAP: Record<string, string> = {
   manage_condition: "Manage Condition",
 };
 
+interface StatsProduct {
+  productName: string;
+  productBrand: string;
+  score: number;
+  productId: number;
+}
+
+interface StatsData {
+  totalScans: number;
+  avgScore: number;
+  weeklyScans: number;
+  bestProducts: StatsProduct[];
+  worstProducts: StatsProduct[];
+}
+
+function getScoreColor(score: number): string {
+  if (score <= 30) return Colors.scoreRed;
+  if (score <= 60) return Colors.scoreAmber;
+  return Colors.scoreGreen;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -43,6 +67,11 @@ export default function ProfileScreen() {
   const [age, setAge] = useState(user?.age ? String(user.age) : "");
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
+
+  const { data: stats, isLoading: statsLoading } = useQuery<StatsData>({
+    queryKey: ["/api/stats", String(user?.id)],
+    enabled: !!user?.id,
+  });
 
   async function handleSave() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -112,24 +141,106 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.contributionCount || 0}</Text>
-          <Text style={styles.statLabel}>Contributed</Text>
+      {statsLoading ? (
+        <View style={styles.statsRow}>
+          <ActivityIndicator size="small" color={Colors.primary} />
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{conditions ? (user.conditions?.length || 0) : 0}</Text>
-          <Text style={styles.statLabel}>Conditions</Text>
+      ) : (
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats?.totalScans ?? 0}</Text>
+            <Text style={styles.statLabel}>Total Scans</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text
+              style={[
+                styles.statValue,
+                {
+                  color: stats?.avgScore
+                    ? getScoreColor(stats.avgScore)
+                    : Colors.charcoal,
+                },
+              ]}
+            >
+              {stats?.avgScore ? Math.round(stats.avgScore) : "--"}
+            </Text>
+            <Text style={styles.statLabel}>Avg Score</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{stats?.weeklyScans ?? 0}</Text>
+            <Text style={styles.statLabel}>This Week</Text>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{user.allergies?.length || 0}</Text>
-          <Text style={styles.statLabel}>Allergies</Text>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.section}>
+      {stats && (stats.bestProducts?.length ?? 0) > 0 && (
+        <Animated.View
+          entering={FadeInDown.delay(100).duration(400)}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>Top Picks</Text>
+          {stats.bestProducts.slice(0, 3).map((product, index) => (
+            <View key={product.productId ?? index} style={styles.productRow}>
+              <View
+                style={[
+                  styles.scoreBadge,
+                  { backgroundColor: getScoreColor(product.score) },
+                ]}
+              >
+                <Text style={styles.scoreBadgeText}>
+                  {Math.round(product.score)}
+                </Text>
+              </View>
+              <View style={styles.productInfo}>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {product.productName}
+                </Text>
+                <Text style={styles.productBrand} numberOfLines={1}>
+                  {product.productBrand}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </Animated.View>
+      )}
+
+      {stats && (stats.worstProducts?.length ?? 0) > 0 && (
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(400)}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>Watch Out</Text>
+          {stats.worstProducts.slice(0, 3).map((product, index) => (
+            <View key={product.productId ?? index} style={styles.productRow}>
+              <View
+                style={[
+                  styles.scoreBadge,
+                  { backgroundColor: getScoreColor(product.score) },
+                ]}
+              >
+                <Text style={styles.scoreBadgeText}>
+                  {Math.round(product.score)}
+                </Text>
+              </View>
+              <View style={styles.productInfo}>
+                <Text style={styles.productName} numberOfLines={1}>
+                  {product.productName}
+                </Text>
+                <Text style={styles.productBrand} numberOfLines={1}>
+                  {product.productBrand}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </Animated.View>
+      )}
+
+      <Animated.View
+        entering={FadeInDown.delay(300).duration(400)}
+        style={styles.section}
+      >
         <Text style={styles.sectionTitle}>Health Profile</Text>
 
         <View style={styles.profileRow}>
@@ -185,7 +296,7 @@ export default function ProfileScreen() {
           <Ionicons name="create-outline" size={18} color={Colors.primary} />
           <Text style={styles.editProfileBtnText}>Edit Health Profile</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
@@ -284,6 +395,41 @@ const styles = StyleSheet.create({
     color: Colors.charcoal,
     marginBottom: 16,
     letterSpacing: -0.3,
+  },
+  productRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.softWhite,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  scoreBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreBadgeText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.white,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.charcoal,
+  },
+  productBrand: {
+    fontSize: 13,
+    color: Colors.mediumGray,
+    marginTop: 2,
   },
   profileRow: {
     flexDirection: "row",

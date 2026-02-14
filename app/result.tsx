@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
   withDelay,
   withSpring,
+  useDerivedValue,
   Easing,
   FadeIn,
   FadeInDown,
@@ -39,65 +40,279 @@ interface ScoreData {
   product: any;
 }
 
-function ScoreGauge({ score, isAllergenAlert }: { score: number; isAllergenAlert: boolean }) {
-  const progress = useSharedValue(0);
-  const scale = useSharedValue(0.8);
-  const opacity = useSharedValue(0);
+const GAUGE_SIZE = 200;
+const DOT_COUNT = 60;
+const DOT_RADIUS = 88;
+const DOT_SIZE_ACTIVE = 5;
+const DOT_SIZE_INACTIVE = 3;
+
+function getScoreColor(score: number, isAllergenAlert: boolean): string {
+  if (isAllergenAlert) return Colors.danger;
+  if (score <= 30) return Colors.scoreRed;
+  if (score <= 60) return Colors.scoreAmber;
+  return Colors.scoreGreen;
+}
+
+function GaugeDot({
+  index,
+  totalDots,
+  progress,
+  scoreColor,
+}: {
+  index: number;
+  totalDots: number;
+  progress: Animated.SharedValue<number>;
+  scoreColor: string;
+}) {
+  const angle = (index / totalDots) * 360 - 90;
+  const radians = (angle * Math.PI) / 180;
+  const x = GAUGE_SIZE / 2 + DOT_RADIUS * Math.cos(radians);
+  const y = GAUGE_SIZE / 2 + DOT_RADIUS * Math.sin(radians);
+  const dotThreshold = index / totalDots;
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const isActive = progress.value >= dotThreshold;
+    return {
+      width: isActive ? DOT_SIZE_ACTIVE : DOT_SIZE_INACTIVE,
+      height: isActive ? DOT_SIZE_ACTIVE : DOT_SIZE_INACTIVE,
+      borderRadius: isActive ? DOT_SIZE_ACTIVE / 2 : DOT_SIZE_INACTIVE / 2,
+      backgroundColor: isActive ? scoreColor : Colors.lightGray,
+      opacity: isActive ? 1 : 0.4,
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute" as const,
+          left: x - DOT_SIZE_ACTIVE / 2,
+          top: y - DOT_SIZE_ACTIVE / 2,
+          alignItems: "center" as const,
+          justifyContent: "center" as const,
+          width: DOT_SIZE_ACTIVE,
+          height: DOT_SIZE_ACTIVE,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+function AnimatedScoreText({
+  progress,
+  score,
+  scoreColor,
+}: {
+  progress: Animated.SharedValue<number>;
+  score: number;
+  scoreColor: string;
+}) {
+  const displayScore = useDerivedValue(() => {
+    return Math.round(progress.value * score);
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    opacity: 1,
+  }));
+
+  const [displayedNumber, setDisplayedNumber] = useState(0);
 
   useEffect(() => {
-    opacity.value = withTiming(1, { duration: 300 });
-    scale.value = withSpring(1, { damping: 12, stiffness: 100 });
+    let frame: number;
+    const startTime = Date.now();
+    const duration = 1500;
+    const delay = 400;
+
+    const timeout = setTimeout(() => {
+      const animate = () => {
+        const elapsed = Date.now() - startTime - delay;
+        const t = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setDisplayedNumber(Math.round(eased * score));
+        if (t < 1) {
+          frame = requestAnimationFrame(animate);
+        }
+      };
+      frame = requestAnimationFrame(animate);
+    }, delay);
+
+    return () => {
+      clearTimeout(timeout);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [score]);
+
+  return (
+    <View style={gaugeStyles.scoreTextContainer}>
+      <Text style={[gaugeStyles.scoreNumber, { color: scoreColor }]}>
+        {displayedNumber}
+      </Text>
+      <Text style={gaugeStyles.scoreOutOf}>out of 100</Text>
+    </View>
+  );
+}
+
+function ScoreGauge({
+  score,
+  isAllergenAlert,
+}: {
+  score: number;
+  isAllergenAlert: boolean;
+}) {
+  const progress = useSharedValue(0);
+  const scale = useSharedValue(0.6);
+  const opacity = useSharedValue(0);
+
+  const scoreColor = getScoreColor(score, isAllergenAlert);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 400 });
+    scale.value = withSpring(1, { damping: 14, stiffness: 90 });
     progress.value = withDelay(
-      300,
+      400,
       withTiming(score / 100, {
-        duration: 1200,
+        duration: 1500,
         easing: Easing.out(Easing.cubic),
       })
     );
   }, [score]);
 
-  const scoreColor = isAllergenAlert
-    ? Colors.danger
-    : score <= 30
-      ? Colors.scoreRed
-      : score <= 60
-        ? Colors.scoreAmber
-        : Colors.scoreGreen;
-
-  const circleStyle = useAnimatedStyle(() => ({
+  const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
   }));
 
-  const fillStyle = useAnimatedStyle(() => {
-    const angle = progress.value * 360;
-    return {
-      transform: [{ rotate: `${angle}deg` }],
-    };
-  });
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: progress.value * 0.3,
+    transform: [{ scale: 0.9 + progress.value * 0.1 }],
+  }));
+
+  const dots = Array.from({ length: DOT_COUNT }, (_, i) => i);
 
   return (
-    <Animated.View style={[styles.gaugeContainer, circleStyle]}>
-      <View style={styles.gaugeOuter}>
-        <View style={[styles.gaugeTrack, { borderColor: Colors.lightGray }]} />
-        <Animated.View
-          style={[styles.gaugeFillContainer, fillStyle]}
-        >
+    <Animated.View style={[gaugeStyles.container, containerStyle]}>
+      <Animated.View
+        style={[
+          gaugeStyles.glowCircle,
+          { backgroundColor: scoreColor },
+          glowStyle,
+        ]}
+      />
+
+      <View style={gaugeStyles.gaugeWrap}>
+        <View style={gaugeStyles.innerCircle}>
           <View
-            style={[
-              styles.gaugeFillHalf,
-              { borderColor: scoreColor, borderLeftColor: "transparent", borderBottomColor: "transparent" },
-            ]}
+            style={[gaugeStyles.innerCircleBorder, { borderColor: scoreColor + "15" }]}
           />
-        </Animated.View>
-        <View style={styles.gaugeInner}>
-          <Text style={[styles.gaugeScore, { color: scoreColor }]}>{score}</Text>
-          <Text style={styles.gaugeMax}>/100</Text>
         </View>
+
+        {dots.map((i) => (
+          <GaugeDot
+            key={i}
+            index={i}
+            totalDots={DOT_COUNT}
+            progress={progress}
+            scoreColor={scoreColor}
+          />
+        ))}
+
+        <AnimatedScoreText
+          progress={progress}
+          score={score}
+          scoreColor={scoreColor}
+        />
       </View>
     </Animated.View>
   );
 }
+
+const gaugeStyles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+  },
+  glowCircle: {
+    position: "absolute",
+    width: GAUGE_SIZE - 20,
+    height: GAUGE_SIZE - 20,
+    borderRadius: (GAUGE_SIZE - 20) / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
+      },
+    }),
+  },
+  gaugeWrap: {
+    width: GAUGE_SIZE,
+    height: GAUGE_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  innerCircle: {
+    position: "absolute",
+    width: GAUGE_SIZE - 40,
+    height: GAUGE_SIZE - 40,
+    borderRadius: (GAUGE_SIZE - 40) / 2,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  innerCircleBorder: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    borderRadius: (GAUGE_SIZE - 40) / 2,
+    borderWidth: 2,
+  },
+  scoreTextContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+  },
+  scoreNumber: {
+    fontSize: 52,
+    fontWeight: "800",
+    letterSpacing: -2,
+  },
+  scoreOutOf: {
+    fontSize: 13,
+    color: Colors.mediumGray,
+    fontWeight: "600",
+    marginTop: -2,
+    letterSpacing: 0.5,
+  },
+});
 
 function NutrientRow({
   label,
@@ -255,13 +470,7 @@ export default function ResultScreen() {
   if (!data) return null;
 
   const product = data.product;
-  const scoreColor = data.isAllergenAlert
-    ? Colors.danger
-    : data.score <= 30
-      ? Colors.scoreRed
-      : data.score <= 60
-        ? Colors.scoreAmber
-        : Colors.scoreGreen;
+  const scoreColor = getScoreColor(data.score, data.isAllergenAlert);
 
   return (
     <View style={styles.container}>
@@ -390,7 +599,7 @@ export default function ResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.softWhite,
   },
   centerContent: {
     justifyContent: "center",
@@ -406,9 +615,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: { elevation: 2 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+    }),
   },
   loadingText: {
     fontSize: 15,
@@ -447,7 +671,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 16,
     borderRadius: 16,
     backgroundColor: Colors.danger,
@@ -465,73 +689,28 @@ const styles = StyleSheet.create({
   },
   productHeader: {
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    paddingHorizontal: 24,
+    marginBottom: 4,
   },
   productName: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: Colors.charcoal,
     textAlign: "center",
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   productBrand: {
     fontSize: 14,
     color: Colors.mediumGray,
-    marginTop: 4,
+    marginTop: 6,
     fontWeight: "500",
-  },
-  gaugeContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-  },
-  gaugeOuter: {
-    width: 160,
-    height: 160,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gaugeTrack: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 8,
-    borderColor: Colors.lightGray,
-  },
-  gaugeFillContainer: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-  },
-  gaugeFillHalf: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 8,
-  },
-  gaugeInner: {
-    alignItems: "center",
-  },
-  gaugeScore: {
-    fontSize: 48,
-    fontWeight: "800",
-    letterSpacing: -2,
-  },
-  gaugeMax: {
-    fontSize: 14,
-    color: Colors.mediumGray,
-    fontWeight: "600",
-    marginTop: -4,
   },
   labelWrap: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 24,
   },
   labelBadge: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 8,
     borderRadius: 20,
   },
@@ -539,19 +718,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: Colors.white,
+    letterSpacing: 0.3,
   },
   adviceCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: Colors.primaryPale,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.primaryPale,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+      web: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+    }),
   },
   adviceHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   adviceTitle: {
     fontSize: 15,
@@ -588,9 +785,24 @@ const styles = StyleSheet.create({
   nutritionCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: Colors.softWhite,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
   },
   nutritionTitle: {
     fontSize: 16,
@@ -605,8 +817,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.lightGray,
   },
   nutrientLabel: {
@@ -622,9 +834,11 @@ const styles = StyleSheet.create({
   allergensCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: Colors.dangerPale,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.dangerPale,
   },
   allergensHeader: {
     flexDirection: "row",
@@ -646,7 +860,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.dangerPale,
     borderWidth: 1,
     borderColor: Colors.danger,
   },

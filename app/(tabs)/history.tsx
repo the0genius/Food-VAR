@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Platform,
   FlatList,
-  ActivityIndicator,
   Alert,
   TextInput,
 } from "react-native";
@@ -14,13 +13,79 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
 type SortOption = "date" | "score_high" | "score_low";
+
+function SkeletonPulse({ children }: { children: React.ReactNode }) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(0.7, { duration: 800 }), -1, true);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
+
+function SkeletonHistoryCard() {
+  return (
+    <SkeletonPulse>
+      <View style={styles.historyCard}>
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            backgroundColor: Colors.lightGray,
+          }}
+        />
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              width: "70%",
+              height: 14,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+            }}
+          />
+          <View
+            style={{
+              width: "50%",
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+              marginTop: 6,
+            }}
+          />
+          <View
+            style={{
+              width: "30%",
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: Colors.lightGray,
+              marginTop: 6,
+            }}
+          />
+        </View>
+      </View>
+    </SkeletonPulse>
+  );
+}
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -169,17 +234,18 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {historyQuery.isLoading && (
-        <ActivityIndicator
-          style={{ marginTop: 40 }}
-          color={Colors.primary}
-          size="large"
-        />
-      )}
-
       <FlatList
         data={history}
         keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={
+          historyQuery.isLoading ? (
+            <View>
+              {[0, 1, 2, 3, 4].map((i) => (
+                <SkeletonHistoryCard key={i} />
+              ))}
+            </View>
+          ) : null
+        }
         renderItem={({ item, index }) => (
           <HistoryItem
             item={item}

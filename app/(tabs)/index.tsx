@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,8 +9,117 @@ import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+
+function SkeletonPulse({ children }: { children: React.ReactNode }) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(0.7, { duration: 800 }), -1, true);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
+
+function SkeletonProductCard() {
+  return (
+    <SkeletonPulse>
+      <View style={styles.productCard}>
+        <View style={styles.productInfo}>
+          <View
+            style={{
+              width: "65%",
+              height: 14,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+            }}
+          />
+          <View
+            style={{
+              width: "45%",
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+              marginTop: 6,
+            }}
+          />
+          <View
+            style={{
+              flexDirection: "row" as const,
+              alignItems: "center" as const,
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 50,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: Colors.lightGray,
+              }}
+            />
+            <View
+              style={{
+                width: 60,
+                height: 18,
+                borderRadius: 6,
+                backgroundColor: Colors.lightGray,
+              }}
+            />
+          </View>
+        </View>
+      </View>
+    </SkeletonPulse>
+  );
+}
+
+function SkeletonRecentCard() {
+  return (
+    <SkeletonPulse>
+      <View style={styles.recentCard}>
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            backgroundColor: Colors.lightGray,
+          }}
+        />
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              width: "60%",
+              height: 14,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+            }}
+          />
+          <View
+            style={{
+              width: "40%",
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: Colors.lightGray,
+              marginTop: 5,
+            }}
+          />
+        </View>
+      </View>
+    </SkeletonPulse>
+  );
+}
 
 function ScoreBadge({ score }: { score: number }) {
   const color =
@@ -170,7 +280,18 @@ export default function HomeScreen() {
               </View>
             </LinearGradient>
 
-            {recentScans.length > 0 && (
+            {historyQuery.isLoading && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Recent Scans</Text>
+                </View>
+                {[0, 1, 2].map((i) => (
+                  <SkeletonRecentCard key={i} />
+                ))}
+              </View>
+            )}
+
+            {!historyQuery.isLoading && recentScans.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Recent Scans</Text>
@@ -200,7 +321,14 @@ export default function HomeScreen() {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Popular Products</Text>
               </View>
-              {popular.map((item: any, i: number) => (
+              {popularQuery.isLoading && (
+                <>
+                  {[0, 1, 2].map((i) => (
+                    <SkeletonProductCard key={i} />
+                  ))}
+                </>
+              )}
+              {!popularQuery.isLoading && popular.map((item: any, i: number) => (
                 <ProductCard
                   key={item.id}
                   item={item}
