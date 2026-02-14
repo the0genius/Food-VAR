@@ -83,7 +83,7 @@ export default function ContributeScreen() {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        quality: 0.7,
+        quality: 0.4,
         base64: true,
         allowsEditing: false,
       });
@@ -113,7 +113,7 @@ export default function ContributeScreen() {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
-        quality: 0.7,
+        quality: 0.4,
         base64: true,
         allowsEditing: false,
       });
@@ -140,7 +140,7 @@ export default function ContributeScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        quality: 0.7,
+        quality: 0.4,
         base64: true,
       });
 
