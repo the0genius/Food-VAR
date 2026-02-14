@@ -66,6 +66,7 @@ export default function ContributeScreen() {
   const [analyzeStatus, setAnalyzeStatus] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const hasLaunched = useRef(false);
+  const frontImageRef = useRef<{ uri: string; base64: string } | null>(null);
 
   const barcode = params.barcode || "";
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -93,7 +94,9 @@ export default function ContributeScreen() {
       }
 
       const asset = result.assets[0];
-      setFrontImage({ uri: asset.uri, base64: asset.base64 || "" });
+      const frontData = { uri: asset.uri, base64: asset.base64 || "" };
+      setFrontImage(frontData);
+      frontImageRef.current = frontData;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       setTimeout(() => {
@@ -125,7 +128,7 @@ export default function ContributeScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       setTimeout(() => {
-        processImages(frontImage!.base64, asset.base64 || "");
+        processImages(frontImageRef.current!.base64, asset.base64 || "");
       }, 400);
     } catch (e) {
       console.error("Back camera error:", e);
@@ -150,13 +153,15 @@ export default function ContributeScreen() {
 
       const asset = result.assets[0];
       if (which === "front") {
-        setFrontImage({ uri: asset.uri, base64: asset.base64 || "" });
+        const frontData = { uri: asset.uri, base64: asset.base64 || "" };
+        setFrontImage(frontData);
+        frontImageRef.current = frontData;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setTimeout(() => launchBackCamera(), 600);
       } else {
         setBackImage({ uri: asset.uri, base64: asset.base64 || "" });
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setTimeout(() => processImages(frontImage!.base64, asset.base64 || ""), 400);
+        setTimeout(() => processImages(frontImageRef.current!.base64, asset.base64 || ""), 400);
       }
     } catch (e) {
       console.error("Library fallback error:", e);
@@ -238,6 +243,7 @@ export default function ContributeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setFrontImage(null);
     setBackImage(null);
+    frontImageRef.current = null;
     setErrorMsg("");
     hasLaunched.current = false;
     launchFrontCamera();
