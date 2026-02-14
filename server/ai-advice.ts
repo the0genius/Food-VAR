@@ -142,8 +142,11 @@ Per serving (${product.servingSize || "standard"}):
 - Fiber: ${product.fiber ?? "N/A"}g
 - Sodium: ${product.sodium ?? "N/A"}mg
 - Allergens: ${(product.allergens || []).join(", ") || "none declared"}
+${product.ingredients ? `\nIngredients: ${product.ingredients}` : ""}
+${product.nutritionFacts ? `\nAdditional Nutrition: ${JSON.stringify(product.nutritionFacts)}` : ""}
 
 When the user has multiple health conditions with competing nutritional priorities, acknowledge the tension and prioritize the most immediately dangerous factor.
+Consider the ingredients list in your analysis - flag concerning ingredients like artificial sweeteners, hydrogenated oils, high-fructose corn syrup, excessive preservatives, or artificial colors when relevant to the user's health profile.
 
 Respond in JSON format:
 {
@@ -168,21 +171,17 @@ export async function extractNutritionFromImages(
           role: "user",
           parts: [
             {
-              text: `You are analyzing food product packaging images. Extract the following information from these two images (front of package and nutrition facts label):
+              text: `You are analyzing food product packaging images. Extract ALL available information from these two images (front of package and nutrition facts/ingredients label).
 
+Extract:
 1. Product name
 2. Brand name
 3. Category (one of: Beverages, Dairy, Snacks, Breakfast, Meals, Bakery, Frozen, Canned, Condiments, Pasta, Dairy Alternatives, Other)
 4. Serving size (as text, e.g., "100g" or "1 cup (240ml)")
-5. Calories (number)
-6. Protein in grams (number)
-7. Carbohydrates in grams (number)
-8. Sugar in grams (number)
-9. Fat in grams (number)
-10. Saturated fat in grams (number)
-11. Fiber in grams (number)
-12. Sodium in milligrams (number)
-13. Allergens (array of strings)
+5. Core nutrition: Calories, Protein, Carbohydrates, Sugar, Fat, Saturated fat, Fiber, Sodium
+6. Extended nutrition (if visible on label): Trans fat, Cholesterol, Potassium, Calcium, Iron, Vitamin A, Vitamin C, Vitamin D, Vitamin B12, Vitamin B6, Added sugars, Sugar alcohols, Magnesium, Zinc, Folate, Phosphorus, and ANY other nutrients shown on the label
+7. Full ingredients list (the complete text as printed on the package)
+8. Allergens
 
 Return JSON format:
 {
@@ -198,15 +197,30 @@ Return JSON format:
   "saturatedFat": number or null,
   "fiber": number or null,
   "sodium": number or null,
-  "allergens": ["allergen1", "allergen2"]
+  "allergens": ["allergen1", "allergen2"],
+  "ingredients": "Full ingredients text as printed on package, or null if not visible",
+  "nutritionFacts": {
+    "transFat": number or null,
+    "cholesterol": number or null,
+    "potassium": number or null,
+    "calcium": number or null,
+    "iron": number or null,
+    "vitaminA": number or null,
+    "vitaminC": number or null,
+    "vitaminD": number or null,
+    "addedSugars": number or null,
+    ...any other nutrients visible on the label
+  }
 }
 
 IMPORTANT RULES:
 - Extract as much as you can from the images. Do your best even if the image is blurry or partially obscured.
 - For any value you cannot read, use null.
 - You MUST always provide the product "name" - if you cannot read it clearly, make your best guess from what is visible.
-- Use the front image for name, brand, and category. Use the back image for nutrition facts.
+- Use the front image for name, brand, and category. Use the back image for nutrition facts and ingredients.
 - Do NOT include a "confident" field. Just extract what you can.
+- For the "ingredients" field, transcribe the FULL ingredients list text exactly as it appears on the packaging. Include everything.
+- For "nutritionFacts", include ANY additional nutrients shown on the nutrition label beyond the core 8. Use camelCase keys (e.g., "transFat", "vitaminA", "addedSugars"). Values should be numbers (in mg for minerals/vitamins, g for macros, or % for daily values - include the unit in the key name if it's a percentage, e.g., "calciumPct": 15).
 
 ALLERGEN RULES (CRITICAL - health safety):
 - Look for allergen declarations on the packaging ("Contains:", "May contain:", "Allergens:", ingredient list bold text).

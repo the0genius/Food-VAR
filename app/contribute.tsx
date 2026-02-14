@@ -208,6 +208,8 @@ export default function ContributeScreen() {
         fiber: d.fiber ?? null,
         sodium: d.sodium ?? null,
         allergens: d.allergens || [],
+        ingredients: d.ingredients || null,
+        nutritionFacts: d.nutritionFacts || null,
         contributedBy: user?.id,
       });
 

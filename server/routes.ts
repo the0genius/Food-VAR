@@ -324,6 +324,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fiber,
         sodium,
         allergens,
+        ingredients,
+        nutritionFacts,
         contributedBy,
       } = req.body;
 
@@ -354,6 +356,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fiber,
           sodium,
           allergens: allergens || [],
+          ingredients: ingredients || null,
+          nutritionFacts: nutritionFacts || null,
           contributedBy,
           moderationStatus: "pending",
         })
