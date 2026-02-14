@@ -26,7 +26,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
 interface ScoreData {
@@ -188,6 +188,9 @@ export default function ResultScreen() {
         });
         const resData = await res.json();
         setData(resData);
+
+        queryClient.invalidateQueries({ queryKey: ["/api/history"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/scans/today"] });
 
         if (resData.isAllergenAlert) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
