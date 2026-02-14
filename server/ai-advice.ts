@@ -182,7 +182,7 @@ export async function extractNutritionFromImages(
 10. Saturated fat in grams (number)
 11. Fiber in grams (number)
 12. Sodium in milligrams (number)
-13. Allergens (array of strings from: gluten, lactose, nuts, soy, shellfish, eggs, fish, wheat, peanuts)
+13. Allergens (array of strings)
 
 Return JSON format:
 {
@@ -206,7 +206,16 @@ IMPORTANT RULES:
 - For any value you cannot read, use null.
 - You MUST always provide the product "name" - if you cannot read it clearly, make your best guess from what is visible.
 - Use the front image for name, brand, and category. Use the back image for nutrition facts.
-- Do NOT include a "confident" field. Just extract what you can.`,
+- Do NOT include a "confident" field. Just extract what you can.
+
+ALLERGEN RULES (CRITICAL - health safety):
+- Look for allergen declarations on the packaging ("Contains:", "May contain:", "Allergens:", ingredient list bold text).
+- Use ONLY these standardized allergen names: "gluten", "milk", "nuts", "soy", "shellfish", "eggs", "fish", "wheat", "peanuts", "sesame", "celery", "mustard", "lupin", "mollusks", "sulfites", "lactose".
+- If you see "wheat flour" or "flour" in ingredients, include BOTH "wheat" and "gluten".
+- If you see "milk", "milk powder", "whey", "casein", "butter", "cream" etc, include "milk".
+- If you see "soy lecithin" or "soya", include "soy".
+- EVEN IF the allergen section is not visible, INFER allergens from the product type and visible ingredients. For example: chocolate products almost always contain milk and soy; bread/pastry products contain wheat and gluten; etc.
+- NEVER return an empty allergens array for processed foods. Most processed foods contain at least one common allergen.`,
             },
             {
               inlineData: {
