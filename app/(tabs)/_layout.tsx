@@ -1,61 +1,84 @@
-// template
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
-import { BlurView } from "expo-blur";
-import { SymbolView } from "expo-symbols";
-import { Platform, StyleSheet, useColorScheme } from "react-native";
-import React from "react";
-
+import { Ionicons } from "@expo/vector-icons";
+import { Platform, View, StyleSheet } from "react-native";
 import Colors from "@/constants/colors";
+import { useUser } from "@/contexts/UserContext";
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
 
-//IMPORTANT: iOS 26 Exists, feel free to use NativeTabs for native tabs with liquid glass support.
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Home</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
+export default function TabLayout() {
+  const { user, isLoading } = useUser();
+  const router = useRouter();
 
-function ClassicTabLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  useEffect(() => {
+    if (!isLoading && (!user || !user.onboardingCompleted)) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, user]);
+
+  if (isLoading || !user?.onboardingCompleted) {
+    return <View style={{ flex: 1, backgroundColor: Colors.white }} />;
+  }
+
+  const tabBarHeight = Platform.OS === "web" ? 84 : 88;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.light.tint,
+        headerShown: false,
+        tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.light.tabIconDefault,
-        headerShown: true,
         tabBarStyle: {
-          position: "absolute",
-          backgroundColor: Platform.select({
-            ios: "transparent",
-            android: isDark ? "#000" : "#fff",
-          }),
-          borderTopWidth: 0,
+          height: tabBarHeight,
+          paddingTop: 6,
+          borderTopWidth: 0.5,
+          borderTopColor: Colors.lightGray,
+          backgroundColor: Colors.white,
           elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarBackground: () =>
-          Platform.OS === "ios" ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "light"}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : null,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginTop: 2,
+        },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color }) => (
-            <SymbolView name="house" tintColor={color} size={24} />
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: "Scan",
+          tabBarIcon: ({ color, size }) => (
+            <View style={styles.scanIconWrap}>
+              <Ionicons name="scan" size={size + 4} color={Colors.white} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="time" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
           ),
         }}
       />
@@ -63,9 +86,14 @@ function ClassicTabLayout() {
   );
 }
 
-export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
-}
+const styles = StyleSheet.create({
+  scanIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: -8,
+  },
+});
