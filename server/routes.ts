@@ -257,7 +257,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scoreResult.label,
         clusterId,
         scoreResult.isAllergenAlert,
-        scoreResult.matchedAllergens
+        scoreResult.matchedAllergens,
+        scoreResult.deductions
       );
 
       try {
@@ -297,6 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         advice: adviceResult.advice,
         highlights: adviceResult.highlights,
         adviceFromCache: adviceResult.fromCache,
+        deductions: scoreResult.deductions,
         product,
         historyId: historyEntry.id,
       });

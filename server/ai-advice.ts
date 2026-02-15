@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
 import { adviceCache, type Product, type User } from "@shared/schema";
 import { eq, and, gt } from "drizzle-orm";
+import type { ScoreDeduction } from "./scoring-engine";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -24,7 +25,8 @@ export async function getAdvice(
   scoreLabel: string,
   profileClusterId: string,
   isAllergenAlert: boolean,
-  matchedAllergens: string[]
+  matchedAllergens: string[],
+  deductions: ScoreDeduction[] = []
 ): Promise<AdviceResult> {
   const cached = await db
     .select()
@@ -53,7 +55,8 @@ export async function getAdvice(
       score,
       scoreLabel,
       isAllergenAlert,
-      matchedAllergens
+      matchedAllergens,
+      deductions
     );
 
     const response = await ai.models.generateContent({
@@ -110,21 +113,45 @@ function buildAdvicePrompt(
   score: number,
   scoreLabel: string,
   isAllergenAlert: boolean,
-  matchedAllergens: string[]
+  matchedAllergens: string[],
+  deductions: ScoreDeduction[] = []
 ): string {
   const allergenWarning = isAllergenAlert
     ? `CRITICAL: This product contains allergens that match the user's allergy profile: ${matchedAllergens.join(", ")}. The score is 0 (Allergen Alert). Your advice MUST prominently warn about this allergen danger.`
     : "";
 
-  return `You are FoodVAR's nutrition advisor. You explain food scores in a friendly, conversational way. You are warm, honest, encouraging, and never judgmental. Think of yourself as a supportive, knowledgeable friend.
+  const penalties = deductions.filter(d => d.category === "penalty");
+  const bonuses = deductions.filter(d => d.category === "bonus");
+
+  const topPenalties = penalties.slice(0, 6);
+  const topBonuses = bonuses.sort((a, b) => b.points - a.points).slice(0, 4);
+
+  const penaltyBreakdown = topPenalties.length > 0
+    ? `SCORE PENALTIES (what pulled the score DOWN from 50):\n${topPenalties.map(d => `  - ${d.reason}: ${d.points} points`).join("\n")}`
+    : "No significant penalties applied.";
+
+  const bonusBreakdown = topBonuses.length > 0
+    ? `SCORE BONUSES (what pushed the score UP):\n${topBonuses.map(d => `  - ${d.reason}: +${d.points} points`).join("\n")}`
+    : "No significant bonuses applied.";
+
+  const totalPenalty = Math.round(penalties.reduce((sum, d) => sum + d.points, 0) * 10) / 10;
+  const totalBonus = Math.round(bonuses.reduce((sum, d) => sum + d.points, 0) * 10) / 10;
+
+  return `You are FoodVAR's nutrition advisor. Your job is to explain WHY this product scored what it did — be specific, honest, and helpful. Don't just say "it's good" or "it's bad" — explain the trade-offs.
 
 ${allergenWarning}
 
-The score has already been calculated as ${score}/100 (${scoreLabel}). Do not suggest a different score. Explain why this product received this score for this user in a friendly, conversational tone.
+SCORING CONTEXT:
+- Base score starts at 50/100
+- This product scored ${score}/100 (${scoreLabel})
+- Total penalties: ${totalPenalty} points
+- Total bonuses: +${totalBonus} points
 
-USER PROFILE (anonymized):
-- Age: ${user.age || "not specified"}
-- Gender: ${user.gender || "not specified"}
+${penaltyBreakdown}
+
+${bonusBreakdown}
+
+USER PROFILE:
 - Health conditions: ${(user.conditions || []).join(", ") || "none"}
 - Allergies: ${(user.allergies || []).join(", ") || "none"}
 - Dietary preference: ${user.dietaryPreference || "none"}
@@ -145,13 +172,20 @@ Per serving (${product.servingSize || "standard"}):
 ${product.ingredients ? `\nIngredients: ${product.ingredients}` : ""}
 ${product.nutritionFacts ? `\nAdditional Nutrition: ${JSON.stringify(product.nutritionFacts)}` : ""}
 
-When the user has multiple health conditions with competing nutritional priorities, acknowledge the tension and prioritize the most immediately dangerous factor.
-Consider the ingredients list in your analysis - flag concerning ingredients like artificial sweeteners, hydrogenated oils, high-fructose corn syrup, excessive preservatives, or artificial colors when relevant to the user's health profile.
+INSTRUCTIONS FOR YOUR ADVICE:
+1. EXPLAIN THE SCORE: Tell the user specifically why the score is ${score} and not higher. Reference the actual penalties and bonuses above. For example: "The main thing holding this score back is the 27g of carbs, which matters for diabetes management."
+2. ACKNOWLEDGE THE POSITIVES: If there are bonuses, mention what's good about the product too.
+3. GIVE ACTIONABLE TIPS: Specific advice like "keep portions to one serving" or "pair with protein to slow sugar absorption" — not generic "eat healthy" advice.
+4. BE HONEST BUT SUPPORTIVE: If the score is low, be direct about why without being preachy. If the score is good, mention what could still be improved.
+5. When the user has multiple health conditions, acknowledge which condition is most affected and why.
+6. Consider the ingredients list — flag concerning ingredients like artificial sweeteners, hydrogenated oils, high-fructose corn syrup when relevant.
+
+TONE: Warm, direct, knowledgeable friend. Not a textbook. Not overly cheerful. Honest.
 
 Respond in JSON format:
 {
-  "advice": "2-3 friendly sentences explaining the score and giving a practical recommendation",
-  "highlights": ["array of 2-4 key nutritional factors that influenced the score, each as a short phrase"]
+  "advice": "3-4 sentences that explain the score, reference specific nutrients that helped or hurt, and give one concrete actionable tip. Be specific to this user's conditions.",
+  "highlights": ["2-4 short phrases for the key factors, e.g. 'Moderate carbs (27g) — watch portions for diabetes', 'Good fiber content (4g)', 'Low sugar (1g) — great for blood sugar']"
 }`;
 }
 
