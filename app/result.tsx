@@ -63,9 +63,17 @@ function getScoreColorLight(score: number, isAllergenAlert: boolean): string {
   return "#F0FFF0";
 }
 
-function getPersonalizedHeadline(score: number, label: string, headline: string, isAllergenAlert: boolean): string {
+function getPersonalizedHeadline(score: number, label: string, headline: string, isAllergenAlert: boolean, adviceText?: string): string {
   if (isAllergenAlert) return "Allergen detected";
   if (headline) return headline;
+
+  if (adviceText && score > 50 && score <= 74) {
+    const adviceLower = adviceText.toLowerCase();
+    const hasConcern = ["diabetes", "blood sugar", "cholesterol", "carbs", "keep an eye", "not ideal", "concern", "could affect"]
+      .some(w => adviceLower.includes(w));
+    if (hasConcern) return "A few things to watch";
+  }
+
   if (score <= 25) return "Not a great fit for you";
   if (score <= 50) return "A few things to watch";
   if (score <= 74) return "Solid choice overall";
@@ -76,13 +84,29 @@ const CAUTION_WORDS = [
   "watch", "attention", "risk", "alert", "careful",
   "caution", "warning", "spike", "concern", "avoid",
   "hidden", "overload", "heavy", "excess", "too much",
+  "mind", "carb", "sugar", "sodium", "limit", "moderate",
+  "tricky", "sneaky", "loaded", "packed", "high",
 ];
 
-function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string): string {
+function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string): string {
   if (isAllergenAlert) return Colors.danger;
+  if (score <= 30) return Colors.scoreRed;
   const headlineLower = (headline || "").toLowerCase();
-  const isCautionary = CAUTION_WORDS.some(w => headlineLower.includes(w));
-  if (isCautionary) return Colors.scoreAmber;
+  const isCautionaryHeadline = CAUTION_WORDS.some(w => headlineLower.includes(w));
+  if (isCautionaryHeadline) return Colors.scoreAmber;
+
+  if (adviceText && score <= 70) {
+    const adviceLower = adviceText.toLowerCase();
+    const conditionConcerns = [
+      "diabetes", "blood sugar", "cholesterol", "carbs",
+      "keep an eye", "watch out", "be careful", "not ideal",
+      "concern", "tricky", "affects your", "spike",
+      "could affect", "could impact",
+    ];
+    const hasConcern = conditionConcerns.some(w => adviceLower.includes(w));
+    if (hasConcern) return Colors.scoreAmber;
+  }
+
   return getScoreColor(score, false);
 }
 
@@ -427,8 +451,8 @@ export default function ResultScreen() {
 
   const product = data.product;
   const scoreColor = getScoreColor(data.score, data.isAllergenAlert);
-  const headlineText = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert);
-  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText);
+  const headlineText = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert, data.advice);
+  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText, data.advice);
 
   return (
     <View style={styles.container}>

@@ -191,6 +191,8 @@ YOUR RULES:
 7. The headline should capture the #1 insight in 2-5 words (e.g., "Hidden sugar alert", "Great protein pick", "Watch the sodium")
 8. NO DATA DUMPS: Do NOT repeat specific gram/mg counts in the whyText (e.g., "contains 3.4g sugar" or "160mg of sodium"). The user sees the Nutrition Facts table right below. Instead use comparative language: "high sugar," "surprisingly salty," "nearly a teaspoon of sugar per tablespoon," "empty calories." Make it vivid, not clinical.
 9. ZERO-CAL BEVERAGES: If a product has < 10 calories and 0g sugar (black coffee, tea, water, diet drinks), the headline should be positive (e.g., "Great daily choice", "Smart pick"). Do not flag missing nutrients.
+10. RULE OF ONE: Focus on the SINGLE biggest factor in the whyText. Do NOT list sugar AND sodium AND fat AND fiber all in one paragraph. Pick the #1 concern (or benefit) and explain it compellingly. MAX 2 sentences in whyText. The highlights tags handle the secondary factors.
+11. HEADLINE TONE MATCH: If you flag a concern for the user's specific condition (e.g., carbs for diabetics, sodium for hypertension), the headline MUST sound cautionary — use words like "watch," "mind," "alert," "careful." Never write an encouraging headline when flagging a condition concern.
 
 Respond in JSON:
 {
