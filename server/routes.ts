@@ -296,6 +296,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isAllergenAlert: scoreResult.isAllergenAlert,
         matchedAllergens: scoreResult.matchedAllergens,
         advice: adviceResult.advice,
+        headline: adviceResult.headline,
+        coachTip: adviceResult.coachTip,
         highlights: adviceResult.highlights,
         adviceFromCache: adviceResult.fromCache,
         deductions: scoreResult.deductions,

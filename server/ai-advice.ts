@@ -14,6 +14,8 @@ const ai = new GoogleGenAI({
 
 interface AdviceResult {
   advice: string;
+  headline: string;
+  coachTip: string;
   highlights: string[];
   fromCache: boolean;
 }
@@ -43,6 +45,8 @@ export async function getAdvice(
   if (cached.length > 0) {
     return {
       advice: cached[0].adviceText,
+      headline: "",
+      coachTip: "",
       highlights: (cached[0].highlights || []) as string[],
       fromCache: true,
     };
@@ -69,16 +73,23 @@ export async function getAdvice(
     });
 
     const text = response.text || "";
-    let parsed: { advice: string; highlights: string[] };
+    let rawParsed: any;
 
     try {
-      parsed = JSON.parse(text);
+      rawParsed = JSON.parse(text);
     } catch {
-      parsed = {
-        advice: text.slice(0, 300),
+      rawParsed = {
+        headline: "",
+        whyText: text.slice(0, 200),
+        coachTip: "",
         highlights: [],
       };
     }
+
+    const adviceText = rawParsed.whyText || rawParsed.advice || "";
+    const headline = rawParsed.headline || "";
+    const coachTip = rawParsed.coachTip || "";
+    const highlights = rawParsed.highlights || [];
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 90);
@@ -86,14 +97,16 @@ export async function getAdvice(
     await db.insert(adviceCache).values({
       productId: product.id,
       profileClusterId,
-      adviceText: parsed.advice,
-      highlights: parsed.highlights,
+      adviceText: adviceText,
+      highlights: highlights,
       expiresAt,
     });
 
     return {
-      advice: parsed.advice,
-      highlights: parsed.highlights || [],
+      advice: adviceText,
+      headline,
+      coachTip,
+      highlights,
       fromCache: false,
     };
   } catch (error) {
@@ -101,6 +114,8 @@ export async function getAdvice(
     return {
       advice:
         "We're having trouble generating advice right now, but here's your score based on the nutrition facts.",
+      headline: "",
+      coachTip: "",
       highlights: [],
       fromCache: false,
     };
@@ -117,75 +132,70 @@ function buildAdvicePrompt(
   deductions: ScoreDeduction[] = []
 ): string {
   const allergenWarning = isAllergenAlert
-    ? `CRITICAL: This product contains allergens that match the user's allergy profile: ${matchedAllergens.join(", ")}. The score is 0 (Allergen Alert). Your advice MUST prominently warn about this allergen danger.`
+    ? `CRITICAL ALLERGEN ALERT: This product contains ${matchedAllergens.join(", ")} which matches the user's allergies. Score is 0. Your headline MUST warn about this allergen danger. The whyText should explain the risk.`
     : "";
 
   const penalties = deductions.filter(d => d.category === "penalty");
   const bonuses = deductions.filter(d => d.category === "bonus");
 
-  const topPenalties = penalties.slice(0, 6);
+  const topPenalties = penalties.slice(0, 5);
   const topBonuses = bonuses.sort((a, b) => b.points - a.points).slice(0, 4);
 
   const penaltyBreakdown = topPenalties.length > 0
-    ? `SCORE PENALTIES (what pulled the score DOWN from 50):\n${topPenalties.map(d => `  - ${d.reason}: ${d.points} points`).join("\n")}`
-    : "No significant penalties applied.";
+    ? `What pulled the score down:\n${topPenalties.map(d => `  - ${d.reason}: ${d.points} pts`).join("\n")}`
+    : "No significant penalties.";
 
   const bonusBreakdown = topBonuses.length > 0
-    ? `SCORE BONUSES (what pushed the score UP):\n${topBonuses.map(d => `  - ${d.reason}: +${d.points} points`).join("\n")}`
-    : "No significant bonuses applied.";
+    ? `What helped the score:\n${topBonuses.map(d => `  - ${d.reason}: +${d.points} pts`).join("\n")}`
+    : "No significant bonuses.";
 
-  const totalPenalty = Math.round(penalties.reduce((sum, d) => sum + d.points, 0) * 10) / 10;
-  const totalBonus = Math.round(bonuses.reduce((sum, d) => sum + d.points, 0) * 10) / 10;
+  const category = (product.category || "").toLowerCase();
+  const isCondiment = ["condiments", "sauces", "condiment"].includes(category);
+  const isBeverage = ["beverages", "drinks", "beverage"].includes(category);
 
-  return `You are FoodVAR's nutrition advisor. Your job is to explain WHY this product scored what it did — be specific, honest, and helpful. Don't just say "it's good" or "it's bad" — explain the trade-offs.
+  const categoryGuidance = isCondiment
+    ? `IMPORTANT: This is a CONDIMENT. Do NOT criticize it for low protein, low fiber, or low calories — that's expected. Focus ONLY on sugar and sodium content as the key factors.`
+    : isBeverage
+    ? `IMPORTANT: This is a BEVERAGE. Do NOT criticize it for low protein or low fiber. Focus on sugar, calories, and sodium.`
+    : "";
+
+  const conditions = (user.conditions || []).join(", ") || "none";
+  const goal = user.goal || "general wellness";
+
+  return `You are FoodVAR — a warm, direct nutrition coach who talks like a smart friend, not a doctor.
 
 ${allergenWarning}
 
-SCORING CONTEXT:
-- Base score starts at 50/100
-- This product scored ${score}/100 (${scoreLabel})
-- Total penalties: ${totalPenalty} points
-- Total bonuses: +${totalBonus} points
+PRODUCT: ${product.name} (${product.category || "Food"})
+Score: ${score}/100
+User's conditions: ${conditions}
+User's goal: ${goal}
 
+${categoryGuidance}
+
+SCORING DATA:
 ${penaltyBreakdown}
-
 ${bonusBreakdown}
 
-USER PROFILE:
-- Health conditions: ${(user.conditions || []).join(", ") || "none"}
-- Allergies: ${(user.allergies || []).join(", ") || "none"}
-- Dietary preference: ${user.dietaryPreference || "none"}
-- Goal: ${user.goal || "general wellness"}
+Nutrition per serving (${product.servingSize || "standard serving"}):
+Cal ${product.calories ?? "?"} | Protein ${product.protein ?? "?"}g | Carbs ${product.carbohydrates ?? "?"}g | Sugar ${product.sugar ?? "?"}g | Fat ${product.fat ?? "?"}g | Sat.Fat ${product.saturatedFat ?? "?"}g | Fiber ${product.fiber ?? "?"}g | Sodium ${product.sodium ?? "?"}mg
+${product.ingredients ? `Ingredients: ${product.ingredients}` : ""}
 
-PRODUCT: ${product.name} by ${product.brand || "Unknown brand"}
-Category: ${product.category || "Unknown"}
-Per serving (${product.servingSize || "standard"}):
-- Calories: ${product.calories ?? "N/A"}
-- Protein: ${product.protein ?? "N/A"}g
-- Carbs: ${product.carbohydrates ?? "N/A"}g
-- Sugar: ${product.sugar ?? "N/A"}g
-- Fat: ${product.fat ?? "N/A"}g
-- Saturated fat: ${product.saturatedFat ?? "N/A"}g
-- Fiber: ${product.fiber ?? "N/A"}g
-- Sodium: ${product.sodium ?? "N/A"}mg
-- Allergens: ${(product.allergens || []).join(", ") || "none declared"}
-${product.ingredients ? `\nIngredients: ${product.ingredients}` : ""}
-${product.nutritionFacts ? `\nAdditional Nutrition: ${JSON.stringify(product.nutritionFacts)}` : ""}
+YOUR RULES:
+1. NEVER start with "This [product name] scored X/100" — the user already sees the score on screen
+2. NEVER use words like: "penalties," "deductions," "mitigate," "adhere," "consume with caution"
+3. Keep the whyText to MAX 2-3 short sentences. Be punchy, not verbose.
+4. The coachTip should be ONE specific, actionable swap or hack (e.g., "Try mustard instead — zero sugar, same kick")
+5. Talk like a knowledgeable friend, not a medical textbook
+6. ${categoryGuidance || "Judge the food fairly for what it is"}
+7. The headline should capture the #1 insight in 2-5 words (e.g., "Hidden sugar alert", "Great protein pick", "Watch the sodium")
 
-INSTRUCTIONS FOR YOUR ADVICE:
-1. EXPLAIN THE SCORE: Tell the user specifically why the score is ${score} and not higher. Reference the actual penalties and bonuses above. For example: "The main thing holding this score back is the 27g of carbs, which matters for diabetes management."
-2. ACKNOWLEDGE THE POSITIVES: If there are bonuses, mention what's good about the product too.
-3. GIVE ACTIONABLE TIPS: Specific advice like "keep portions to one serving" or "pair with protein to slow sugar absorption" — not generic "eat healthy" advice.
-4. BE HONEST BUT SUPPORTIVE: If the score is low, be direct about why without being preachy. If the score is good, mention what could still be improved.
-5. When the user has multiple health conditions, acknowledge which condition is most affected and why.
-6. Consider the ingredients list — flag concerning ingredients like artificial sweeteners, hydrogenated oils, high-fructose corn syrup when relevant.
-
-TONE: Warm, direct, knowledgeable friend. Not a textbook. Not overly cheerful. Honest.
-
-Respond in JSON format:
+Respond in JSON:
 {
-  "advice": "3-4 sentences that explain the score, reference specific nutrients that helped or hurt, and give one concrete actionable tip. Be specific to this user's conditions.",
-  "highlights": ["2-4 short phrases for the key factors, e.g. 'Moderate carbs (27g) — watch portions for diabetes', 'Good fiber content (4g)', 'Low sugar (1g) — great for blood sugar']"
+  "headline": "2-5 word catchy summary of the key finding (e.g., 'High sugar spike', 'Solid protein choice', 'Sodium overload')",
+  "whyText": "2-3 sentences max. Jump straight into WHY — what's the main trade-off? What should they know? Be specific to their conditions.",
+  "coachTip": "One specific swap, hack, or portion tip. Not generic advice.",
+  "highlights": ["2-3 SHORT tags, e.g., 'Sugar: 3.4g per tbsp', 'Zero fiber (normal for ketchup)', 'Low sodium: 160mg'"]
 }`;
 }
 

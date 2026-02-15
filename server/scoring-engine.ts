@@ -247,8 +247,10 @@ export async function computeScore(
   }
 
   const fiberVal = getNutrientValue(product, "fiber");
+  const productCategory = ((product as any).category || "").toLowerCase();
+  const skipFiberPenalty = ["condiments", "sauces", "condiment", "beverages", "drinks", "beverage"].includes(productCategory);
 
-  if (fiberVal !== null && fiberVal < 1) {
+  if (fiberVal !== null && fiberVal < 1 && !skipFiberPenalty) {
     if (userConditions.includes("high_cholesterol")) {
       score -= 2;
       deductions.push({ nutrient: "fiber", value: fiberVal, points: -2, reason: "very low fiber is concerning for high cholesterol", category: "penalty" });
