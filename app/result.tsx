@@ -72,6 +72,20 @@ function getPersonalizedHeadline(score: number, label: string, headline: string,
   return "Great pick for you";
 }
 
+const CAUTION_WORDS = [
+  "watch", "attention", "risk", "alert", "careful",
+  "caution", "warning", "spike", "concern", "avoid",
+  "hidden", "overload", "heavy", "excess", "too much",
+];
+
+function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string): string {
+  if (isAllergenAlert) return Colors.danger;
+  const headlineLower = (headline || "").toLowerCase();
+  const isCautionary = CAUTION_WORDS.some(w => headlineLower.includes(w));
+  if (isCautionary) return Colors.scoreAmber;
+  return getScoreColor(score, false);
+}
+
 function ScoreRing({
   score,
   isAllergenAlert,
@@ -414,6 +428,7 @@ export default function ResultScreen() {
   const product = data.product;
   const scoreColor = getScoreColor(data.score, data.isAllergenAlert);
   const headlineText = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert);
+  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText);
 
   return (
     <View style={styles.container}>
@@ -463,7 +478,7 @@ export default function ResultScreen() {
           entering={FadeInDown.delay(200).duration(400)}
           style={styles.headlineWrap}
         >
-          <Text style={[styles.headlineText, { color: scoreColor }]}>
+          <Text style={[styles.headlineText, { color: headlineColor }]}>
             {headlineText}
           </Text>
         </Animated.View>

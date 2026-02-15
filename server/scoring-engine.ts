@@ -269,6 +269,23 @@ export async function computeScore(
     }
   }
 
+  const calorieVal = getNutrientValue(product, "calories");
+  const sugarVal2 = getNutrientValue(product, "sugar");
+  const isZeroCalBeverage = skipFiberPenalty &&
+    calorieVal !== null && calorieVal < 10 &&
+    (sugarVal2 === null || sugarVal2 === 0);
+
+  if (isZeroCalBeverage) {
+    score = Math.max(score, 92);
+    deductions.push({
+      nutrient: "calories",
+      value: calorieVal ?? 0,
+      points: 0,
+      reason: "near-zero calorie beverage with no sugar — excellent choice",
+      category: "bonus",
+    });
+  }
+
   score = Math.round(Math.max(0, Math.min(100, score)));
 
   deductions.sort((a, b) => a.points - b.points);

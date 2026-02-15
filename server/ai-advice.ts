@@ -189,6 +189,8 @@ YOUR RULES:
 5. Talk like a knowledgeable friend, not a medical textbook
 6. ${categoryGuidance || "Judge the food fairly for what it is"}
 7. The headline should capture the #1 insight in 2-5 words (e.g., "Hidden sugar alert", "Great protein pick", "Watch the sodium")
+8. NO DATA DUMPS: Do NOT repeat specific gram/mg counts in the whyText (e.g., "contains 3.4g sugar" or "160mg of sodium"). The user sees the Nutrition Facts table right below. Instead use comparative language: "high sugar," "surprisingly salty," "nearly a teaspoon of sugar per tablespoon," "empty calories." Make it vivid, not clinical.
+9. ZERO-CAL BEVERAGES: If a product has < 10 calories and 0g sugar (black coffee, tea, water, diet drinks), the headline should be positive (e.g., "Great daily choice", "Smart pick"). Do not flag missing nutrients.
 
 Respond in JSON:
 {
