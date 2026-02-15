@@ -2,11 +2,20 @@ import { db } from "./db";
 import { scoringRules, type Product, type User } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
+export interface ScoreDeduction {
+  nutrient: string;
+  value: number;
+  points: number;
+  reason: string;
+  category: string;
+}
+
 interface ScoreResult {
   score: number;
   label: string;
   isAllergenAlert: boolean;
   matchedAllergens: string[];
+  deductions: ScoreDeduction[];
 }
 
 const BAD_NUTRIENTS = new Set([
@@ -20,6 +29,52 @@ const BAD_NUTRIENTS = new Set([
 ]);
 
 const GOOD_NUTRIENTS = new Set(["protein", "fiber"]);
+
+const NUTRIENT_LABELS: Record<string, string> = {
+  sugar: "sugar",
+  fat: "total fat",
+  saturatedFat: "saturated fat",
+  saturated_fat: "saturated fat",
+  sodium: "sodium",
+  calories: "calories",
+  carbohydrates: "carbohydrates",
+  protein: "protein",
+  fiber: "fiber",
+};
+
+const CONDITION_LABELS: Record<string, string> = {
+  general_penalty: "general nutrition",
+  general_bonus: "general nutrition",
+  general_bonus_fiber: "fiber content",
+  general_bonus_protein: "protein content",
+  general_bonus_low_sugar: "low sugar",
+  general_bonus_low_fat: "low fat",
+  general_bonus_low_satfat: "low saturated fat",
+  general_bonus_low_sodium: "low sodium",
+  diabetes_type2: "diabetes type 2",
+  diabetes_type1: "diabetes type 1",
+  diabetes_type2_bonus: "diabetes type 2",
+  diabetes_type1_bonus: "diabetes type 1",
+  high_cholesterol: "high cholesterol",
+  high_cholesterol_bonus: "high cholesterol",
+  hypertension: "hypertension",
+  hypertension_bonus: "hypertension",
+  kidney_disease: "kidney disease",
+  gout: "gout",
+  ibs: "IBS",
+  goal_weight_loss: "weight loss goal",
+  goal_weight_loss_bonus: "weight loss goal",
+  goal_muscle_gain: "muscle gain goal",
+  goal_muscle_gain_bonus: "muscle gain goal",
+};
+
+function getConditionLabel(condition: string): string {
+  if (CONDITION_LABELS[condition]) return CONDITION_LABELS[condition];
+  for (const [key, label] of Object.entries(CONDITION_LABELS)) {
+    if (condition.startsWith(key)) return label;
+  }
+  return condition.replace(/_/g, " ");
+}
 
 function penaltyInterpolate(
   value: number,
@@ -105,10 +160,12 @@ export async function computeScore(
       label: "Allergen Alert",
       isAllergenAlert: true,
       matchedAllergens,
+      deductions: [],
     };
   }
 
   let score = 50;
+  const deductions: ScoreDeduction[] = [];
 
   const rules = await db
     .select()
@@ -154,7 +211,18 @@ export async function computeScore(
         rule.maxDeduction,
         isBad
       );
-      score += bonus;
+      if (Math.abs(bonus) >= 0.1) {
+        score += bonus;
+        const nutrientLabel = NUTRIENT_LABELS[rule.nutrient] || rule.nutrient;
+        const conditionLabel = getConditionLabel(rule.condition);
+        deductions.push({
+          nutrient: rule.nutrient,
+          value: nutrientValue,
+          points: Math.round(bonus * 10) / 10,
+          reason: `${nutrientLabel} (${nutrientValue}${rule.nutrient === 'sodium' || rule.nutrient === 'calories' ? (rule.nutrient === 'sodium' ? 'mg' : '') : 'g'}) is beneficial for ${conditionLabel}`,
+          category: "bonus",
+        });
+      }
     } else {
       const penalty = penaltyInterpolate(
         nutrientValue,
@@ -163,26 +231,52 @@ export async function computeScore(
         rule.minDeduction,
         rule.maxDeduction
       );
-      score += penalty;
+      if (Math.abs(penalty) >= 0.1) {
+        score += penalty;
+        const nutrientLabel = NUTRIENT_LABELS[rule.nutrient] || rule.nutrient;
+        const conditionLabel = getConditionLabel(rule.condition);
+        deductions.push({
+          nutrient: rule.nutrient,
+          value: nutrientValue,
+          points: Math.round(penalty * 10) / 10,
+          reason: `${nutrientLabel} (${nutrientValue}${rule.nutrient === 'sodium' || rule.nutrient === 'calories' ? (rule.nutrient === 'sodium' ? 'mg' : '') : 'g'}) is concerning for ${conditionLabel}`,
+          category: "penalty",
+        });
+      }
     }
   }
 
   const fiberVal = getNutrientValue(product, "fiber");
 
   if (fiberVal !== null && fiberVal < 1) {
-    if (userConditions.includes("high_cholesterol")) score -= 2;
-    if (goalKey === "goal_weight_loss") score -= 1.5;
-    if (userConditions.includes("diabetes_type2")) score -= 1;
-    if (userConditions.includes("diabetes_type1")) score -= 1;
+    if (userConditions.includes("high_cholesterol")) {
+      score -= 2;
+      deductions.push({ nutrient: "fiber", value: fiberVal, points: -2, reason: "very low fiber is concerning for high cholesterol", category: "penalty" });
+    }
+    if (goalKey === "goal_weight_loss") {
+      score -= 1.5;
+      deductions.push({ nutrient: "fiber", value: fiberVal, points: -1.5, reason: "very low fiber is concerning for weight loss goal", category: "penalty" });
+    }
+    if (userConditions.includes("diabetes_type2")) {
+      score -= 1;
+      deductions.push({ nutrient: "fiber", value: fiberVal, points: -1, reason: "very low fiber is concerning for diabetes type 2", category: "penalty" });
+    }
+    if (userConditions.includes("diabetes_type1")) {
+      score -= 1;
+      deductions.push({ nutrient: "fiber", value: fiberVal, points: -1, reason: "very low fiber is concerning for diabetes type 1", category: "penalty" });
+    }
   }
 
   score = Math.round(Math.max(0, Math.min(100, score)));
+
+  deductions.sort((a, b) => a.points - b.points);
 
   return {
     score,
     label: getScoreLabel(score, false),
     isAllergenAlert: false,
     matchedAllergens: [],
+    deductions,
   };
 }
 
