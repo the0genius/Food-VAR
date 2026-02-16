@@ -297,6 +297,22 @@ export default function HomeScreen() {
               </View>
             </LinearGradient>
 
+            {recentScans.length === 0 && !historyQuery.isLoading && (
+              <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
+                <View style={styles.welcomeIconWrap}>
+                  <Ionicons name="nutrition-outline" size={36} color={Colors.primary} />
+                </View>
+                <Text style={styles.welcomeTitle}>Welcome to FoodVAR</Text>
+                <Text style={styles.welcomeSubtitle}>
+                  Scan your first product to get a personalized health score based on your profile.
+                </Text>
+                <TouchableOpacity style={styles.welcomeBtn} onPress={handleScanPress} activeOpacity={0.8}>
+                  <Ionicons name="scan" size={20} color={Colors.white} />
+                  <Text style={styles.welcomeBtnText}>Scan a Product</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
             {historyQuery.isLoading && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
@@ -359,6 +375,23 @@ export default function HomeScreen() {
                 </Text>
               )}
             </View>
+
+            {!popularQuery.isLoading && (
+              <Animated.View entering={FadeInDown.duration(400)}>
+                <TouchableOpacity
+                  style={styles.contributeCard}
+                  onPress={() => router.push("/contribute")}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.contributeTitle}>Know a product we don't have?</Text>
+                    <Text style={styles.contributeSubtitle}>Add it to help others</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.lightGray} />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </>
         }
         contentContainerStyle={{
@@ -512,5 +545,76 @@ const styles = StyleSheet.create({
     color: Colors.mediumGray,
     fontSize: 14,
     paddingVertical: 24,
+  },
+  welcomeCard: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 20,
+    padding: 28,
+    borderRadius: 20,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center" as const,
+  },
+  welcomeIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.white,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 16,
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.charcoal,
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  welcomeSubtitle: {
+    fontSize: 14,
+    color: Colors.mediumGray,
+    textAlign: "center" as const,
+    lineHeight: 20,
+    marginBottom: 20,
+    maxWidth: 260,
+  },
+  welcomeBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+  },
+  welcomeBtnText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: Colors.white,
+  },
+  contributeCard: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  contributeTitle: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.charcoal,
+  },
+  contributeSubtitle: {
+    fontSize: 12,
+    color: Colors.mediumGray,
+    marginTop: 2,
   },
 });

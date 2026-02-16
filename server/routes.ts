@@ -426,6 +426,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productId: scanHistory.productId,
           score: scanHistory.score,
           adviceText: scanHistory.adviceText,
+          headline: scanHistory.headline,
+          coachTip: scanHistory.coachTip,
           highlights: scanHistory.highlights,
           accessMethod: scanHistory.accessMethod,
           createdAt: scanHistory.createdAt,

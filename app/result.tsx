@@ -434,7 +434,7 @@ export default function ResultScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Analyzing for your profile...</Text>
+        <Text style={styles.loadingText}>{params.historyId ? "Loading result..." : "Analyzing for your profile..."}</Text>
       </View>
     );
   }
@@ -663,6 +663,20 @@ export default function ResultScreen() {
             <Text style={styles.ingredientsText}>{product.ingredients}</Text>
           </Animated.View>
         ) : null}
+
+        <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.scanAnotherWrap}>
+          <TouchableOpacity
+            style={styles.scanAnotherBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.replace("/(tabs)/scan");
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="scan-outline" size={20} color={Colors.white} />
+            <Text style={styles.scanAnotherText}>Scan Another Product</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -1066,5 +1080,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.charcoal,
     lineHeight: 20,
+  },
+  scanAnotherWrap: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  scanAnotherBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+  },
+  scanAnotherText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: Colors.white,
   },
 });

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -87,9 +88,11 @@ export default function EditProfileScreen() {
         goal,
         dietaryPreference: diet === "none" ? null : diet,
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
       console.error(e);
+      Alert.alert("Oops", "Could not save your profile. Please try again.");
     }
     setSaving(false);
   }

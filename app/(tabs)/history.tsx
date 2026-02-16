@@ -179,6 +179,7 @@ export default function HistoryScreen() {
       await apiRequest("DELETE", `/api/history/${id}`);
     },
     onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ["/api/history"] });
     },
   });
