@@ -80,9 +80,11 @@ export default function ProfileScreen() {
         name: name.trim(),
         age: age ? parseInt(age) : null,
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setEditing(false);
     } catch (e) {
       console.error(e);
+      Alert.alert("Oops", "Could not save your changes. Please try again.");
     }
   }
 
@@ -131,9 +133,54 @@ export default function ProfileScreen() {
             {(user.name || user.email).charAt(0).toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.userName}>{user.name || "User"}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
-        {user.isPro && (
+        {editing ? (
+          <View style={styles.editFields}>
+            <TextInput
+              style={styles.editInput}
+              value={name}
+              onChangeText={setName}
+              placeholder="Your name"
+              placeholderTextColor={Colors.mediumGray}
+              autoFocus
+            />
+            <TextInput
+              style={styles.editInput}
+              value={age}
+              onChangeText={setAge}
+              placeholder="Age"
+              placeholderTextColor={Colors.mediumGray}
+              keyboardType="number-pad"
+              maxLength={3}
+            />
+            <View style={styles.editActions}>
+              <TouchableOpacity
+                style={styles.editCancelBtn}
+                onPress={() => {
+                  setEditing(false);
+                  setName(user?.name || "");
+                  setAge(user?.age ? String(user.age) : "");
+                }}
+              >
+                <Ionicons name="close" size={20} color={Colors.mediumGray} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave}>
+                <Ionicons name="checkmark" size={20} color={Colors.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setEditing(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.userName}>{user.name || "User"}</Text>
+            <Text style={styles.userEmail}>{user.email}</Text>
+          </TouchableOpacity>
+        )}
+        {user.isPro && !editing && (
           <View style={styles.proBadge}>
             <Ionicons name="star" size={12} color={Colors.white} />
             <Text style={styles.proBadgeText}>Pro</Text>
@@ -488,5 +535,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: Colors.danger,
+  },
+  editFields: {
+    width: "100%",
+    paddingHorizontal: 32,
+    marginTop: 8,
+    gap: 10,
+    alignItems: "center",
+  },
+  editInput: {
+    width: "100%",
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.white,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: Colors.charcoal,
+    fontWeight: "500",
+    textAlign: "center",
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  editActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  editCancelBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.softWhite,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  editSaveBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
