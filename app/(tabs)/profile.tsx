@@ -102,7 +102,7 @@ export default function ProfileScreen() {
 
   function handleEditProfile() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push("/onboarding");
+    router.push("/edit-profile");
   }
 
   if (!user) return null;
