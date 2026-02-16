@@ -8,6 +8,7 @@ import {
   FlatList,
   Alert,
   TextInput,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -237,6 +238,14 @@ export default function HistoryScreen() {
       <FlatList
         data={history}
         keyExtractor={(item) => String(item.id)}
+        refreshControl={
+          <RefreshControl
+            refreshing={!!historyQuery.isRefetching}
+            onRefresh={() => historyQuery.refetch()}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
         ListHeaderComponent={
           historyQuery.isLoading ? (
             <View>

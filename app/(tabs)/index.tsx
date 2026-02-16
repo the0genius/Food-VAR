@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -230,6 +230,15 @@ export default function HomeScreen() {
   const popular = (popularQuery.data || []) as any[];
   const recentScans = (historyQuery.data || []).slice(0, 5) as any[];
   const scansToday = (scansQuery.data as any)?.count || 0;
+  const isRefreshing = popularQuery.isFetching || historyQuery.isFetching || scansQuery.isFetching;
+
+  async function handleRefresh() {
+    await Promise.all([
+      popularQuery.refetch(),
+      historyQuery.refetch(),
+      scansQuery.refetch(),
+    ]);
+  }
 
   async function handleProductPress(product: any) {
     if (!user) return;
@@ -250,6 +259,14 @@ export default function HomeScreen() {
       <FlatList
         data={[]}
         renderItem={null}
+        refreshControl={
+          <RefreshControl
+            refreshing={!!popularQuery.isRefetching || !!historyQuery.isRefetching || !!scansQuery.isRefetching}
+            onRefresh={handleRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
         ListHeaderComponent={
           <>
             <LinearGradient
