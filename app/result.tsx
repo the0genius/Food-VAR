@@ -353,8 +353,8 @@ export default function ResultScreen() {
             isAllergenAlert: entry.score === 0,
             matchedAllergens: [],
             advice: entry.adviceText || "",
-            headline: "",
-            coachTip: "",
+            headline: entry.headline || "",
+            coachTip: entry.coachTip || "",
             highlights: (entry.highlights || []) as string[],
             product: {
               name: entry.productName,

@@ -85,6 +85,8 @@ export const scanHistory = pgTable(
       .references(() => products.id, { onDelete: "cascade" }),
     score: integer("score").notNull(),
     adviceText: text("advice_text"),
+    headline: text("headline"),
+    coachTip: text("coach_tip"),
     highlights: jsonb("highlights").$type<string[]>().default([]),
     profileClusterId: text("profile_cluster_id"),
     accessMethod: text("access_method").notNull().default("scan"),
