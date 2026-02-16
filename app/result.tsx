@@ -8,6 +8,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Share,
+  Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -329,6 +331,7 @@ export default function ResultScreen() {
   const [data, setData] = useState<ScoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -397,15 +400,26 @@ export default function ResultScreen() {
       }
     } catch (e: any) {
       if (e.message?.includes("429")) {
-        setError(
-          "You've used all 10 free scans today. Upgrade to Pro for unlimited access!"
-        );
+        setShowLimitModal(true);
       } else {
         setError("Something went wrong. Please try again.");
       }
       console.error(e);
     }
     setLoading(false);
+  }
+
+  async function handleShare() {
+    if (!data) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const product = data.product;
+    const headline = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert, data.advice);
+    const message = `${product.name}${product.brand ? ` by ${product.brand}` : ""} scored ${data.score}/100 on FoodVAR — "${headline}"`;
+    try {
+      await Share.share({ message });
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   function getLabel(score: number): string {
@@ -421,6 +435,38 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Analyzing for your profile...</Text>
+      </View>
+    );
+  }
+
+  if (showLimitModal) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+            <Ionicons name="close" size={24} color={Colors.charcoal} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.limitCard}>
+          <View style={styles.limitIconWrap}>
+            <Ionicons name="lock-closed" size={36} color={Colors.primary} />
+          </View>
+          <Text style={styles.limitTitle}>Daily limit reached</Text>
+          <Text style={styles.limitSubtitle}>
+            You've used all 10 free scans for today. Your scans reset at midnight.
+          </Text>
+          <View style={styles.limitDivider} />
+          <Text style={styles.limitHint}>
+            Upgrade to Pro for unlimited scans, priority AI advice, and more.
+          </Text>
+          <TouchableOpacity
+            style={styles.limitBtn}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={18} color={Colors.white} />
+            <Text style={styles.limitBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -461,6 +507,9 @@ export default function ResultScreen() {
       >
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <Ionicons name="close" size={24} color={Colors.charcoal} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+          <Ionicons name="share-outline" size={22} color={Colors.charcoal} />
         </TouchableOpacity>
       </View>
 
@@ -630,9 +679,32 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 8,
+  },
+  shareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: { elevation: 2 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+    }),
   },
   closeBtn: {
     width: 36,
@@ -685,6 +757,81 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   retryBtnText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.white,
+  },
+  limitCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 24,
+    paddingVertical: 36,
+    paddingHorizontal: 28,
+    marginHorizontal: 24,
+    alignItems: "center" as const,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+      android: { elevation: 6 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+      },
+    }),
+  },
+  limitIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 20,
+  },
+  limitTitle: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: Colors.charcoal,
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  limitSubtitle: {
+    fontSize: 15,
+    color: Colors.mediumGray,
+    textAlign: "center" as const,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  limitDivider: {
+    width: "80%" as any,
+    height: 1,
+    backgroundColor: Colors.lightGray,
+    marginBottom: 16,
+  },
+  limitHint: {
+    fontSize: 14,
+    color: Colors.primary,
+    textAlign: "center" as const,
+    lineHeight: 20,
+    fontWeight: "500" as const,
+    marginBottom: 24,
+  },
+  limitBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  limitBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
     color: Colors.white,
