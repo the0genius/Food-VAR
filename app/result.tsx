@@ -332,6 +332,7 @@ export default function ResultScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [reAnalyzed, setReAnalyzed] = useState(false);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -344,14 +345,17 @@ export default function ResultScreen() {
       if (params.historyId) {
         const baseUrl = getApiUrl();
         const url = new URL(`/api/history/entry/${params.historyId}`, baseUrl);
+        url.searchParams.set("checkProfile", "true");
         const res = await fetch(url.toString());
         if (res.ok) {
           const entry = await res.json();
+          const wasReAnalyzed = entry.reAnalyzed === true;
+          setReAnalyzed(wasReAnalyzed);
           setData({
             score: entry.score,
             label: getLabel(entry.score),
-            isAllergenAlert: entry.score === 0,
-            matchedAllergens: [],
+            isAllergenAlert: entry.isAllergenAlert ?? entry.score === 0,
+            matchedAllergens: entry.matchedAllergens || [],
             advice: entry.adviceText || "",
             headline: entry.headline || "",
             coachTip: entry.coachTip || "",
@@ -374,7 +378,10 @@ export default function ResultScreen() {
               nutritionFacts: entry.productNutritionFacts,
             },
           });
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          if (wasReAnalyzed) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            queryClient.invalidateQueries({ queryKey: ["/api/history"] });
+          }
         } else {
           setError("Could not load this result.");
         }
@@ -434,7 +441,7 @@ export default function ResultScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>{params.historyId ? "Loading result..." : "Analyzing for your profile..."}</Text>
+        <Text style={styles.loadingText}>{params.historyId ? "Checking for profile updates..." : "Analyzing for your profile..."}</Text>
       </View>
     );
   }
@@ -531,6 +538,18 @@ export default function ResultScreen() {
                 Contains: {data.matchedAllergens.join(", ")}
               </Text>
             </View>
+          </Animated.View>
+        )}
+
+        {reAnalyzed && (
+          <Animated.View
+            entering={FadeIn.duration(400)}
+            style={styles.reAnalyzedBanner}
+          >
+            <Ionicons name="refresh-circle" size={20} color={Colors.primary} />
+            <Text style={styles.reAnalyzedText}>
+              Updated for your latest health profile
+            </Text>
           </Animated.View>
         )}
 
@@ -849,6 +868,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: Colors.white,
+  },
+  reAnalyzedBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryPale,
+  },
+  reAnalyzedText: {
+    fontSize: 13,
+    fontWeight: "500" as const,
+    color: Colors.primary,
+    flex: 1,
   },
   allergenBanner: {
     flexDirection: "row",

@@ -501,6 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           headline: scanHistory.headline,
           coachTip: scanHistory.coachTip,
           highlights: scanHistory.highlights,
+          profileClusterId: scanHistory.profileClusterId,
           accessMethod: scanHistory.accessMethod,
           createdAt: scanHistory.createdAt,
           productName: products.name,
@@ -525,8 +526,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(scanHistory.id, id));
 
       if (!entry) return res.status(404).json({ error: "Entry not found" });
+
+      const checkProfile = req.query.checkProfile === "true";
+      if (checkProfile && entry.userId) {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, entry.userId));
+
+        if (user) {
+          const currentClusterId =
+            user.profileClusterId || computeClusterId(user);
+          const entryClusterId = entry.profileClusterId || "";
+
+          if (currentClusterId !== entryClusterId) {
+            const [product] = await db
+              .select()
+              .from(products)
+              .where(eq(products.id, entry.productId));
+
+            if (product) {
+              const scoreResult = await computeScore(product, user);
+              const adviceResult = await getAdvice(
+                product,
+                user,
+                scoreResult.score,
+                scoreResult.label,
+                currentClusterId,
+                scoreResult.isAllergenAlert,
+                scoreResult.matchedAllergens,
+                scoreResult.deductions
+              );
+
+              await db
+                .update(scanHistory)
+                .set({
+                  score: scoreResult.score,
+                  adviceText: adviceResult.advice,
+                  headline: adviceResult.headline || "",
+                  coachTip: adviceResult.coachTip || "",
+                  highlights: adviceResult.highlights,
+                  profileClusterId: currentClusterId,
+                })
+                .where(eq(scanHistory.id, id));
+
+              return res.json({
+                ...entry,
+                score: scoreResult.score,
+                adviceText: adviceResult.advice,
+                headline: adviceResult.headline || "",
+                coachTip: adviceResult.coachTip || "",
+                highlights: adviceResult.highlights,
+                profileClusterId: currentClusterId,
+                reAnalyzed: true,
+                matchedAllergens: scoreResult.matchedAllergens,
+                isAllergenAlert: scoreResult.isAllergenAlert,
+              });
+            }
+          }
+        }
+      }
+
       res.json(entry);
     } catch (error) {
+      console.error("Error fetching history entry:", error);
       res.status(500).json({ error: "Failed to fetch history entry" });
     }
   });

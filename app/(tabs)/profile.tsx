@@ -229,7 +229,7 @@ export default function ProfileScreen() {
         >
           <Text style={styles.sectionTitle}>Top Picks</Text>
           {stats.bestProducts.slice(0, 3).map((product, index) => (
-            <View key={product.productId ?? index} style={styles.productRow}>
+            <View key={`${product.productId}-${index}`} style={styles.productRow}>
               <View
                 style={[
                   styles.scoreBadge,
@@ -260,7 +260,7 @@ export default function ProfileScreen() {
         >
           <Text style={styles.sectionTitle}>Watch Out</Text>
           {stats.worstProducts.slice(0, 3).map((product, index) => (
-            <View key={product.productId ?? index} style={styles.productRow}>
+            <View key={`${product.productId}-${index}`} style={styles.productRow}>
               <View
                 style={[
                   styles.scoreBadge,
