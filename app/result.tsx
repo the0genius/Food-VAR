@@ -418,7 +418,8 @@ function NutrientRow({
   const dvPercent = dailyValue ? Math.min((value / dailyValue) * 100, 100) : 0;
   const dvColor = dvPercent > 75 ? Colors.scoreRed : dvPercent > 40 ? Colors.scoreAmber : Colors.scoreGreen;
 
-  const showBar = dailyValue && dvPercent >= 1;
+  const hasDV = !!dailyValue;
+  const fillBar = hasDV && dvPercent >= 1;
 
   return (
     <Animated.View
@@ -427,18 +428,20 @@ function NutrientRow({
     >
       <View style={styles.nutrientLeft}>
         <Text style={styles.nutrientLabel}>{label}</Text>
-        {showBar ? (
+        {hasDV ? (
           <View style={styles.nutrientBarTrack}>
-            <View
-              style={[
-                styles.nutrientBarFill,
-                { width: `${Math.max(dvPercent, 6)}%`, backgroundColor: dvColor },
-              ]}
-            />
+            {fillBar ? (
+              <View
+                style={[
+                  styles.nutrientBarFill,
+                  { width: `${Math.max(dvPercent, 6)}%`, backgroundColor: dvColor },
+                ]}
+              />
+            ) : null}
           </View>
         ) : null}
       </View>
-      <Text style={[styles.nutrientValue, showBar && dvPercent > 50 ? { color: dvColor } : null]}>
+      <Text style={[styles.nutrientValue, fillBar && dvPercent > 50 ? { color: dvColor } : null]}>
         {formatNutrientValue(value)}
         <Text style={styles.nutrientUnit}>{unit}</Text>
       </Text>
