@@ -161,7 +161,7 @@ export default function ProfileScreen() {
         colors={["#2E7D32", "#43A047", "#66BB6A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 20 }]}
+        style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 12 }]}
       >
         <View style={styles.headerContent}>
           {editing ? (
@@ -222,7 +222,9 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
                 <Text style={styles.userName}>{user.name || "User"}</Text>
-                <Text style={styles.userEmail}>{user.email}</Text>
+                {user.email?.includes("@") && (
+                  <Text style={styles.userEmail}>{user.email}</Text>
+                )}
                 <View style={styles.editHint}>
                   <Ionicons name="pencil" size={12} color="rgba(255,255,255,0.7)" />
                   <Text style={styles.editHintText}>Tap to edit</Text>
@@ -484,7 +486,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F8F6",
   },
   headerGradient: {
-    paddingBottom: 32,
+    paddingBottom: 24,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -495,23 +497,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
-    borderWidth: 3,
+    marginBottom: 10,
+    borderWidth: 2.5,
     borderColor: "rgba(255,255,255,0.4)",
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: "700",
     color: Colors.white,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: "800",
     color: Colors.white,
     letterSpacing: -0.5,
