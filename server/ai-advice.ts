@@ -199,7 +199,7 @@ Respond in JSON:
   "headline": "2-5 word catchy summary of the key finding (e.g., 'High sugar spike', 'Solid protein choice', 'Sodium overload')",
   "whyText": "2-3 sentences max. Jump straight into WHY — what's the main trade-off? What should they know? Be specific to their conditions.",
   "coachTip": "One specific swap, hack, or portion tip. Not generic advice.",
-  "highlights": ["2-3 SHORT tags, e.g., 'Sugar: 3.4g per tbsp', 'Zero fiber (normal for ketchup)', 'Low sodium: 160mg'"]
+  "highlights": ["2-3 SHORT nutritional data tags with actual numbers, e.g., 'Sugar: 3.4g per tbsp', 'Zero fiber', 'Low sodium: 160mg'. NEVER use vague labels like 'Contains Gluten', 'Critical Allergen', 'Not suitable', 'Check allergens', or any allergen warnings here — allergens are shown separately. Highlights must ALWAYS be specific nutrition facts with quantities."]
 }`;
 }
 
