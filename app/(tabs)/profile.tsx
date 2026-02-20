@@ -11,10 +11,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
@@ -56,6 +57,37 @@ function getScoreColor(score: number): string {
   if (score <= 30) return Colors.scoreRed;
   if (score <= 60) return Colors.scoreAmber;
   return Colors.scoreGreen;
+}
+
+function getScoreColorLight(score: number): string {
+  if (score <= 30) return "#FFEBEE";
+  if (score <= 60) return "#FFF3E0";
+  return "#E8F5E9";
+}
+
+function getScoreLabel(score: number): string {
+  if (score <= 30) return "Needs work";
+  if (score <= 50) return "Getting there";
+  if (score <= 70) return "Pretty good";
+  if (score <= 85) return "Great choices";
+  return "Amazing";
+}
+
+function getMotivationalText(stats: StatsData | undefined): string {
+  if (!stats || stats.totalScans === 0) return "Start scanning to see your insights here";
+  if (stats.avgScore >= 75) return "You're making amazing choices! Keep it up";
+  if (stats.avgScore >= 55) return "You're on the right track — small changes add up";
+  if (stats.avgScore >= 35) return "Every scan helps you learn — keep going!";
+  return "Knowledge is power — you're learning what works for you";
+}
+
+function dedupeProducts(products: StatsProduct[]): StatsProduct[] {
+  const seen = new Set<number>();
+  return products.filter((p) => {
+    if (seen.has(p.productId)) return false;
+    seen.add(p.productId);
+    return true;
+  });
 }
 
 export default function ProfileScreen() {
@@ -115,6 +147,9 @@ export default function ProfileScreen() {
   const allergies = (user.allergies || []).join(", ");
   const goal = GOALS_MAP[user.goal || ""] || user.goal || "General Wellness";
 
+  const bestProducts = dedupeProducts(stats?.bestProducts || []).slice(0, 3);
+  const worstProducts = dedupeProducts(stats?.worstProducts || []).slice(0, 3);
+
   return (
     <ScrollView
       style={styles.container}
@@ -122,84 +157,136 @@ export default function ProfileScreen() {
         paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 100,
       }}
     >
-      <View
-        style={[
-          styles.header,
-          { paddingTop: (insets.top || webTopInset) + 16 },
-        ]}
+      <LinearGradient
+        colors={["#2E7D32", "#43A047", "#66BB6A"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 20 }]}
       >
-        <View style={styles.avatarWrap}>
-          <Text style={styles.avatarText}>
-            {(user.name || user.email).charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        {editing ? (
-          <View style={styles.editFields}>
-            <TextInput
-              style={styles.editInput}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={Colors.mediumGray}
-              autoFocus
-            />
-            <TextInput
-              style={styles.editInput}
-              value={age}
-              onChangeText={setAge}
-              placeholder="Age"
-              placeholderTextColor={Colors.mediumGray}
-              keyboardType="number-pad"
-              maxLength={3}
-            />
-            <View style={styles.editActions}>
+        <View style={styles.headerContent}>
+          {editing ? (
+            <>
+              <View style={styles.avatarWrap}>
+                <Text style={styles.avatarText}>
+                  {(name || user.name || user.email).charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.editFields}>
+                <TextInput
+                  style={styles.editInput}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  autoFocus
+                />
+                <TextInput
+                  style={styles.editInput}
+                  value={age}
+                  onChangeText={setAge}
+                  placeholder="Age"
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.editCancelBtn}
+                    onPress={() => {
+                      setEditing(false);
+                      setName(user?.name || "");
+                      setAge(user?.age ? String(user.age) : "");
+                    }}
+                  >
+                    <Ionicons name="close" size={20} color={Colors.white} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave}>
+                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
               <TouchableOpacity
-                style={styles.editCancelBtn}
                 onPress={() => {
-                  setEditing(false);
-                  setName(user?.name || "");
-                  setAge(user?.age ? String(user.age) : "");
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setEditing(true);
                 }}
+                activeOpacity={0.8}
+                style={styles.headerTouchable}
               >
-                <Ionicons name="close" size={20} color={Colors.mediumGray} />
+                <View style={styles.avatarWrap}>
+                  <Text style={styles.avatarText}>
+                    {(user.name || user.email).charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.userName}>{user.name || "User"}</Text>
+                <Text style={styles.userEmail}>{user.email}</Text>
+                <View style={styles.editHint}>
+                  <Ionicons name="pencil" size={12} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.editHintText}>Tap to edit</Text>
+                </View>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave}>
-                <Ionicons name="checkmark" size={20} color={Colors.white} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setEditing(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.userName}>{user.name || "User"}</Text>
-            <Text style={styles.userEmail}>{user.email}</Text>
-          </TouchableOpacity>
-        )}
-        {user.isPro && !editing && (
-          <View style={styles.proBadge}>
-            <Ionicons name="star" size={12} color={Colors.white} />
-            <Text style={styles.proBadgeText}>Pro</Text>
-          </View>
-        )}
+              {user.isPro && (
+                <View style={styles.proBadge}>
+                  <Ionicons name="star" size={12} color="#FFD700" />
+                  <Text style={styles.proBadgeText}>Pro</Text>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </LinearGradient>
+
+      <View style={styles.motivationalWrap}>
+        <Ionicons
+          name={
+            !stats || stats.totalScans === 0
+              ? "sparkles"
+              : stats.avgScore >= 55
+                ? "heart"
+                : "trending-up"
+          }
+          size={16}
+          color={Colors.primary}
+        />
+        <Text style={styles.motivationalText}>
+          {getMotivationalText(stats)}
+        </Text>
       </View>
 
       {statsLoading ? (
-        <View style={styles.statsRow}>
+        <View style={styles.statsContainer}>
           <ActivityIndicator size="small" color={Colors.primary} />
         </View>
       ) : (
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "#E8F5E9" }]}>
+              <Ionicons name="scan-outline" size={18} color={Colors.primary} />
+            </View>
             <Text style={styles.statValue}>{stats?.totalScans ?? 0}</Text>
             <Text style={styles.statLabel}>Total Scans</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
+
+          <View style={styles.statCard}>
+            <View
+              style={[
+                styles.statIconWrap,
+                {
+                  backgroundColor: stats?.avgScore
+                    ? getScoreColorLight(stats.avgScore)
+                    : "#F5F5F5",
+                },
+              ]}
+            >
+              <Ionicons
+                name="speedometer-outline"
+                size={18}
+                color={stats?.avgScore ? getScoreColor(stats.avgScore) : Colors.mediumGray}
+              />
+            </View>
             <Text
               style={[
                 styles.statValue,
@@ -213,30 +300,53 @@ export default function ProfileScreen() {
               {stats?.avgScore ? Math.round(stats.avgScore) : "--"}
             </Text>
             <Text style={styles.statLabel}>Avg Score</Text>
+            {stats?.avgScore ? (
+              <Text
+                style={[
+                  styles.statSublabel,
+                  { color: getScoreColor(stats.avgScore) },
+                ]}
+              >
+                {getScoreLabel(stats.avgScore)}
+              </Text>
+            ) : null}
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
+
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: "#E3F2FD" }]}>
+              <Ionicons name="calendar-outline" size={18} color="#1976D2" />
+            </View>
             <Text style={styles.statValue}>{stats?.weeklyScans ?? 0}</Text>
             <Text style={styles.statLabel}>This Week</Text>
           </View>
-        </View>
+        </Animated.View>
       )}
 
-      {stats && (stats.bestProducts?.length ?? 0) > 0 && (
+      {bestProducts.length > 0 && (
         <Animated.View
           entering={FadeInDown.delay(100).duration(400)}
-          style={styles.section}
+          style={styles.sectionCard}
         >
-          <Text style={styles.sectionTitle}>Top Picks</Text>
-          {stats.bestProducts.slice(0, 3).map((product, index) => (
-            <View key={`${product.productId}-${index}`} style={styles.productRow}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: "#E8F5E9" }]}>
+              <Ionicons name="trophy" size={16} color={Colors.scoreGreen} />
+            </View>
+            <Text style={styles.sectionTitle}>Your Top Picks</Text>
+          </View>
+          {bestProducts.map((product, index) => (
+            <View key={`best-${product.productId}-${index}`} style={styles.productRow}>
               <View
                 style={[
                   styles.scoreBadge,
-                  { backgroundColor: getScoreColor(product.score) },
+                  { backgroundColor: getScoreColorLight(product.score) },
                 ]}
               >
-                <Text style={styles.scoreBadgeText}>
+                <Text
+                  style={[
+                    styles.scoreBadgeText,
+                    { color: getScoreColor(product.score) },
+                  ]}
+                >
                   {Math.round(product.score)}
                 </Text>
               </View>
@@ -248,26 +358,37 @@ export default function ProfileScreen() {
                   {product.productBrand}
                 </Text>
               </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.lightGray} />
             </View>
           ))}
         </Animated.View>
       )}
 
-      {stats && (stats.worstProducts?.length ?? 0) > 0 && (
+      {worstProducts.length > 0 && (
         <Animated.View
           entering={FadeInDown.delay(200).duration(400)}
-          style={styles.section}
+          style={styles.sectionCard}
         >
-          <Text style={styles.sectionTitle}>Watch Out</Text>
-          {stats.worstProducts.slice(0, 3).map((product, index) => (
-            <View key={`${product.productId}-${index}`} style={styles.productRow}>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: "#FFEBEE" }]}>
+              <Ionicons name="alert-circle" size={16} color={Colors.scoreRed} />
+            </View>
+            <Text style={styles.sectionTitle}>Watch Out For</Text>
+          </View>
+          {worstProducts.map((product, index) => (
+            <View key={`worst-${product.productId}-${index}`} style={styles.productRow}>
               <View
                 style={[
                   styles.scoreBadge,
-                  { backgroundColor: getScoreColor(product.score) },
+                  { backgroundColor: getScoreColorLight(product.score) },
                 ]}
               >
-                <Text style={styles.scoreBadgeText}>
+                <Text
+                  style={[
+                    styles.scoreBadgeText,
+                    { color: getScoreColor(product.score) },
+                  ]}
+                >
                   {Math.round(product.score)}
                 </Text>
               </View>
@@ -279,6 +400,7 @@ export default function ProfileScreen() {
                   {product.productBrand}
                 </Text>
               </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.lightGray} />
             </View>
           ))}
         </Animated.View>
@@ -286,58 +408,59 @@ export default function ProfileScreen() {
 
       <Animated.View
         entering={FadeInDown.delay(300).duration(400)}
-        style={styles.section}
+        style={styles.sectionCard}
       >
-        <Text style={styles.sectionTitle}>Health Profile</Text>
-
-        <View style={styles.profileRow}>
-          <View style={styles.profileIconWrap}>
-            <Ionicons name="fitness-outline" size={18} color={Colors.primary} />
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconWrap, { backgroundColor: "#E8F5E9" }]}>
+            <Ionicons name="heart" size={16} color={Colors.primary} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileLabel}>Conditions</Text>
-            <Text style={styles.profileValue}>
-              {conditions || "None selected"}
-            </Text>
-          </View>
+          <Text style={styles.sectionTitle}>Health Profile</Text>
         </View>
 
-        <View style={styles.profileRow}>
-          <View style={styles.profileIconWrap}>
-            <Ionicons name="warning-outline" size={18} color={Colors.danger} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileLabel}>Allergies</Text>
-            <Text style={styles.profileValue}>
-              {allergies || "None selected"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.profileRow}>
-          <View style={styles.profileIconWrap}>
-            <Ionicons name="flag-outline" size={18} color={Colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileLabel}>Goal</Text>
-            <Text style={styles.profileValue}>{goal}</Text>
-          </View>
-        </View>
-
-        {user.dietaryPreference && (
-          <View style={styles.profileRow}>
-            <View style={styles.profileIconWrap}>
-              <Ionicons name="leaf-outline" size={18} color={Colors.primary} />
+        <View style={styles.profileGrid}>
+          <View style={styles.profileItem}>
+            <View style={[styles.profileItemIcon, { backgroundColor: "#E8F5E9" }]}>
+              <Ionicons name="fitness-outline" size={16} color={Colors.primary} />
             </View>
-            <View style={{ flex: 1 }}>
+            <Text style={styles.profileLabel}>Conditions</Text>
+            <Text style={styles.profileValue} numberOfLines={2}>
+              {conditions || "None"}
+            </Text>
+          </View>
+
+          <View style={styles.profileItem}>
+            <View style={[styles.profileItemIcon, { backgroundColor: "#FFEBEE" }]}>
+              <Ionicons name="warning-outline" size={16} color={Colors.danger} />
+            </View>
+            <Text style={styles.profileLabel}>Allergies</Text>
+            <Text style={styles.profileValue} numberOfLines={2}>
+              {allergies || "None"}
+            </Text>
+          </View>
+
+          <View style={styles.profileItem}>
+            <View style={[styles.profileItemIcon, { backgroundColor: "#E3F2FD" }]}>
+              <Ionicons name="flag-outline" size={16} color="#1976D2" />
+            </View>
+            <Text style={styles.profileLabel}>Goal</Text>
+            <Text style={styles.profileValue} numberOfLines={2}>
+              {goal}
+            </Text>
+          </View>
+
+          {user.dietaryPreference && user.dietaryPreference !== "none" && (
+            <View style={styles.profileItem}>
+              <View style={[styles.profileItemIcon, { backgroundColor: "#F1F8E9" }]}>
+                <Ionicons name="leaf-outline" size={16} color="#558B2F" />
+              </View>
               <Text style={styles.profileLabel}>Diet</Text>
-              <Text style={styles.profileValue}>
+              <Text style={styles.profileValue} numberOfLines={2}>
                 {user.dietaryPreference.charAt(0).toUpperCase() +
                   user.dietaryPreference.slice(1)}
               </Text>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         <TouchableOpacity style={styles.editProfileBtn} onPress={handleEditProfile}>
           <Ionicons name="create-outline" size={18} color={Colors.primary} />
@@ -345,9 +468,9 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      <View style={styles.section}>
+      <View style={styles.logoutSection}>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
+          <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
           <Text style={styles.logoutBtnText}>Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -358,89 +481,198 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: "#F6F8F6",
   },
-  header: {
+  headerGradient: {
+    paddingBottom: 32,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
     alignItems: "center",
-    paddingBottom: 24,
-    backgroundColor: Colors.primaryPale,
+  },
+  headerTouchable: {
+    alignItems: "center",
   },
   avatarWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primary,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: 14,
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.4)",
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "700",
     color: Colors.white,
   },
   userName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.charcoal,
+    fontSize: 24,
+    fontWeight: "800",
+    color: Colors.white,
+    letterSpacing: -0.5,
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: "rgba(255,255,255,0.75)",
     marginTop: 4,
+  },
+  editHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+  },
+  editHintText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "500",
   },
   proBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   proBadgeText: {
     fontSize: 12,
     fontWeight: "700",
     color: Colors.white,
   },
-  statsRow: {
+  motivationalWrap: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    gap: 0,
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: -16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+    }),
   },
-  statItem: {
+  motivationalText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.charcoal,
+    flex: 1,
+    lineHeight: 18,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  statCard: {
     flex: 1,
     alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
   },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: Colors.lightGray,
+  statIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "800",
     color: Colors.charcoal,
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.mediumGray,
-    marginTop: 4,
+    marginTop: 3,
     fontWeight: "500",
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+  statSublabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  sectionCard: {
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  sectionIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: Colors.charcoal,
-    marginBottom: 16,
     letterSpacing: -0.3,
   },
   productRow: {
@@ -448,98 +680,106 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: Colors.softWhite,
+    paddingHorizontal: 10,
+    backgroundColor: "#F8FAF8",
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   scoreBadge: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   scoreBadgeText: {
     fontSize: 15,
-    fontWeight: "700",
-    color: Colors.white,
+    fontWeight: "800",
   },
   productInfo: {
     flex: 1,
   },
   productName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.charcoal,
   },
   productBrand: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.mediumGray,
     marginTop: 2,
   },
-  profileRow: {
+  profileGrid: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 16,
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 14,
   },
-  profileIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: Colors.primaryPale,
+  profileItem: {
+    width: "47%" as any,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: "#F8FAF8",
+  },
+  profileItemIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 2,
+    marginBottom: 8,
   },
   profileLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: Colors.mediumGray,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
   profileValue: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "600",
     color: Colors.charcoal,
-    marginTop: 4,
-    lineHeight: 21,
+    lineHeight: 19,
   },
   editProfileBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 14,
     backgroundColor: Colors.primaryPale,
-    marginTop: 8,
   },
   editProfileBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.primary,
+  },
+  logoutSection: {
+    marginHorizontal: 20,
+    marginTop: 20,
   },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 14,
     backgroundColor: Colors.dangerPale,
   },
   logoutBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.danger,
   },
   editFields: {
     width: "100%",
     paddingHorizontal: 32,
-    marginTop: 8,
+    marginTop: 4,
     gap: 10,
     alignItems: "center",
   },
@@ -547,14 +787,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 44,
     borderRadius: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: 16,
     fontSize: 15,
-    color: Colors.charcoal,
+    color: Colors.white,
     fontWeight: "500",
     textAlign: "center",
     borderWidth: 1,
-    borderColor: Colors.lightGray,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   editActions: {
     flexDirection: "row",
@@ -565,17 +805,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: Colors.lightGray,
+    borderColor: "rgba(255,255,255,0.3)",
   },
   editSaveBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.white,
     alignItems: "center",
     justifyContent: "center",
   },
