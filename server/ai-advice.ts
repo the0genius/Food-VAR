@@ -167,9 +167,17 @@ function buildAdvicePrompt(
 ${allergenWarning}
 
 PRODUCT: ${product.name} (${product.category || "Food"})
-Score: ${score}/100
+Score: ${score}/100 (Label: ${scoreLabel})
 User's conditions: ${conditions}
 User's goal: ${goal}
+
+SCORING TIERS (for context):
+- 0 = Allergen Alert (ONLY when product contains user's allergen)
+- 1-15 = Strongly Avoid (ultra-processed, zero redeeming nutrition)
+- 16-35 = High Risk (has some nutrients but major concern for user's condition)
+- 36-50 = Consume with Caution
+- 51-74 = Generally Good
+- 75-100 = Excellent Fit
 
 ${categoryGuidance}
 
