@@ -29,7 +29,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
 import Colors from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -46,16 +46,56 @@ interface ScoreData {
   product: any;
 }
 
-const GAUGE_SIZE = 190;
-const STROKE_WIDTH = 8;
+const GAUGE_SIZE = 200;
+const STROKE_WIDTH = 10;
 const RADIUS = (GAUGE_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+const CATEGORY_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
+  snacks: { icon: "cafe-outline", color: "#E65100", bg: "#FFF3E0" },
+  beverages: { icon: "water-outline", color: "#0277BD", bg: "#E1F5FE" },
+  dairy: { icon: "snow-outline", color: "#6A1B9A", bg: "#F3E5F5" },
+  bakery: { icon: "pizza-outline", color: "#BF360C", bg: "#FBE9E7" },
+  cereal: { icon: "sunny-outline", color: "#F9A825", bg: "#FFFDE7" },
+  grains: { icon: "leaf-outline", color: "#558B2F", bg: "#F1F8E9" },
+  meat: { icon: "flame-outline", color: "#C62828", bg: "#FFEBEE" },
+  seafood: { icon: "fish-outline", color: "#00838F", bg: "#E0F7FA" },
+  fruits: { icon: "nutrition-outline", color: "#AD1457", bg: "#FCE4EC" },
+  vegetables: { icon: "leaf-outline", color: "#2E7D32", bg: "#E8F5E9" },
+  frozen: { icon: "snow-outline", color: "#1565C0", bg: "#E3F2FD" },
+  condiments: { icon: "color-fill-outline", color: "#EF6C00", bg: "#FFF3E0" },
+  sauces: { icon: "color-fill-outline", color: "#EF6C00", bg: "#FFF3E0" },
+  pasta: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
+  noodles: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
+  candy: { icon: "heart-outline", color: "#C2185B", bg: "#FCE4EC" },
+  chocolate: { icon: "heart-outline", color: "#4E342E", bg: "#EFEBE9" },
+  supplements: { icon: "medkit-outline", color: "#00695C", bg: "#E0F2F1" },
+  spreads: { icon: "layers-outline", color: "#F57F17", bg: "#FFFDE7" },
+  oils: { icon: "water-outline", color: "#827717", bg: "#F9FBE7" },
+  default: { icon: "cube-outline", color: Colors.primary, bg: Colors.primaryPale },
+};
+
+function getCategoryConfig(category?: string): { icon: string; color: string; bg: string } {
+  if (!category) return CATEGORY_ICONS.default;
+  const key = category.toLowerCase().trim();
+  for (const [k, v] of Object.entries(CATEGORY_ICONS)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return CATEGORY_ICONS.default;
+}
 
 function getScoreColor(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return Colors.danger;
   if (score <= 30) return Colors.scoreRed;
   if (score <= 60) return Colors.scoreAmber;
   return Colors.scoreGreen;
+}
+
+function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
+  if (isAllergenAlert) return ["#E53935", "#C62828"];
+  if (score <= 30) return ["#EF5350", "#C62828"];
+  if (score <= 60) return ["#FFA726", "#EF6C00"];
+  return ["#66BB6A", "#2E7D32"];
 }
 
 function getScoreColorLight(score: number, isAllergenAlert: boolean): string {
@@ -112,6 +152,40 @@ function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: str
   return getScoreColor(score, false);
 }
 
+function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" {
+  const lower = text.toLowerCase();
+  const warningWords = ["high", "sugar", "sodium", "fat", "low protein", "calorie", "excess", "added"];
+  const positiveWords = ["good", "rich", "fiber", "vitamin", "protein", "healthy", "natural", "organic"];
+  if (warningWords.some(w => lower.includes(w))) return "warning";
+  if (positiveWords.some(w => lower.includes(w))) return "positive";
+  return "neutral";
+}
+
+function getHighlightStyle(severity: "warning" | "neutral" | "positive"): { bg: string; color: string; icon: string } {
+  if (severity === "warning") return { bg: "#FFF3E0", color: "#E65100", icon: "alert-circle" };
+  if (severity === "positive") return { bg: "#E8F5E9", color: "#2E7D32", icon: "checkmark-circle" };
+  return { bg: "#F5F5F5", color: Colors.mediumGray, icon: "information-circle" };
+}
+
+const DAILY_VALUES: Record<string, number> = {
+  calories: 2000,
+  protein: 50,
+  carbohydrates: 275,
+  sugar: 50,
+  fat: 78,
+  saturatedFat: 20,
+  fiber: 28,
+  sodium: 2300,
+};
+
+function formatNutrientValue(value: number | null): string {
+  if (value === null || value === undefined) return "—";
+  if (Number.isInteger(value)) return String(value);
+  if (value >= 100) return Math.round(value).toString();
+  const s = value.toFixed(1);
+  return s.endsWith(".0") ? s.slice(0, -2) : s;
+}
+
 function ScoreRing({
   score,
   isAllergenAlert,
@@ -123,8 +197,9 @@ function ScoreRing({
   const scale = useSharedValue(0.85);
   const opacity = useSharedValue(0);
 
+  const [gradientColors] = useState(getScoreGradient(score, isAllergenAlert));
   const scoreColor = getScoreColor(score, isAllergenAlert);
-  const scoreColorLight = getScoreColorLight(score, isAllergenAlert);
+  const bgCircleColor = getScoreColorLight(score, isAllergenAlert);
 
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 400 });
@@ -174,14 +249,21 @@ function ScoreRing({
 
   return (
     <Animated.View style={[ringStyles.container, containerStyle]}>
+      <View style={[ringStyles.bgCircle, { backgroundColor: bgCircleColor }]} />
       <View style={[ringStyles.glowOuter, { shadowColor: scoreColor }]} />
 
       <Svg width={GAUGE_SIZE} height={GAUGE_SIZE} style={ringStyles.svg}>
+        <Defs>
+          <SvgGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={gradientColors[0]} />
+            <Stop offset="1" stopColor={gradientColors[1]} />
+          </SvgGradient>
+        </Defs>
         <Circle
           cx={GAUGE_SIZE / 2}
           cy={GAUGE_SIZE / 2}
           r={RADIUS}
-          stroke={scoreColorLight}
+          stroke={bgCircleColor}
           strokeWidth={STROKE_WIDTH}
           fill="none"
         />
@@ -189,7 +271,7 @@ function ScoreRing({
           cx={GAUGE_SIZE / 2}
           cy={GAUGE_SIZE / 2}
           r={RADIUS}
-          stroke={scoreColor}
+          stroke="url(#scoreGrad)"
           strokeWidth={STROKE_WIDTH}
           fill="none"
           strokeLinecap="round"
@@ -213,7 +295,14 @@ const ringStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
+    paddingVertical: 16,
+  },
+  bgCircle: {
+    position: "absolute",
+    width: GAUGE_SIZE - STROKE_WIDTH * 2 - 10,
+    height: GAUGE_SIZE - STROKE_WIDTH * 2 - 10,
+    borderRadius: (GAUGE_SIZE - STROKE_WIDTH * 2 - 10) / 2,
+    opacity: 0.3,
   },
   glowOuter: {
     position: "absolute",
@@ -223,14 +312,14 @@ const ringStyles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 25,
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
       },
       android: { elevation: 8 },
       web: {
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 25,
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
       },
     }),
   },
@@ -243,7 +332,7 @@ const ringStyles = StyleSheet.create({
     justifyContent: "center",
   },
   scoreNumber: {
-    fontSize: 50,
+    fontSize: 52,
     fontWeight: "800" as const,
     letterSpacing: -2,
   },
@@ -297,24 +386,55 @@ function NutrientRow({
   value,
   unit,
   index,
+  dailyValueKey,
 }: {
   label: string;
   value: number | null;
   unit: string;
   index: number;
+  dailyValueKey?: string;
 }) {
   if (value === null || value === undefined) return null;
+
+  const dvKey = dailyValueKey || label.toLowerCase().replace(/\s/g, "").replace("sat.fat", "saturatedFat");
+  const dailyValue = DAILY_VALUES[dvKey];
+  const dvPercent = dailyValue ? Math.min((value / dailyValue) * 100, 100) : 0;
+  const dvColor = dvPercent > 75 ? Colors.scoreRed : dvPercent > 40 ? Colors.scoreAmber : Colors.scoreGreen;
+
   return (
     <Animated.View
       entering={FadeInDown.delay(600 + index * 60).duration(300)}
       style={styles.nutrientRow}
     >
-      <Text style={styles.nutrientLabel}>{label}</Text>
+      <View style={styles.nutrientLeft}>
+        <Text style={styles.nutrientLabel}>{label}</Text>
+        {dailyValue ? (
+          <View style={styles.nutrientBarWrap}>
+            <View style={styles.nutrientBarTrack}>
+              <View
+                style={[
+                  styles.nutrientBarFill,
+                  { width: `${dvPercent}%`, backgroundColor: dvColor },
+                ]}
+              />
+            </View>
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.nutrientValue}>
-        {typeof value === "number" ? value.toFixed(1) : value}
+        {formatNutrientValue(value)}
         {unit}
       </Text>
     </Animated.View>
+  );
+}
+
+function CategoryIcon({ category }: { category?: string }) {
+  const config = getCategoryConfig(category);
+  return (
+    <View style={[styles.categoryIconWrap, { backgroundColor: config.bg }]}>
+      <Ionicons name={config.icon as any} size={28} color={config.color} />
+    </View>
   );
 }
 
@@ -513,10 +633,10 @@ export default function ResultScreen() {
         style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}
       >
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={24} color={Colors.charcoal} />
+          <Ionicons name="close" size={22} color={Colors.charcoal} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Ionicons name="share-outline" size={22} color={Colors.charcoal} />
+          <Ionicons name="share-outline" size={20} color={Colors.charcoal} />
         </TouchableOpacity>
       </View>
 
@@ -554,10 +674,11 @@ export default function ResultScreen() {
         )}
 
         <Animated.View entering={FadeInDown.duration(400)} style={styles.productHeader}>
+          <CategoryIcon category={product.category} />
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={styles.productBrand}>
             {product.brand || "Unknown Brand"}
-            {product.category ? ` \u00B7 ${product.category}` : ""}
+            {product.category ? ` · ${product.category}` : ""}
           </Text>
         </Animated.View>
 
@@ -570,17 +691,19 @@ export default function ResultScreen() {
           entering={FadeInDown.delay(200).duration(400)}
           style={styles.headlineWrap}
         >
-          <Text style={[styles.headlineText, { color: headlineColor }]}>
-            {headlineText}
-          </Text>
+          <View style={[styles.headlinePill, { backgroundColor: getScoreColorLight(data.score, data.isAllergenAlert) }]}>
+            <Text style={[styles.headlineText, { color: headlineColor }]}>
+              {headlineText}
+            </Text>
+          </View>
         </Animated.View>
 
         {data.advice ? (
           <Animated.View
             entering={FadeInDown.delay(350).duration(400)}
-            style={styles.adviceSection}
+            style={styles.adviceCard}
           >
-            <Text style={styles.whyText}>{data.advice}</Text>
+            <Text style={styles.adviceText}>{data.advice}</Text>
 
             {data.coachTip ? (
               <View style={[styles.coachTipCard, { backgroundColor: getScoreColorLight(data.score, data.isAllergenAlert), borderColor: scoreColor + "30" }]}>
@@ -597,13 +720,18 @@ export default function ResultScreen() {
         {data.highlights && data.highlights.length > 0 && (
           <Animated.View
             entering={FadeInDown.delay(450).duration(400)}
-            style={styles.tagsWrap}
+            style={styles.highlightsWrap}
           >
-            {data.highlights.map((h: string, i: number) => (
-              <View key={i} style={styles.tagChip}>
-                <Text style={styles.tagText}>{h}</Text>
-              </View>
-            ))}
+            {data.highlights.map((h: string, i: number) => {
+              const severity = getHighlightSeverity(h);
+              const hs = getHighlightStyle(severity);
+              return (
+                <View key={i} style={[styles.highlightChip, { backgroundColor: hs.bg }]}>
+                  <Ionicons name={hs.icon as any} size={13} color={hs.color} />
+                  <Text style={[styles.highlightText, { color: hs.color }]}>{h}</Text>
+                </View>
+              );
+            })}
           </Animated.View>
         )}
 
@@ -616,14 +744,14 @@ export default function ResultScreen() {
             {product.servingSize ? ` (per ${product.servingSize})` : ""}
           </Text>
           <View style={styles.nutritionGrid}>
-            <NutrientRow label="Calories" value={product.calories} unit="" index={0} />
-            <NutrientRow label="Protein" value={product.protein} unit="g" index={1} />
-            <NutrientRow label="Carbs" value={product.carbohydrates} unit="g" index={2} />
-            <NutrientRow label="Sugar" value={product.sugar} unit="g" index={3} />
-            <NutrientRow label="Fat" value={product.fat} unit="g" index={4} />
-            <NutrientRow label="Sat. Fat" value={product.saturatedFat} unit="g" index={5} />
-            <NutrientRow label="Fiber" value={product.fiber} unit="g" index={6} />
-            <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={7} />
+            <NutrientRow label="Calories" value={product.calories} unit="" index={0} dailyValueKey="calories" />
+            <NutrientRow label="Protein" value={product.protein} unit="g" index={1} dailyValueKey="protein" />
+            <NutrientRow label="Carbs" value={product.carbohydrates} unit="g" index={2} dailyValueKey="carbohydrates" />
+            <NutrientRow label="Sugar" value={product.sugar} unit="g" index={3} dailyValueKey="sugar" />
+            <NutrientRow label="Fat" value={product.fat} unit="g" index={4} dailyValueKey="fat" />
+            <NutrientRow label="Sat. Fat" value={product.saturatedFat} unit="g" index={5} dailyValueKey="saturatedFat" />
+            <NutrientRow label="Fiber" value={product.fiber} unit="g" index={6} dailyValueKey="fiber" />
+            <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={7} dailyValueKey="sodium" />
           </View>
         </Animated.View>
 
@@ -704,7 +832,7 @@ export default function ResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: "#F6F8F6",
   },
   centerContent: {
     justifyContent: "center",
@@ -716,49 +844,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
-  shareBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-    }),
-  },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: Colors.white,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowRadius: 6,
       },
-      android: { elevation: 2 },
+      android: { elevation: 3 },
       web: {
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
-        shadowRadius: 4,
+        shadowRadius: 6,
+      },
+    }),
+  },
+  shareBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.white,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: { elevation: 3 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
       },
     }),
   },
@@ -907,6 +1035,14 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginTop: 2,
   },
+  categoryIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 12,
+  },
   productHeader: {
     alignItems: "center",
     paddingHorizontal: 24,
@@ -927,27 +1063,50 @@ const styles = StyleSheet.create({
   },
   headlineWrap: {
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 24,
     paddingHorizontal: 24,
   },
+  headlinePill: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
   headlineText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "700" as const,
     textAlign: "center",
     letterSpacing: -0.2,
   },
-  adviceSection: {
+  adviceCard: {
     marginHorizontal: 20,
     marginBottom: 20,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
   },
-  whyText: {
+  adviceText: {
     fontSize: 15,
     color: Colors.charcoal,
-    lineHeight: 23,
+    lineHeight: 24,
     letterSpacing: -0.1,
   },
   coachTipCard: {
-    marginTop: 14,
+    marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 14,
@@ -969,24 +1128,23 @@ const styles = StyleSheet.create({
     color: Colors.charcoal,
     lineHeight: 21,
   },
-  tagsWrap: {
+  highlightsWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     marginHorizontal: 20,
     marginBottom: 24,
   },
-  tagChip: {
+  highlightChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
   },
-  tagText: {
+  highlightText: {
     fontSize: 12,
-    color: Colors.mediumGray,
     fontWeight: "600" as const,
   },
   nutritionCard: {
@@ -1024,14 +1182,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.lightGray,
+  },
+  nutrientLeft: {
+    flex: 1,
+    gap: 4,
   },
   nutrientLabel: {
     fontSize: 14,
     color: Colors.mediumGray,
     fontWeight: "500" as const,
+  },
+  nutrientBarWrap: {
+    width: "60%",
+  },
+  nutrientBarTrack: {
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: "#F0F0F0",
+    overflow: "hidden" as const,
+  },
+  nutrientBarFill: {
+    height: 3,
+    borderRadius: 1.5,
   },
   nutrientValue: {
     fontSize: 15,
@@ -1046,6 +1221,21 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderWidth: 1,
     borderColor: Colors.dangerPale,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
   },
   allergensHeader: {
     flexDirection: "row",
@@ -1130,6 +1320,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 16,
     backgroundColor: Colors.primary,
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+      web: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+      },
+    }),
   },
   scanAnotherText: {
     fontSize: 16,
