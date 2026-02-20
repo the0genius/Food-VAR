@@ -391,7 +391,7 @@ export default function OnboardingScreen() {
           testID="next-button"
         >
           <LinearGradient
-            colors={["#2E7D32", "#388E3C"]}
+            colors={["#3DD68C", "#2EC4B6"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.nextBtn}
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3DD68C",
     borderRadius: 2.5,
   },
   stepIndicator: {
@@ -527,9 +527,9 @@ const styles = StyleSheet.create({
     ...cardShadow("subtle"),
   },
   conditionChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: "#3DD68C",
+    borderColor: "#3DD68C",
+    shadowColor: "#3DD68C",
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -587,9 +587,9 @@ const styles = StyleSheet.create({
     ...cardShadow("subtle"),
   },
   goalCardActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: "#3DD68C",
+    borderColor: "#3DD68C",
+    shadowColor: "#3DD68C",
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

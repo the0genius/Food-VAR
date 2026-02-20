@@ -37,7 +37,9 @@ const Colors = {
   gradientGreen: ["#2E7D32", "#43A047", "#66BB6A"] as const,
   gradientGreenSoft: ["#E8F5E9", "#F1F8F1", "#EEF6EE"] as const,
   gradientHeader: ["#2E7D32", "#388E3C", "#43A047"] as const,
-  gradientCTA: ["#2E7D32", "#388E3C"] as const,
+  mintCTA: "#3DD68C",
+  mintTeal: "#2EC4B6",
+  gradientCTA: ["#3DD68C", "#2EC4B6"] as const,
 
   light: {
     text: "#1B1B1B",

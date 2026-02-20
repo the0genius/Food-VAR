@@ -463,7 +463,7 @@ export default function HomeScreen() {
                   Scan your first product to get a personalized health score based on your profile.
                 </Text>
                 <LinearGradient
-                  colors={["#2E7D32", "#388E3C"]}
+                  colors={["#3DD68C", "#2EC4B6"]}
                   style={styles.welcomeBtnGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3DD68C",
     alignItems: "center",
     justifyContent: "center",
   },

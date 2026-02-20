@@ -26,7 +26,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
+        tabBarActiveTintColor: "#3DD68C",
         tabBarInactiveTintColor: Colors.light.tabIconDefault,
         tabBarShowLabel: false,
         tabBarStyle: {
@@ -111,28 +111,28 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3DD68C",
     alignItems: "center",
     justifyContent: "center",
     marginTop: -20,
     ...Platform.select({
       ios: {
-        shadowColor: "#2E7D32",
+        shadowColor: "#3DD68C",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.35,
         shadowRadius: 10,
       },
       android: {
         elevation: 6,
-        shadowColor: "#2E7D32",
+        shadowColor: "#3DD68C",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.35,
         shadowRadius: 10,
       },
       web: {
-        shadowColor: "#2E7D32",
+        shadowColor: "#3DD68C",
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.35,
         shadowRadius: 10,
       },
     }),

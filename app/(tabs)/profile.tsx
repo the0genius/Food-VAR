@@ -730,9 +730,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: "#E8F9EE",
     borderWidth: 1,
-    borderColor: Colors.primary + "33",
+    borderColor: "#3DD68C33",
     ...cardShadow("subtle"),
   },
   editProfileBtnText: {

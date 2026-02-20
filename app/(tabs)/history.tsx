@@ -401,8 +401,8 @@ const styles = StyleSheet.create({
     ...cardShadow("subtle"),
   },
   sortChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: "#3DD68C",
+    borderColor: "#3DD68C",
   },
   sortChipText: {
     fontSize: 13,

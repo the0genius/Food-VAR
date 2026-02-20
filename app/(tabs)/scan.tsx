@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   modeBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3DD68C",
     ...cardShadow("subtle"),
   },
   modeBtnText: {
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
+    backgroundColor: "#3DD68C",
     marginTop: 12,
     ...cardShadow("medium"),
   },
