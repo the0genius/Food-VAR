@@ -30,7 +30,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors from "@/constants/colors";
+import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -164,16 +164,29 @@ function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: str
 function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" {
   const lower = text.toLowerCase();
   const positivePatterns = [
-    "good", "great", "rich", "high fiber", "high protein",
+    "good source", "good amount", "great source", "rich in", "high fiber", "high protein", "high in fiber", "high in protein",
     "vitamin", "healthy", "natural", "organic", "excellent",
-    "decent", "solid", "beneficial", "low calorie", "low sugar",
-    "low sodium", "low fat", "zero sugar", "zero sodium",
-    "very low", "no sugar", "no sodium", "minimal",
-    "source of", "plenty", "balanced",
+    "decent", "solid", "beneficial",
+    "low calorie", "low sugar", "low sodium", "low fat",
+    "low in sugar", "low in sodium", "low in fat", "low in calories", "low in carbs",
+    "zero sugar", "zero sodium", "no sugar", "no sodium",
+    "very low", "minimal", "moderate sugar", "moderate sodium", "moderate fat",
+    "source of", "plenty", "balanced", "reasonable",
+    "not too high", "within range", "good fiber", "adequate",
   ];
   if (positivePatterns.some(w => lower.includes(w))) return "positive";
-  const warningWords = ["high", "sugar", "sodium", "fat", "low protein", "calorie", "excess", "added", "low fiber"];
-  if (warningWords.some(w => lower.includes(w))) return "warning";
+
+  const warningPatterns = [
+    "high in sugar", "high in sodium", "high in fat", "high in carbs", "high in calories",
+    "high sugar", "high sodium", "high fat", "high carbs", "high calories",
+    "too much", "excess", "excessive", "added sugar", "added sugars",
+    "low protein", "low fiber", "low in protein", "low in fiber",
+    "saturated fat", "trans fat",
+    "calorie dense", "calorie heavy",
+    "sugar heavy", "sodium heavy",
+  ];
+  if (warningPatterns.some(w => lower.includes(w))) return "warning";
+
   return "neutral";
 }
 
@@ -328,10 +341,8 @@ const ringStyles = StyleSheet.create({
       },
       android: { elevation: 0 },
       web: {
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 40,
-      },
+        boxShadow: "0 0 40px rgba(0,0,0,0.05)",
+      } as any,
     }),
   },
   glowInner: {
@@ -884,7 +895,7 @@ export default function ResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F8F6",
+    backgroundColor: Colors.screenBg,
   },
   centerContent: {
     justifyContent: "center",
@@ -903,21 +914,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: "center",
     justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-      android: { elevation: 3 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.06)",
+    ...cardShadow("medium"),
   },
   shareBtn: {
     width: 38,
@@ -926,21 +925,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-      android: { elevation: 3 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.06)",
+    ...cardShadow("medium"),
   },
   loadingText: {
     fontSize: 15,
@@ -981,21 +968,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     marginHorizontal: 24,
     alignItems: "center" as const,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-      },
-      android: { elevation: 6 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-      },
-    }),
+    ...cardShadow("strong"),
   },
   limitIconWrap: {
     width: 72,
@@ -1059,6 +1032,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: Colors.primaryPale,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("subtle"),
   },
   reAnalyzedText: {
     fontSize: 13,
@@ -1073,8 +1049,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: Colors.danger,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
   },
   allergenTitle: {
     fontSize: 16,
@@ -1089,27 +1067,29 @@ const styles = StyleSheet.create({
   },
   heroGradient: {
     paddingBottom: 8,
+    paddingTop: 8,
   },
   categoryIconWrap: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: 18,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 10,
+    ...cardShadow("subtle"),
   },
   productHeader: {
     alignItems: "center",
     paddingHorizontal: 24,
     marginBottom: 0,
-    paddingTop: 4,
   },
   productName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800" as const,
     color: Colors.charcoal,
     textAlign: "center",
     letterSpacing: -0.5,
+    marginTop: 2,
   },
   productBrand: {
     fontSize: 13,
@@ -1131,21 +1111,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 22,
     borderWidth: 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    ...cardShadow("subtle"),
   },
   headlineText: {
     fontSize: 14,
@@ -1160,33 +1126,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitleText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700" as const,
     color: Colors.charcoal,
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
   adviceCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 20,
     borderRadius: 20,
     backgroundColor: Colors.white,
     borderLeftWidth: 3,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("medium"),
   },
   adviceTitleRow: {
     flexDirection: "row" as const,
@@ -1212,6 +1166,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     borderWidth: 1,
+    ...cardShadow("subtle"),
   },
   coachTipHeader: {
     flexDirection: "row",
@@ -1232,43 +1187,33 @@ const styles = StyleSheet.create({
   },
   highlightsCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 16,
     paddingTop: 16,
     borderRadius: 20,
-    backgroundColor: "#FAFCFA",
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-    }),
+    backgroundColor: Colors.white,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("medium"),
   },
   highlightRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 10,
-    paddingVertical: 9,
+    paddingVertical: 12,
   },
   highlightRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#EEEEEE",
   },
   highlightIconWrap: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 10,
     alignItems: "center" as const,
     justifyContent: "center" as const,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
   },
   highlightText: {
     fontSize: 13,
@@ -1277,25 +1222,13 @@ const styles = StyleSheet.create({
   },
   nutritionCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 20,
     borderRadius: 20,
     backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("medium"),
   },
   nutritionTitleRow: {
     flexDirection: "row" as const,
@@ -1325,7 +1258,7 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    paddingVertical: 11,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#F0F0F0",
   },
@@ -1340,14 +1273,14 @@ const styles = StyleSheet.create({
     fontWeight: "500" as const,
   },
   nutrientBarTrack: {
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: "#EEEEEE",
     overflow: "hidden" as const,
   },
   nutrientBarFill: {
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: 2.5,
   },
   nutrientValue: {
     fontSize: 15,
@@ -1363,27 +1296,13 @@ const styles = StyleSheet.create({
   },
   allergensCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 20,
     borderRadius: 20,
     backgroundColor: Colors.white,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: Colors.dangerPale,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-    }),
+    ...cardShadow("medium"),
   },
   allergensHeader: {
     flexDirection: "row",
@@ -1417,27 +1336,13 @@ const styles = StyleSheet.create({
   },
   ingredientsCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     padding: 20,
     borderRadius: 20,
     backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.primaryPale,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
-        shadowRadius: 12,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("medium"),
   },
   ingredientsHeader: {
     flexDirection: "row" as const,
@@ -1458,27 +1363,13 @@ const styles = StyleSheet.create({
   scanAnotherWrap: {
     paddingHorizontal: 40,
     marginTop: 12,
-    marginBottom: 16,
+    marginBottom: 24,
     alignItems: "center" as const,
   },
   scanAnotherBtn: {
     borderRadius: 24,
     overflow: "hidden" as const,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-      },
-      android: { elevation: 4 },
-      web: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-      },
-    }),
+    ...coloredShadow(Colors.primary, "medium"),
   },
   scanAnotherGradient: {
     flexDirection: "row" as const,
