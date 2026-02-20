@@ -414,7 +414,7 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             <LinearGradient
-              colors={["#E8F5E9", "#F1F8F1", "#F6F8F6"]}
+              colors={["#EDF2EF", "#F1F5F3", "#F6F8F7"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[

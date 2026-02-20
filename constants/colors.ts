@@ -32,10 +32,10 @@ const Colors = {
   cardBg: "#FFFFFF",
   cardBgElevated: "#FFFFFF",
   cardBgSubtle: "#F5FAF5",
-  screenBg: "#EEF6EE",
+  screenBg: "#F6F8F7",
 
   gradientGreen: ["#2E7D32", "#43A047", "#66BB6A"] as const,
-  gradientGreenSoft: ["#E8F5E9", "#F1F8F1", "#EEF6EE"] as const,
+  gradientGreenSoft: ["#EDF2EF", "#F1F5F3", "#F6F8F7"] as const,
   gradientHeader: ["#2E7D32", "#388E3C", "#43A047"] as const,
   mintCTA: "#3DD68C",
   mintTeal: "#2EC4B6",
@@ -44,7 +44,7 @@ const Colors = {
   light: {
     text: "#1B1B1B",
     textSecondary: "#666666",
-    background: "#EEF6EE",
+    background: "#F6F8F7",
     backgroundSecondary: "#F5FAF5",
     tint: "#2E7D32",
     tabIconDefault: "#BDBDBD",
