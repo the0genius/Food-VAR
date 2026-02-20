@@ -122,22 +122,26 @@ function SkeletonRecentCard() {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 30) return Colors.scoreRed;
-  if (score <= 60) return Colors.scoreAmber;
+  if (score === 0) return Colors.danger;
+  if (score <= 15) return "#D32F2F";
+  if (score <= 35) return Colors.scoreRed;
+  if (score <= 50) return Colors.scoreAmber;
+  if (score <= 74) return "#2EC4B6";
   return Colors.scoreGreen;
 }
 
 function getScoreColorLight(score: number): string {
-  if (score <= 30) return "#FFEBEE";
-  if (score <= 60) return "#FFF3E0";
+  if (score <= 35) return "#FFEBEE";
+  if (score <= 50) return "#FFF3E0";
   return "#E8F5E9";
 }
 
 function getScoreLabel(score: number): string {
-  if (score <= 30) return "Avoid";
+  if (score === 0) return "Allergen";
+  if (score <= 15) return "Avoid";
+  if (score <= 35) return "Risky";
   if (score <= 50) return "Caution";
-  if (score <= 70) return "Okay";
-  if (score <= 85) return "Good";
+  if (score <= 74) return "Good";
   return "Great";
 }
 

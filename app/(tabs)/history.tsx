@@ -50,16 +50,17 @@ function getDateGroup(dateStr: string): string {
 }
 
 function getScoreColor(score: number) {
-  return score <= 30
-    ? Colors.scoreRed
-    : score <= 60
-      ? Colors.scoreAmber
-      : Colors.scoreGreen;
+  if (score === 0) return Colors.danger;
+  if (score <= 15) return "#D32F2F";
+  if (score <= 35) return Colors.scoreRed;
+  if (score <= 50) return Colors.scoreAmber;
+  if (score <= 74) return "#2EC4B6";
+  return Colors.scoreGreen;
 }
 
 function getScoreBgColor(score: number) {
-  if (score <= 30) return "#FFEBEE";
-  if (score <= 60) return "#FFF3E0";
+  if (score <= 35) return "#FFEBEE";
+  if (score <= 50) return "#FFF3E0";
   return "#E8F5E9";
 }
 

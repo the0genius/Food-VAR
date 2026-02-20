@@ -54,21 +54,26 @@ interface StatsData {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 30) return Colors.scoreRed;
-  if (score <= 60) return Colors.scoreAmber;
+  if (score === 0) return Colors.danger;
+  if (score <= 15) return "#D32F2F";
+  if (score <= 35) return Colors.scoreRed;
+  if (score <= 50) return Colors.scoreAmber;
+  if (score <= 74) return "#2EC4B6";
   return Colors.scoreGreen;
 }
 
 function getScoreColorLight(score: number): string {
-  if (score <= 30) return "#FFEBEE";
-  if (score <= 60) return "#FFF3E0";
+  if (score <= 35) return "#FFEBEE";
+  if (score <= 50) return "#FFF3E0";
   return "#E8F5E9";
 }
 
 function getScoreLabel(score: number): string {
-  if (score <= 30) return "Needs work";
+  if (score === 0) return "Allergen alert";
+  if (score <= 15) return "Needs work";
+  if (score <= 35) return "High risk";
   if (score <= 50) return "Getting there";
-  if (score <= 70) return "Pretty good";
+  if (score <= 74) return "Pretty good";
   if (score <= 85) return "Great choices";
   return "Amazing";
 }

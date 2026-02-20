@@ -53,36 +53,41 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getScoreColor(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return Colors.danger;
-  if (score <= 30) return Colors.scoreRed;
-  if (score <= 60) return Colors.scoreAmber;
-  return "#2EC4B6";
+  if (score <= 15) return "#D32F2F";
+  if (score <= 35) return Colors.scoreRed;
+  if (score <= 50) return Colors.scoreAmber;
+  if (score <= 74) return "#2EC4B6";
+  return "#3DD68C";
 }
 
 function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
   if (isAllergenAlert) return ["#E53935", "#C62828"];
-  if (score <= 30) return ["#EF5350", "#C62828"];
-  if (score <= 60) return ["#FFA726", "#EF6C00"];
+  if (score <= 15) return ["#D32F2F", "#B71C1C"];
+  if (score <= 35) return ["#EF5350", "#C62828"];
+  if (score <= 50) return ["#FFA726", "#EF6C00"];
+  if (score <= 74) return ["#2EC4B6", "#26A69A"];
   return ["#3DD68C", "#2EC4B6"];
 }
 
 function getScoreTrackColor(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "#FFCDD2";
-  if (score <= 30) return "#FFCDD2";
-  if (score <= 60) return "#FFE0B2";
+  if (score <= 15) return "#FFCDD2";
+  if (score <= 35) return "#FFCDD2";
+  if (score <= 50) return "#FFE0B2";
   return "#D4F5E9";
 }
 
 function getScoreBg(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "#FFF5F5";
-  if (score <= 30) return "#FFF8F8";
-  if (score <= 60) return "#FFFBF5";
+  if (score <= 35) return "#FFF8F8";
+  if (score <= 50) return "#FFFBF5";
   return "#F2FAF6";
 }
 
 function getAdviceBorderColor(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "#FFCDD2";
-  if (score <= 30) return "#FFCDD2";
-  if (score <= 60) return "#FFE0B2";
+  if (score <= 35) return "#FFCDD2";
+  if (score <= 50) return "#FFE0B2";
   return "#D4F0E0";
 }
 
@@ -113,7 +118,7 @@ const CAUTION_WORDS = [
 
 function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string): string {
   if (isAllergenAlert) return Colors.danger;
-  if (score <= 30) return Colors.scoreRed;
+  if (score <= 35) return Colors.scoreRed;
   const headlineLower = (headline || "").toLowerCase();
   const isCautionaryHeadline = CAUTION_WORDS.some(w => headlineLower.includes(w));
   if (isCautionaryHeadline) return Colors.scoreAmber;
@@ -365,7 +370,7 @@ function ScoreRing({
           {displayedNumber}
         </Text>
         <Text style={[ringStyles.scoreLabel, { color: scoreColor }]}>
-          {score <= 30 ? "POOR" : score <= 60 ? "FAIR" : score <= 80 ? "GOOD" : "GREAT"}
+          {isAllergenAlert ? "DANGER" : score <= 15 ? "AVOID" : score <= 35 ? "RISKY" : score <= 50 ? "FAIR" : score <= 74 ? "GOOD" : "GREAT"}
         </Text>
       </View>
     </Animated.View>
@@ -589,9 +594,10 @@ export default function ResultScreen() {
 
   function getLabel(score: number): string {
     if (score === 0) return "Allergen Alert";
-    if (score <= 30) return "Strongly Avoid";
-    if (score <= 60) return "Consume with Caution";
-    if (score <= 80) return "Generally Good";
+    if (score <= 15) return "Strongly Avoid";
+    if (score <= 35) return "High Risk";
+    if (score <= 50) return "Consume with Caution";
+    if (score <= 74) return "Generally Good";
     return "Excellent Fit";
   }
 
