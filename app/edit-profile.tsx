@@ -255,7 +255,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.screenBg,
   },
   header: {
     flexDirection: "row",

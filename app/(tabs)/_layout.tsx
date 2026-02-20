@@ -17,7 +17,7 @@ export default function TabLayout() {
   }, [isLoading, user]);
 
   if (isLoading || !user?.onboardingCompleted) {
-    return <View style={{ flex: 1, backgroundColor: Colors.white }} />;
+    return <View style={{ flex: 1, backgroundColor: Colors.screenBg }} />;
   }
 
   const tabBarHeight = Platform.OS === "web" ? 84 : 70;

@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: "#F8FBF8",
+    backgroundColor: Colors.white,
     borderLeftWidth: 3,
     borderLeftColor: Colors.primary,
     ...cardShadow("subtle"),

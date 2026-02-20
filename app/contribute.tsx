@@ -364,7 +364,7 @@ export default function ContributeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.screenBg,
   },
   header: {
     flexDirection: "row",
