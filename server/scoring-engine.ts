@@ -113,7 +113,8 @@ function bonusInterpolate(
 
 function getScoreLabel(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "Allergen Alert";
-  if (score <= 25) return "Strongly Avoid";
+  if (score <= 15) return "Strongly Avoid";
+  if (score <= 35) return "High Risk";
   if (score <= 50) return "Consume with Caution";
   if (score <= 74) return "Generally Good";
   return "Excellent Fit";
@@ -286,7 +287,11 @@ export async function computeScore(
     });
   }
 
-  score = Math.round(Math.max(0, Math.min(100, score)));
+  score = Math.round(Math.min(100, score));
+
+  if (score < 1) {
+    score = 1;
+  }
 
   deductions.sort((a, b) => a.points - b.points);
 
