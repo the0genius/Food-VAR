@@ -21,7 +21,8 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Colors from "@/constants/colors";
+import { LinearGradient } from "expo-linear-gradient";
+import Colors, { cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -133,7 +134,9 @@ export default function OnboardingScreen() {
         return (
           <Animated.View entering={FadeInDown.duration(500)} style={styles.stepContent}>
             <View style={styles.stepIcon}>
-              <Ionicons name="person-circle-outline" size={64} color={Colors.primary} />
+              <View style={styles.stepIconCircle}>
+                <Ionicons name="person-circle-outline" size={56} color={Colors.primary} />
+              </View>
             </View>
             <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
             <Text style={styles.stepSubtitle}>
@@ -381,21 +384,29 @@ export default function OnboardingScreen() {
         ]}
       >
         <TouchableOpacity
-          style={[styles.nextBtn, loading && styles.nextBtnDisabled]}
+          style={[styles.nextBtnWrapper, loading && styles.nextBtnDisabled]}
           onPress={handleNext}
           disabled={loading || (step === 0 && !email.trim())}
+          activeOpacity={0.8}
           testID="next-button"
         >
-          <Text style={styles.nextBtnText}>
-            {loading
-              ? "Saving..."
-              : step === totalSteps - 1
-                ? "Start Scanning"
-                : "Continue"}
-          </Text>
-          {!loading && (
-            <Ionicons name="arrow-forward" size={20} color={Colors.white} />
-          )}
+          <LinearGradient
+            colors={["#2E7D32", "#388E3C"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.nextBtn}
+          >
+            <Text style={styles.nextBtnText}>
+              {loading
+                ? "Saving..."
+                : step === totalSteps - 1
+                  ? "Start Scanning"
+                  : "Continue"}
+            </Text>
+            {!loading && (
+              <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+            )}
+          </LinearGradient>
         </TouchableOpacity>
         {step > 0 && step < totalSteps - 1 && (
           <TouchableOpacity
@@ -415,7 +426,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.screenBg,
   },
   header: {
     flexDirection: "row",
@@ -429,15 +440,15 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     flex: 1,
-    height: 4,
+    height: 5,
     backgroundColor: Colors.primaryPale,
-    borderRadius: 2,
+    borderRadius: 2.5,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     backgroundColor: Colors.primary,
-    borderRadius: 2,
+    borderRadius: 2.5,
   },
   stepIndicator: {
     fontSize: 13,
@@ -457,9 +468,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  stepIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   stepTitle: {
     fontSize: 26,
-    fontWeight: "700",
+    fontWeight: "800",
     color: Colors.charcoal,
     marginBottom: 8,
     letterSpacing: -0.5,
@@ -483,11 +502,12 @@ const styles = StyleSheet.create({
     height: 52,
     borderWidth: 1.5,
     borderColor: Colors.lightGray,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 16,
     fontSize: 16,
     color: Colors.charcoal,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
+    ...cardShadow("subtle"),
   },
   chipGrid: {
     flexDirection: "row",
@@ -503,11 +523,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: Colors.primaryPale,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
+    ...cardShadow("subtle"),
   },
   conditionChipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   conditionChipText: {
     fontSize: 14,
@@ -531,6 +556,10 @@ const styles = StyleSheet.create({
   allergyChipActive: {
     backgroundColor: Colors.danger,
     borderColor: Colors.danger,
+    shadowColor: Colors.danger,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   allergyChipText: {
     fontSize: 14,
@@ -549,16 +578,21 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - 60) / 2,
     paddingVertical: 24,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: Colors.primaryPale,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     alignItems: "center",
     gap: 10,
+    ...cardShadow("subtle"),
   },
   goalCardActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   goalCardText: {
     fontSize: 14,
@@ -580,13 +614,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     borderWidth: 1.5,
     borderColor: "transparent",
+    ...cardShadow("subtle"),
   },
   dietRowActive: {
     borderColor: Colors.primary,
     backgroundColor: Colors.primaryPale,
+    borderWidth: 2,
   },
   dietRowText: {
     fontSize: 15,
@@ -601,16 +637,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 13,
     color: Colors.mediumGray,
-    marginTop: 16,
+    marginTop: 20,
   },
   footer: {
     paddingHorizontal: 24,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.primaryPale,
     backgroundColor: Colors.white,
     alignItems: "center",
     gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+  },
+  nextBtnWrapper: {
+    width: "100%",
   },
   nextBtn: {
     width: "100%",
@@ -619,8 +660,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     height: 54,
-    backgroundColor: Colors.primary,
     borderRadius: 16,
+    ...cardShadow("medium"),
   },
   nextBtnDisabled: {
     opacity: 0.5,

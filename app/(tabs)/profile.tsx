@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { useQuery } from "@tanstack/react-query";
-import Colors from "@/constants/colors";
+import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const CONDITIONS_MAP: Record<string, string> = {
@@ -158,7 +158,7 @@ export default function ProfileScreen() {
       }}
     >
       <LinearGradient
-        colors={["#2E7D32", "#43A047", "#66BB6A"]}
+        colors={["#1B5E20", "#2E7D32", "#43A047"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.headerGradient, { paddingTop: (insets.top || webTopInset) + 12 }]}
@@ -166,10 +166,12 @@ export default function ProfileScreen() {
         <View style={styles.headerContent}>
           {editing ? (
             <>
-              <View style={styles.avatarWrap}>
-                <Text style={styles.avatarText}>
-                  {(name || user.name || user.email).charAt(0).toUpperCase()}
-                </Text>
+              <View style={styles.avatarOuterGlow}>
+                <View style={styles.avatarWrap}>
+                  <Text style={styles.avatarText}>
+                    {(name || user.name || user.email).charAt(0).toUpperCase()}
+                  </Text>
+                </View>
               </View>
               <View style={styles.editFields}>
                 <TextInput
@@ -216,10 +218,12 @@ export default function ProfileScreen() {
                 activeOpacity={0.8}
                 style={styles.headerTouchable}
               >
-                <View style={styles.avatarWrap}>
-                  <Text style={styles.avatarText}>
-                    {(user.name || user.email).charAt(0).toUpperCase()}
-                  </Text>
+                <View style={styles.avatarOuterGlow}>
+                  <View style={styles.avatarWrap}>
+                    <Text style={styles.avatarText}>
+                      {(user.name || user.email).charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
                 <Text style={styles.userName}>{user.name || "User"}</Text>
                 {user.email?.includes("@") && (
@@ -340,7 +344,7 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.scoreBadge,
-                  { backgroundColor: getScoreColorLight(product.score) },
+                  { backgroundColor: getScoreColorLight(product.score), borderWidth: 1, borderColor: getScoreColor(product.score) + "33" },
                 ]}
               >
                 <Text
@@ -382,7 +386,7 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.scoreBadge,
-                  { backgroundColor: getScoreColorLight(product.score) },
+                  { backgroundColor: getScoreColorLight(product.score), borderWidth: 1, borderColor: getScoreColor(product.score) + "33" },
                 ]}
               >
                 <Text
@@ -483,7 +487,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F8F6",
+    backgroundColor: Colors.screenBg,
   },
   headerGradient: {
     paddingBottom: 24,
@@ -496,6 +500,13 @@ const styles = StyleSheet.create({
   headerTouchable: {
     alignItems: "center",
   },
+  avatarOuterGlow: {
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.15)",
+    borderRadius: 36,
+    padding: 3,
+    marginBottom: 10,
+  },
   avatarWrap: {
     width: 64,
     height: 64,
@@ -503,9 +514,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.25)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
-    borderWidth: 2.5,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.5)",
   },
   avatarText: {
     fontSize: 26,
@@ -559,21 +569,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("medium"),
   },
   motivationalText: {
     fontSize: 13,
@@ -595,26 +593,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 16,
     backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("subtle"),
   },
   statIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -642,21 +628,9 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 18,
     backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("subtle"),
   },
   sectionHeader: {
     flexDirection: "row",
@@ -683,9 +657,10 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 10,
-    backgroundColor: "#F8FAF8",
+    backgroundColor: Colors.white,
     borderRadius: 12,
     marginBottom: 6,
+    ...cardShadow("subtle"),
   },
   scoreBadge: {
     width: 42,
@@ -722,7 +697,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 14,
-    backgroundColor: "#F8FAF8",
+    backgroundColor: Colors.white,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
   },
   profileItemIcon: {
     width: 30,
@@ -751,9 +728,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 13,
+    paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.primaryPale,
+    borderWidth: 1,
+    borderColor: Colors.primary + "33",
+    ...cardShadow("subtle"),
   },
   editProfileBtnText: {
     fontSize: 14,
@@ -771,7 +751,10 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 13,
     borderRadius: 14,
-    backgroundColor: Colors.dangerPale,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+    ...cardShadow("subtle"),
   },
   logoutBtnText: {
     fontSize: 14,

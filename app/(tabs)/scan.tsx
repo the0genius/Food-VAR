@@ -28,7 +28,7 @@ import Animated, {
   withDelay,
 } from "react-native-reanimated";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Colors from "@/constants/colors";
+import Colors, { cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -213,7 +213,9 @@ export default function ScanScreen() {
     if (Platform.OS === "web") {
       return (
         <View style={styles.webFallback}>
-          <Ionicons name="camera-outline" size={64} color={Colors.primaryLight} />
+          <View style={styles.iconCircle}>
+            <Ionicons name="camera-outline" size={40} color={Colors.primaryLight} />
+          </View>
           <Text style={styles.webFallbackTitle}>Camera not available on web</Text>
           <Text style={styles.webFallbackText}>
             Use the Search tab or scan the QR code with your phone to use the camera scanner
@@ -233,7 +235,9 @@ export default function ScanScreen() {
     if (!permission.granted) {
       return (
         <View style={styles.permissionState}>
-          <Ionicons name="camera-outline" size={56} color={Colors.primaryLight} />
+          <View style={styles.iconCircle}>
+            <Ionicons name="camera-outline" size={36} color={Colors.primaryLight} />
+          </View>
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
           <Text style={styles.permissionText}>
             Allow camera access to scan product barcodes
@@ -460,7 +464,9 @@ export default function ScanScreen() {
                 </View>
               ) : searchQuery.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="nutrition" size={44} color={Colors.primaryLight} />
+                  <View style={styles.iconCircle}>
+                    <Ionicons name="nutrition" size={32} color={Colors.primaryLight} />
+                  </View>
                   <Text style={styles.emptyTitle}>Find Any Product</Text>
                   <Text style={styles.emptyText}>
                     Type a product name or brand to get your personalized score
@@ -482,13 +488,17 @@ const SCAN_FRAME_SIZE = SCREEN_WIDTH * 0.7;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.screenBg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 16,
     backgroundColor: Colors.white,
     zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
   headerTitle: {
     fontSize: 28,
@@ -500,7 +510,7 @@ const styles = StyleSheet.create({
   modeToggle: {
     flexDirection: "row",
     backgroundColor: Colors.primaryPale,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 3,
   },
   modeBtn: {
@@ -510,10 +520,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   modeBtnActive: {
     backgroundColor: Colors.primary,
+    ...cardShadow("subtle"),
   },
   modeBtnText: {
     fontSize: 14,
@@ -533,11 +544,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 14,
     height: 48,
-    backgroundColor: Colors.softWhite,
-    borderRadius: 14,
+    backgroundColor: Colors.white,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: Colors.lightGray,
     gap: 10,
+    ...cardShadow("subtle"),
   },
   searchInput: {
     flex: 1,
@@ -548,14 +560,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     borderRadius: 14,
     marginBottom: 8,
     gap: 12,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("subtle"),
   },
   resultIcon: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 12,
     backgroundColor: Colors.primaryPale,
     alignItems: "center",
@@ -578,9 +593,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
     color: Colors.charcoal,
     marginTop: 8,
+    letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 14,
@@ -595,8 +611,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.primaryPale,
     marginTop: 8,
+    ...cardShadow("subtle"),
   },
   contributeBtnText: {
     fontSize: 14,
@@ -625,45 +644,48 @@ const styles = StyleSheet.create({
   },
   scanCorner: {
     position: "absolute",
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
   scanCornerTL: {
     top: 0,
     left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
+    borderTopWidth: 3.5,
+    borderLeftWidth: 3.5,
     borderTopLeftRadius: 10,
   },
   scanCornerTR: {
     top: 0,
     right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
+    borderTopWidth: 3.5,
+    borderRightWidth: 3.5,
     borderTopRightRadius: 10,
   },
   scanCornerBL: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
+    borderBottomWidth: 3.5,
+    borderLeftWidth: 3.5,
     borderBottomLeftRadius: 10,
   },
   scanCornerBR: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
+    borderBottomWidth: 3.5,
+    borderRightWidth: 3.5,
     borderBottomRightRadius: 10,
   },
   scanLine: {
     position: "absolute",
     left: 8,
     right: 8,
-    height: 2,
+    height: 2.5,
     backgroundColor: Colors.primary,
-    opacity: 0.7,
+    opacity: 0.85,
     borderRadius: 1,
   },
   scanStatusBar: {
@@ -671,11 +693,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingVertical: 20,
+    paddingVertical: 24,
     paddingHorizontal: 24,
     backgroundColor: "rgba(255,255,255,0.95)",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    ...cardShadow("medium"),
   },
   statusRow: {
     flexDirection: "row",
@@ -695,6 +718,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: Colors.charcoal,
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center",
+    justifyContent: "center",
   },
   permissionState: {
     flex: 1,
@@ -725,11 +756,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 18,
     backgroundColor: Colors.primary,
     marginTop: 12,
+    ...cardShadow("medium"),
   },
   permissionBtnText: {
     fontSize: 16,
