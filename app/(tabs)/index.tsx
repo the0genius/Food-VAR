@@ -121,16 +121,71 @@ function SkeletonRecentCard() {
   );
 }
 
+function getScoreColor(score: number): string {
+  if (score <= 30) return Colors.scoreRed;
+  if (score <= 60) return Colors.scoreAmber;
+  return Colors.scoreGreen;
+}
+
+function getScoreColorLight(score: number): string {
+  if (score <= 30) return "#FFEBEE";
+  if (score <= 60) return "#FFF3E0";
+  return "#E8F5E9";
+}
+
+function getScoreLabel(score: number): string {
+  if (score <= 30) return "Avoid";
+  if (score <= 50) return "Caution";
+  if (score <= 70) return "Okay";
+  if (score <= 85) return "Good";
+  return "Great";
+}
+
+function getRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay === 1) return "Yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function dedupeScans(scans: any[]): any[] {
+  const seen = new Set<number>();
+  return scans.filter((s) => {
+    if (seen.has(s.productId)) return false;
+    seen.add(s.productId);
+    return true;
+  });
+}
+
+function getInsightText(avgScore: number, weeklyScans: number, totalScans: number): { icon: string; text: string } {
+  if (totalScans === 0) {
+    return { icon: "sparkles", text: "Scan your first product to get personalized insights" };
+  }
+  if (avgScore >= 75) {
+    return { icon: "trophy", text: "Your choices are looking great! Keep making smart picks" };
+  }
+  if (avgScore >= 55) {
+    return { icon: "trending-up", text: `Avg score: ${Math.round(avgScore)} — try swapping a few items for better picks` };
+  }
+  if (avgScore >= 35) {
+    return { icon: "bulb", text: `Avg score: ${Math.round(avgScore)} — check out your Top Picks in Profile for ideas` };
+  }
+  return { icon: "heart", text: `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you` };
+}
+
 function ScoreBadge({ score }: { score: number }) {
-  const color =
-    score <= 30
-      ? Colors.scoreRed
-      : score <= 60
-        ? Colors.scoreAmber
-        : Colors.scoreGreen;
   return (
-    <View style={[styles.scoreBadge, { backgroundColor: color }]}>
-      <Text style={styles.scoreBadgeText}>{score}</Text>
+    <View style={[styles.scoreBadge, { backgroundColor: getScoreColorLight(score) }]}>
+      <Text style={[styles.scoreBadgeText, { color: getScoreColor(score) }]}>{score}</Text>
     </View>
   );
 }
@@ -184,6 +239,10 @@ function RecentScanCard({
   index: number;
   onPress: () => void;
 }) {
+  const scoreLabel = getScoreLabel(item.score);
+  const scoreLabelColor = getScoreColor(item.score);
+  const timeAgo = item.createdAt ? getRelativeTime(item.createdAt) : "";
+
   return (
     <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
       <TouchableOpacity
@@ -196,13 +255,56 @@ function RecentScanCard({
           <Text style={styles.recentName} numberOfLines={1}>
             {item.productName}
           </Text>
-          <Text style={styles.recentBrand} numberOfLines={1}>
-            {item.productBrand || ""}
-          </Text>
+          <View style={styles.recentMeta}>
+            {item.productBrand ? (
+              <Text style={styles.recentBrand} numberOfLines={1}>
+                {item.productBrand}
+              </Text>
+            ) : null}
+            {item.productCategory ? (
+              <View style={styles.recentCategoryDot} />
+            ) : null}
+            {item.productCategory ? (
+              <Text style={styles.recentCategory} numberOfLines={1}>
+                {item.productCategory}
+              </Text>
+            ) : null}
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={Colors.lightGray} />
+        <View style={styles.recentRight}>
+          <View style={[styles.scoreLabelTag, { backgroundColor: getScoreColorLight(item.score) }]}>
+            <Text style={[styles.scoreLabelText, { color: scoreLabelColor }]}>
+              {scoreLabel}
+            </Text>
+          </View>
+          {timeAgo ? (
+            <Text style={styles.recentTime}>{timeAgo}</Text>
+          ) : null}
+        </View>
       </TouchableOpacity>
     </Animated.View>
+  );
+}
+
+function ScanProgressBar({ used, total }: { used: number; total: number }) {
+  const ratio = Math.min(used / total, 1);
+  const isNearLimit = used >= 8;
+  const barColor = isNearLimit ? Colors.scoreAmber : Colors.primary;
+
+  return (
+    <View style={styles.progressWrap}>
+      <View style={styles.progressBar}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${ratio * 100}%`, backgroundColor: barColor },
+          ]}
+        />
+      </View>
+      <Text style={[styles.progressText, isNearLimit && { color: Colors.scoreAmber }]}>
+        {used}/{total}
+      </Text>
+    </View>
   );
 }
 
@@ -227,16 +329,23 @@ export default function HomeScreen() {
     enabled: !!user,
   });
 
+  const statsQuery = useQuery({
+    queryKey: ["/api/stats", String(user?.id)],
+    enabled: !!user,
+  });
+
   const popular = (popularQuery.data || []) as any[];
-  const recentScans = (historyQuery.data || []).slice(0, 5) as any[];
+  const allScans = (historyQuery.data || []) as any[];
+  const recentScans = dedupeScans(allScans).slice(0, 5);
   const scansToday = (scansQuery.data as any)?.count || 0;
-  const isRefreshing = popularQuery.isFetching || historyQuery.isFetching || scansQuery.isFetching;
+  const stats = statsQuery.data as any;
 
   async function handleRefresh() {
     await Promise.all([
       popularQuery.refetch(),
       historyQuery.refetch(),
       scansQuery.refetch(),
+      statsQuery.refetch(),
     ]);
   }
 
@@ -254,6 +363,12 @@ export default function HomeScreen() {
     router.push("/(tabs)/scan");
   }
 
+  const insight = getInsightText(
+    stats?.avgScore || 0,
+    stats?.weeklyScans || 0,
+    stats?.totalScans || 0
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -270,23 +385,27 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             <LinearGradient
-              colors={[Colors.primaryPale, Colors.white]}
+              colors={[Colors.primaryPale, "#F6F8F6"]}
               style={[
                 styles.headerGradient,
                 { paddingTop: (insets.top || webTopInset) + 16 },
               ]}
             >
               <View style={styles.headerRow}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.greeting}>
                     {getGreeting()}
                     {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
                   </Text>
-                  <Text style={styles.subtitle}>
-                    {user?.isPro
-                      ? "Pro Member"
-                      : `${scansToday}/10 scans used today`}
-                  </Text>
+                  {!user?.isPro && (
+                    <ScanProgressBar used={scansToday} total={10} />
+                  )}
+                  {user?.isPro && (
+                    <View style={styles.proBadgeRow}>
+                      <Ionicons name="star" size={12} color="#FFD700" />
+                      <Text style={styles.proLabel}>Pro Member</Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity
                   style={styles.scanButton}
@@ -296,6 +415,17 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             </LinearGradient>
+
+            {!statsQuery.isLoading && (
+              <Animated.View entering={FadeInDown.duration(300)} style={styles.insightCard}>
+                <Ionicons
+                  name={insight.icon as any}
+                  size={18}
+                  color={Colors.primary}
+                />
+                <Text style={styles.insightText}>{insight.text}</Text>
+              </Animated.View>
+            )}
 
             {recentScans.length === 0 && !historyQuery.isLoading && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
@@ -332,21 +462,23 @@ export default function HomeScreen() {
                     <Text style={styles.seeAll}>See All</Text>
                   </TouchableOpacity>
                 </View>
-                {recentScans.map((item: any, i: number) => (
-                  <RecentScanCard
-                    key={item.id}
-                    item={item}
-                    index={i}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/result",
-                        params: {
-                          historyId: item.id,
-                        },
-                      })
-                    }
-                  />
-                ))}
+                <View style={styles.recentListCard}>
+                  {recentScans.map((item: any, i: number) => (
+                    <RecentScanCard
+                      key={item.id}
+                      item={item}
+                      index={i}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/result",
+                          params: {
+                            historyId: item.id,
+                          },
+                        })
+                      }
+                    />
+                  ))}
+                </View>
               </View>
             )}
 
@@ -383,7 +515,9 @@ export default function HomeScreen() {
                   onPress={() => router.push("/contribute")}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+                  <View style={styles.contributeIconWrap}>
+                    <Ionicons name="add" size={20} color={Colors.primary} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.contributeTitle}>Know a product we don't have?</Text>
                     <Text style={styles.contributeSubtitle}>Add it to help others</Text>
@@ -413,16 +547,17 @@ function getGreeting() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: "#F6F8F6",
   },
   headerGradient: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 16,
   },
   greeting: {
     fontSize: 24,
@@ -430,11 +565,38 @@ const styles = StyleSheet.create({
     color: Colors.charcoal,
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 14,
+  progressWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  progressBar: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.lightGray,
+    maxWidth: 120,
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: "600",
     color: Colors.mediumGray,
-    marginTop: 4,
-    fontWeight: "500",
+  },
+  proBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  proLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.primary,
   },
   scanButton: {
     width: 52,
@@ -443,17 +605,64 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+      web: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  insightCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
+  },
+  insightText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.charcoal,
+    flex: 1,
+    lineHeight: 18,
   },
   section: {
     paddingHorizontal: 20,
-    marginTop: 8,
     marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
@@ -466,14 +675,49 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "600",
   },
+  recentListCard: {
+    borderRadius: 16,
+    backgroundColor: Colors.white,
+    padding: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
+  },
   productCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     borderRadius: 14,
     marginBottom: 8,
     gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
   },
   productInfo: {
     flex: 1,
@@ -512,21 +756,52 @@ const styles = StyleSheet.create({
   recentCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: Colors.softWhite,
-    borderRadius: 14,
-    marginBottom: 8,
-    gap: 12,
+    padding: 10,
+    borderRadius: 12,
+    gap: 10,
   },
   recentName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.charcoal,
   },
+  recentMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
   recentBrand: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.mediumGray,
-    marginTop: 1,
+  },
+  recentCategoryDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: Colors.lightGray,
+  },
+  recentCategory: {
+    fontSize: 12,
+    color: Colors.mediumGray,
+  },
+  recentRight: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  scoreLabelTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  scoreLabelText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  recentTime: {
+    fontSize: 10,
+    color: Colors.mediumGray,
+    fontWeight: "500",
   },
   scoreBadge: {
     width: 42,
@@ -538,7 +813,6 @@ const styles = StyleSheet.create({
   scoreBadgeText: {
     fontSize: 16,
     fontWeight: "800",
-    color: Colors.white,
   },
   emptyText: {
     textAlign: "center",
@@ -548,18 +822,32 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     marginHorizontal: 20,
-    marginTop: 8,
     marginBottom: 20,
     padding: 28,
     borderRadius: 20,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: Colors.white,
     alignItems: "center" as const,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: { elevation: 2 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+    }),
   },
   welcomeIconWrap: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.primaryPale,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -599,13 +887,33 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     gap: 12,
     marginHorizontal: 20,
-    marginTop: 8,
     marginBottom: 20,
-    padding: 16,
+    padding: 14,
     borderRadius: 14,
     backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
+  },
+  contributeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   contributeTitle: {
     fontSize: 14,
