@@ -413,16 +413,31 @@ function NutrientRow({
   if (value === null || value === undefined) return null;
 
   return (
-    <View style={[styles.nutrientRow, isIndented && styles.nutrientRowIndented]}>
-      <Text style={[
-        styles.nutrientLabel,
-        isIndented ? styles.nutrientLabelIndented : styles.nutrientLabelParent,
-      ]}>
+    <View
+      style={[
+        styles.nutrientRow,
+        isIndented ? styles.nutrientRowIndented : styles.nutrientRowParent,
+      ]}
+    >
+      <Text
+        style={{
+          fontSize: isIndented ? 14 : 15,
+          fontWeight: isIndented ? "400" : "700",
+          color: isIndented ? "#555555" : "#1B1B1B",
+          paddingLeft: isIndented ? 24 : 0,
+        }}
+      >
         {label}
       </Text>
-      <Text style={[styles.nutrientValue, isIndented && styles.nutrientValueIndented]}>
+      <Text
+        style={{
+          fontSize: isIndented ? 14 : 15,
+          fontWeight: isIndented ? "400" : "600",
+          color: isIndented ? "#555555" : "#1B1B1B",
+        }}
+      >
         {formatNutrientValue(value)}
-        <Text style={styles.nutrientUnit}>{unit}</Text>
+        <Text style={{ fontSize: 13, fontWeight: "400", color: "#666666" }}>{unit}</Text>
       </Text>
     </View>
   );
@@ -760,52 +775,55 @@ export default function ResultScreen() {
           entering={FadeInDown.delay(450).duration(400)}
           style={styles.nutritionSection}
         >
-          <Text style={styles.sectionTitle}>Nutrition Facts</Text>
-          {product.servingSize ? (
-            <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
-          ) : null}
-          <View style={styles.nutritionTable}>
-            <NutrientRow label="Calories" value={product.calories} unit="" index={0} />
-            <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} />
-            <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented />
-            <NutrientRow label="Cholesterol" value={product.nutritionFacts?.cholesterol ?? null} unit="mg" index={3} />
-            <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} />
-            <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} />
-            <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented />
-            <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented />
-            <NutrientRow label="Protein" value={product.protein} unit="g" index={8} />
-          </View>
+          <View style={styles.nutritionCard}>
+            <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
+            {product.servingSize ? (
+              <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
+            ) : null}
+            <View style={styles.nutritionDividerThick} />
+            <View style={styles.nutritionTable}>
+              <NutrientRow label="Calories" value={product.calories} unit="" index={0} />
+              <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} />
+              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented />
+              <NutrientRow label="Cholesterol" value={product.nutritionFacts?.cholesterol ?? null} unit="mg" index={3} />
+              <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} />
+              <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} />
+              <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented />
+              <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented />
+              <NutrientRow label="Protein" value={product.protein} unit="g" index={8} />
+            </View>
 
-          {hasAdditionalNutrition && (
-            <>
-              {showFullNutrition ? (
-                <View style={styles.nutritionTable}>
-                  {Object.entries(product.nutritionFacts)
-                    .filter(([k, v]) => v !== null && v !== undefined && typeof v === "number" && k !== "cholesterol")
-                    .map(([key, val], i) => (
-                      <NutrientRow
-                        key={key}
-                        label={formatNutrientKey(key)}
-                        value={val as number}
-                        unit={getNutrientUnit(key)}
-                        index={i}
-                      />
-                    ))}
-                </View>
-              ) : null}
-              <TouchableOpacity
-                style={styles.viewFullBtn}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowFullNutrition(!showFullNutrition);
-                }}
-              >
-                <Text style={styles.viewFullBtnText}>
-                  {showFullNutrition ? "HIDE DETAILS" : "VIEW FULL LABEL"}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
+            {hasAdditionalNutrition && (
+              <>
+                {showFullNutrition ? (
+                  <View style={styles.nutritionTable}>
+                    {Object.entries(product.nutritionFacts)
+                      .filter(([k, v]) => v !== null && v !== undefined && typeof v === "number" && k !== "cholesterol")
+                      .map(([key, val], i) => (
+                        <NutrientRow
+                          key={key}
+                          label={formatNutrientKey(key)}
+                          value={val as number}
+                          unit={getNutrientUnit(key)}
+                          index={i}
+                        />
+                      ))}
+                  </View>
+                ) : null}
+                <TouchableOpacity
+                  style={styles.viewFullBtn}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowFullNutrition(!showFullNutrition);
+                  }}
+                >
+                  <Text style={styles.viewFullBtnText}>
+                    {showFullNutrition ? "HIDE DETAILS" : "VIEW FULL LABEL"}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </Animated.View>
 
         {product.allergens && product.allergens.length > 0 && (
@@ -1133,63 +1151,60 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 32,
   },
+  nutritionCard: {
+    backgroundColor: "#F9FAFA",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E8ECEA",
+  },
+  nutritionTitle: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: Colors.charcoal,
+    letterSpacing: -0.3,
+  },
   servingLabel: {
     fontSize: 13,
-    color: Colors.softGray,
-    marginTop: -10,
-    marginBottom: 12,
+    color: Colors.mediumGray,
+    marginTop: 2,
+    marginBottom: 0,
   },
-  nutritionTable: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E0E0E0",
+  nutritionDividerThick: {
+    height: 3,
+    backgroundColor: Colors.charcoal,
+    marginTop: 10,
+    marginBottom: 0,
   },
+  nutritionTable: {},
   nutrientRow: {
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E8E8E8",
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D8DCDA",
+  },
+  nutrientRowParent: {
+    borderTopWidth: 1,
+    borderTopColor: "#C8CCC9",
   },
   nutrientRowIndented: {
-    paddingLeft: 20,
-  },
-  nutrientLabel: {
-    fontSize: 15,
-    color: Colors.charcoal,
-  },
-  nutrientLabelParent: {
-    fontWeight: "600" as const,
-  },
-  nutrientLabelIndented: {
-    color: Colors.softGray,
-    fontWeight: "400" as const,
-    fontSize: 14,
-  },
-  nutrientValue: {
-    fontSize: 15,
-    color: Colors.charcoal,
-    fontWeight: "600" as const,
-  },
-  nutrientValueIndented: {
-    fontWeight: "400" as const,
-    color: Colors.softGray,
-    fontSize: 14,
-  },
-  nutrientUnit: {
-    fontSize: 13,
-    fontWeight: "400" as const,
-    color: Colors.softGray,
+    borderTopColor: "#E8ECEA",
   },
   viewFullBtn: {
     alignItems: "center" as const,
-    paddingVertical: 18,
+    paddingTop: 16,
+    paddingBottom: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D8DCDA",
+    marginTop: 0,
   },
   viewFullBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700" as const,
     color: "#2EC4B6",
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   allergensSection: {
     paddingHorizontal: 24,
