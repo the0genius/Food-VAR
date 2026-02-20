@@ -757,19 +757,36 @@ export default function ResultScreen() {
           </Animated.View>
         ) : null}
 
-        {data.highlights && data.highlights.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(350).duration(400)}
-            style={styles.highlightsSection}
-          >
-            <Text style={styles.sectionTitle}>Key Highlights</Text>
-            <View style={styles.highlightsGrid}>
-              {data.highlights.map((h: string, i: number) => (
-                <HighlightCard key={i} text={h} index={i} />
-              ))}
-            </View>
-          </Animated.View>
-        )}
+        {data.highlights && data.highlights.length > 0 && (() => {
+          const vaguePatterns = [
+            /^contains\s/i,
+            /^critical\s?allergen/i,
+            /^not\s?suitable/i,
+            /^check\s?allergen/i,
+            /^allergen/i,
+            /^avoid/i,
+            /^warning/i,
+            /^caution/i,
+            /^unsafe/i,
+            /^dangerous/i,
+          ];
+          const filtered = data.highlights.filter((h: string) =>
+            !vaguePatterns.some(p => p.test(h.trim()))
+          );
+          return filtered.length > 0 ? (
+            <Animated.View
+              entering={FadeInDown.delay(350).duration(400)}
+              style={styles.highlightsSection}
+            >
+              <Text style={styles.sectionTitle}>Key Highlights</Text>
+              <View style={styles.highlightsGrid}>
+                {filtered.map((h: string, i: number) => (
+                  <HighlightCard key={i} text={h} index={i} />
+                ))}
+              </View>
+            </Animated.View>
+          ) : null;
+        })()}
 
         <Animated.View
           entering={FadeInDown.delay(450).duration(400)}
