@@ -455,7 +455,7 @@ function HighlightCard({ text, index }: { text: string; index: number }) {
   return (
     <Animated.View
       entering={FadeInDown.delay(400 + index * 80).duration(300)}
-      style={[styles.highlightCard, { backgroundColor: bgColor }]}
+      style={[styles.highlightCard, { backgroundColor: "#FFFFFF" }]}
     >
       <View style={[styles.highlightEmojiWrap, { backgroundColor: emojiBg }]}>
         <Text style={styles.highlightEmoji}>{emoji}</Text>
@@ -735,8 +735,8 @@ export default function ResultScreen() {
             style={[
               styles.adviceCard,
               {
-                backgroundColor: getScoreBg(data.score, data.isAllergenAlert),
-                borderColor: getAdviceBorderColor(data.score, data.isAllergenAlert),
+                backgroundColor: "#FFFFFF",
+                borderColor: "#E8ECEA",
               },
             ]}
           >
