@@ -742,8 +742,8 @@ export default function ResultScreen() {
           >
             <View style={styles.adviceTitleRow}>
               <Text style={styles.adviceEmoji}>✨</Text>
-              <Text style={[styles.adviceTitleText, { color: scoreColor }]}>
-                WHAT THIS MEANS FOR YOU
+              <Text style={[styles.adviceTitleText, { color: "#3DD68C" }]}>
+                AI NUTRITIONIST ADVICE
               </Text>
             </View>
             <Text style={styles.adviceText}>{data.advice}</Text>
