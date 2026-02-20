@@ -54,8 +54,10 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const CATEGORY_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
   snacks: { icon: "cafe-outline", color: "#E65100", bg: "#FFF3E0" },
   beverages: { icon: "water-outline", color: "#0277BD", bg: "#E1F5FE" },
+  drinks: { icon: "water-outline", color: "#0277BD", bg: "#E1F5FE" },
   dairy: { icon: "snow-outline", color: "#6A1B9A", bg: "#F3E5F5" },
   bakery: { icon: "pizza-outline", color: "#BF360C", bg: "#FBE9E7" },
+  breakfast: { icon: "sunny-outline", color: "#F9A825", bg: "#FFFDE7" },
   cereal: { icon: "sunny-outline", color: "#F9A825", bg: "#FFFDE7" },
   grains: { icon: "leaf-outline", color: "#558B2F", bg: "#F1F8E9" },
   meat: { icon: "flame-outline", color: "#C62828", bg: "#FFEBEE" },
@@ -67,11 +69,18 @@ const CATEGORY_ICONS: Record<string, { icon: string; color: string; bg: string }
   sauces: { icon: "color-fill-outline", color: "#EF6C00", bg: "#FFF3E0" },
   pasta: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
   noodles: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
+  meals: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
+  instant: { icon: "flash-outline", color: "#EF6C00", bg: "#FFF3E0" },
+  ready: { icon: "timer-outline", color: "#5D4037", bg: "#EFEBE9" },
   candy: { icon: "heart-outline", color: "#C2185B", bg: "#FCE4EC" },
   chocolate: { icon: "heart-outline", color: "#4E342E", bg: "#EFEBE9" },
   supplements: { icon: "medkit-outline", color: "#00695C", bg: "#E0F2F1" },
+  health: { icon: "fitness-outline", color: "#00695C", bg: "#E0F2F1" },
   spreads: { icon: "layers-outline", color: "#F57F17", bg: "#FFFDE7" },
   oils: { icon: "water-outline", color: "#827717", bg: "#F9FBE7" },
+  soup: { icon: "cafe-outline", color: "#E65100", bg: "#FFF3E0" },
+  canned: { icon: "cube-outline", color: "#5D4037", bg: "#EFEBE9" },
+  deli: { icon: "cut-outline", color: "#C62828", bg: "#FFEBEE" },
   default: { icon: "cube-outline", color: Colors.primary, bg: Colors.primaryPale },
 };
 
@@ -409,30 +418,30 @@ function NutrientRow({
   const dvPercent = dailyValue ? Math.min((value / dailyValue) * 100, 100) : 0;
   const dvColor = dvPercent > 75 ? Colors.scoreRed : dvPercent > 40 ? Colors.scoreAmber : Colors.scoreGreen;
 
+  const showBar = dailyValue && dvPercent >= 1;
+
   return (
     <Animated.View
       entering={FadeInDown.delay(600 + index * 60).duration(300)}
       style={styles.nutrientRow}
     >
-      <Text style={styles.nutrientLabel}>{label}</Text>
-      <View style={styles.nutrientRight}>
-        {dailyValue ? (
-          <View style={styles.nutrientBarWrap}>
-            <View style={styles.nutrientBarTrack}>
-              <View
-                style={[
-                  styles.nutrientBarFill,
-                  { width: `${Math.max(dvPercent, 2)}%`, backgroundColor: dvColor },
-                ]}
-              />
-            </View>
+      <View style={styles.nutrientLeft}>
+        <Text style={styles.nutrientLabel}>{label}</Text>
+        {showBar ? (
+          <View style={styles.nutrientBarTrack}>
+            <View
+              style={[
+                styles.nutrientBarFill,
+                { width: `${Math.max(dvPercent, 6)}%`, backgroundColor: dvColor },
+              ]}
+            />
           </View>
         ) : null}
-        <Text style={[styles.nutrientValue, dailyValue && dvPercent > 60 ? { color: dvColor } : null]}>
-          {formatNutrientValue(value)}
-          <Text style={styles.nutrientUnit}>{unit}</Text>
-        </Text>
       </View>
+      <Text style={[styles.nutrientValue, showBar && dvPercent > 50 ? { color: dvColor } : null]}>
+        {formatNutrientValue(value)}
+        <Text style={styles.nutrientUnit}>{unit}</Text>
+      </Text>
     </Animated.View>
   );
 }
@@ -703,10 +712,10 @@ export default function ResultScreen() {
             entering={FadeInDown.delay(200).duration(400)}
             style={styles.headlineWrap}
           >
-            <View style={[styles.headlinePill, { backgroundColor: scoreColor + "12", borderColor: scoreColor + "25" }]}>
+            <View style={[styles.headlinePill, { backgroundColor: scoreColor + "14", borderColor: scoreColor + "35" }]}>
               <Ionicons
                 name={data.score > 60 ? "checkmark-circle" : data.score > 30 ? "alert-circle" : "close-circle"}
-                size={16}
+                size={18}
                 color={headlineColor}
               />
               <Text style={[styles.headlineText, { color: headlineColor }]}>
@@ -719,7 +728,7 @@ export default function ResultScreen() {
         {data.advice ? (
           <Animated.View
             entering={FadeInDown.delay(350).duration(400)}
-            style={styles.adviceCard}
+            style={[styles.adviceCard, { borderLeftColor: scoreColor + "40" }]}
           >
             <View style={styles.adviceTitleRow}>
               <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.primary} />
@@ -1114,11 +1123,26 @@ const styles = StyleSheet.create({
   headlinePill: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+    gap: 7,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+    }),
   },
   headlineText: {
     fontSize: 14,
@@ -1144,6 +1168,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     backgroundColor: Colors.white,
+    borderLeftWidth: 3,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1206,9 +1231,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 16,
     padding: 16,
-    paddingTop: 18,
+    paddingTop: 16,
     borderRadius: 20,
-    backgroundColor: Colors.white,
+    backgroundColor: "#FAFCFA",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -1297,28 +1322,24 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#F0F0F0",
   },
-  nutrientRight: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 10,
+  nutrientLeft: {
+    flex: 1,
+    gap: 5,
+    marginRight: 12,
   },
   nutrientLabel: {
     fontSize: 14,
     color: "#555555",
     fontWeight: "500" as const,
-    flex: 1,
-  },
-  nutrientBarWrap: {
-    width: 60,
   },
   nutrientBarTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#EEEEEE",
     overflow: "hidden" as const,
   },
   nutrientBarFill: {
@@ -1326,10 +1347,10 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   nutrientValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.charcoal,
     fontWeight: "700" as const,
-    minWidth: 40,
+    minWidth: 36,
     textAlign: "right" as const,
   },
   nutrientUnit: {
