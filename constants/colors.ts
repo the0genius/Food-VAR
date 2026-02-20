@@ -12,7 +12,7 @@ const Colors = {
   accentPale: "#FFF3E0",
 
   white: "#FFFFFF",
-  softWhite: "#F8FAF8",
+  softWhite: "#F5FAF5",
   warmWhite: "#FAFAF7",
   charcoal: "#1B1B1B",
   darkGray: "#333333",
@@ -31,23 +31,23 @@ const Colors = {
 
   cardBg: "#FFFFFF",
   cardBgElevated: "#FFFFFF",
-  cardBgSubtle: "#F8FAF8",
-  screenBg: "#F5F7F5",
+  cardBgSubtle: "#F5FAF5",
+  screenBg: "#EEF6EE",
 
   gradientGreen: ["#2E7D32", "#43A047", "#66BB6A"] as const,
-  gradientGreenSoft: ["#E8F5E9", "#F1F8F1", "#F5F7F5"] as const,
+  gradientGreenSoft: ["#E8F5E9", "#F1F8F1", "#EEF6EE"] as const,
   gradientHeader: ["#2E7D32", "#388E3C", "#43A047"] as const,
   gradientCTA: ["#2E7D32", "#388E3C"] as const,
 
   light: {
     text: "#1B1B1B",
     textSecondary: "#666666",
-    background: "#FFFFFF",
-    backgroundSecondary: "#F8FAF8",
+    background: "#EEF6EE",
+    backgroundSecondary: "#F5FAF5",
     tint: "#2E7D32",
     tabIconDefault: "#BDBDBD",
     tabIconSelected: "#2E7D32",
-    border: "#E8E8E8",
+    border: "#DCE8DC",
     card: "#FFFFFF",
   },
 };
