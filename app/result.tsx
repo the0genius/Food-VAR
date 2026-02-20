@@ -154,10 +154,14 @@ function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: str
 
 function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" {
   const lower = text.toLowerCase();
-  const warningWords = ["high", "sugar", "sodium", "fat", "low protein", "calorie", "excess", "added"];
-  const positiveWords = ["good", "rich", "fiber", "vitamin", "protein", "healthy", "natural", "organic"];
+  const positivePatterns = [
+    "good", "great", "rich", "high fiber", "high protein",
+    "vitamin", "healthy", "natural", "organic", "excellent",
+    "decent", "solid", "beneficial",
+  ];
+  if (positivePatterns.some(w => lower.includes(w))) return "positive";
+  const warningWords = ["high", "sugar", "sodium", "fat", "low protein", "calorie", "excess", "added", "low fiber"];
   if (warningWords.some(w => lower.includes(w))) return "warning";
-  if (positiveWords.some(w => lower.includes(w))) return "positive";
   return "neutral";
 }
 
@@ -302,7 +306,7 @@ const ringStyles = StyleSheet.create({
     width: GAUGE_SIZE - STROKE_WIDTH * 2 - 10,
     height: GAUGE_SIZE - STROKE_WIDTH * 2 - 10,
     borderRadius: (GAUGE_SIZE - STROKE_WIDTH * 2 - 10) / 2,
-    opacity: 0.3,
+    opacity: 0.5,
   },
   glowOuter: {
     position: "absolute",
@@ -720,14 +724,16 @@ export default function ResultScreen() {
         {data.highlights && data.highlights.length > 0 && (
           <Animated.View
             entering={FadeInDown.delay(450).duration(400)}
-            style={styles.highlightsWrap}
+            style={styles.highlightsCard}
           >
             {data.highlights.map((h: string, i: number) => {
               const severity = getHighlightSeverity(h);
               const hs = getHighlightStyle(severity);
               return (
-                <View key={i} style={[styles.highlightChip, { backgroundColor: hs.bg }]}>
-                  <Ionicons name={hs.icon as any} size={13} color={hs.color} />
+                <View key={i} style={[styles.highlightRow, i < data.highlights.length - 1 && styles.highlightRowBorder]}>
+                  <View style={[styles.highlightIconWrap, { backgroundColor: hs.bg }]}>
+                    <Ionicons name={hs.icon as any} size={14} color={hs.color} />
+                  </View>
                   <Text style={[styles.highlightText, { color: hs.color }]}>{h}</Text>
                 </View>
               );
@@ -1128,24 +1134,49 @@ const styles = StyleSheet.create({
     color: Colors.charcoal,
     lineHeight: 21,
   },
-  highlightsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+  highlightsCard: {
     marginHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+      android: { elevation: 1 },
+      web: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
   },
-  highlightChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+  highlightRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    paddingVertical: 8,
+  },
+  highlightRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.lightGray,
+  },
+  highlightIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   highlightText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600" as const,
+    flex: 1,
   },
   nutritionCard: {
     marginHorizontal: 20,
@@ -1199,14 +1230,14 @@ const styles = StyleSheet.create({
     width: "60%",
   },
   nutrientBarTrack: {
-    height: 3,
-    borderRadius: 1.5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: "#F0F0F0",
     overflow: "hidden" as const,
   },
   nutrientBarFill: {
-    height: 3,
-    borderRadius: 1.5,
+    height: 5,
+    borderRadius: 2.5,
   },
   nutrientValue: {
     fontSize: 15,
