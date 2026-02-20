@@ -23,11 +23,45 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import Colors, { cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
 type SortOption = "date" | "score_high" | "score_low";
+
+function getDateGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+  const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (itemDate >= today) return "Today";
+  if (itemDate >= yesterday) return "Yesterday";
+  if (itemDate >= weekAgo) return "This Week";
+  if (itemDate >= monthAgo) return "This Month";
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+function getScoreColor(score: number) {
+  return score <= 30
+    ? Colors.scoreRed
+    : score <= 60
+      ? Colors.scoreAmber
+      : Colors.scoreGreen;
+}
+
+function getScoreBgColor(score: number) {
+  if (score <= 30) return "#FFEBEE";
+  if (score <= 60) return "#FFF3E0";
+  return "#E8F5E9";
+}
 
 function SkeletonPulse({ children }: { children: React.ReactNode }) {
   const opacity = useSharedValue(0.3);
@@ -89,15 +123,20 @@ function SkeletonHistoryCard() {
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const color =
-    score <= 30
-      ? Colors.scoreRed
-      : score <= 60
-        ? Colors.scoreAmber
-        : Colors.scoreGreen;
+  const color = getScoreColor(score);
+  const bgColor = getScoreBgColor(score);
   return (
-    <View style={[styles.scoreBadge, { backgroundColor: color }]}>
-      <Text style={styles.scoreBadgeText}>{score}</Text>
+    <View
+      style={[
+        styles.scoreBadge,
+        {
+          backgroundColor: bgColor,
+          borderWidth: 1,
+          borderColor: color + "33",
+        },
+      ]}
+    >
+      <Text style={[styles.scoreBadgeText, { color }]}>{score}</Text>
     </View>
   );
 }
@@ -107,11 +146,15 @@ function HistoryItem({
   index,
   onPress,
   onDelete,
+  showSectionHeader,
+  sectionTitle,
 }: {
   item: any;
   index: number;
   onPress: () => void;
   onDelete: () => void;
+  showSectionHeader: boolean;
+  sectionTitle: string;
 }) {
   const date = new Date(item.createdAt);
   const dateStr = date.toLocaleDateString(undefined, {
@@ -125,6 +168,9 @@ function HistoryItem({
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 40).duration(300)}>
+      {showSectionHeader && (
+        <Text style={styles.sectionDate}>{sectionTitle}</Text>
+      )}
       <TouchableOpacity
         style={styles.historyCard}
         onPress={onPress}
@@ -256,19 +302,28 @@ export default function HistoryScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item, index }) => (
-          <HistoryItem
-            item={item}
-            index={index}
-            onPress={() =>
-              router.push({
-                pathname: "/result",
-                params: { historyId: item.id },
-              })
-            }
-            onDelete={() => deleteMutation.mutate(item.id)}
-          />
-        )}
+        renderItem={({ item, index }) => {
+          const currentGroup = getDateGroup(item.createdAt);
+          const prevItem = index > 0 ? history[index - 1] : null;
+          const prevGroup = prevItem ? getDateGroup(prevItem.createdAt) : null;
+          const showSectionHeader = currentGroup !== prevGroup;
+
+          return (
+            <HistoryItem
+              item={item}
+              index={index}
+              onPress={() =>
+                router.push({
+                  pathname: "/result",
+                  params: { historyId: item.id },
+                })
+              }
+              onDelete={() => deleteMutation.mutate(item.id)}
+              showSectionHeader={showSectionHeader}
+              sectionTitle={currentGroup}
+            />
+          );
+        }}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingTop: 8,
@@ -278,7 +333,9 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           !historyQuery.isLoading ? (
             <View style={styles.emptyState}>
-              <Ionicons name="time-outline" size={44} color={Colors.lightGray} />
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="time-outline" size={44} color={Colors.primary} />
+              </View>
               <Text style={styles.emptyTitle}>No Scan History</Text>
               <Text style={styles.emptyText}>
                 Products you check will appear here with their scores
@@ -294,14 +351,17 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.screenBg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 12,
     backgroundColor: Colors.white,
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.lightGray,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
   headerTitle: {
     fontSize: 28,
@@ -315,10 +375,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     height: 40,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     borderRadius: 12,
     gap: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
   },
   searchInput: {
     flex: 1,
@@ -333,10 +395,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+    ...cardShadow("subtle"),
   },
   sortChipActive: {
     backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   sortChipText: {
     fontSize: 13,
@@ -346,14 +412,25 @@ const styles = StyleSheet.create({
   sortChipTextActive: {
     color: Colors.white,
   },
+  sectionDate: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.mediumGray,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
   historyCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: Colors.white,
     borderRadius: 14,
     marginBottom: 8,
     gap: 12,
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
+    ...cardShadow("subtle"),
   },
   scoreBadge: {
     width: 44,
@@ -365,7 +442,6 @@ const styles = StyleSheet.create({
   scoreBadgeText: {
     fontSize: 16,
     fontWeight: "800",
-    color: Colors.white,
   },
   historyName: {
     fontSize: 15,
@@ -387,6 +463,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 80,
     gap: 10,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primaryPale,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyTitle: {
     fontSize: 18,

@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors from "@/constants/colors";
+import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -206,6 +206,7 @@ function ProductCard({
         onPress={onPress}
         activeOpacity={0.7}
       >
+        <View style={styles.productAccentLine} />
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={1}>
             {item.name}
@@ -308,6 +309,34 @@ function ScanProgressBar({ used, total }: { used: number; total: number }) {
   );
 }
 
+function ScanButtonWithGlow({ onPress }: { onPress: () => void }) {
+  const glowOpacity = useSharedValue(0.2);
+
+  useEffect(() => {
+    glowOpacity.value = withRepeat(
+      withTiming(0.45, { duration: 1500 }),
+      -1,
+      true
+    );
+  }, []);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    ...coloredShadow(Colors.primary, "medium"),
+    shadowOpacity: glowOpacity.value,
+  }));
+
+  return (
+    <Animated.View style={[styles.scanButtonGlowWrap, glowStyle]}>
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={onPress}
+      >
+        <Ionicons name="scan" size={22} color={Colors.white} />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -385,7 +414,9 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <>
             <LinearGradient
-              colors={[Colors.primaryPale, "#F6F8F6"]}
+              colors={["#E8F5E9", "#F1F8F1", "#F6F8F6"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
               style={[
                 styles.headerGradient,
                 { paddingTop: (insets.top || webTopInset) + 16 },
@@ -407,12 +438,7 @@ export default function HomeScreen() {
                     </View>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={styles.scanButton}
-                  onPress={handleScanPress}
-                >
-                  <Ionicons name="scan" size={22} color={Colors.white} />
-                </TouchableOpacity>
+                <ScanButtonWithGlow onPress={handleScanPress} />
               </View>
             </LinearGradient>
 
@@ -436,10 +462,17 @@ export default function HomeScreen() {
                 <Text style={styles.welcomeSubtitle}>
                   Scan your first product to get a personalized health score based on your profile.
                 </Text>
-                <TouchableOpacity style={styles.welcomeBtn} onPress={handleScanPress} activeOpacity={0.8}>
-                  <Ionicons name="scan" size={20} color={Colors.white} />
-                  <Text style={styles.welcomeBtnText}>Scan a Product</Text>
-                </TouchableOpacity>
+                <LinearGradient
+                  colors={["#2E7D32", "#388E3C"]}
+                  style={styles.welcomeBtnGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <TouchableOpacity style={styles.welcomeBtn} onPress={handleScanPress} activeOpacity={0.8}>
+                    <Ionicons name="scan" size={20} color={Colors.white} />
+                    <Text style={styles.welcomeBtnText}>Scan a Product</Text>
+                  </TouchableOpacity>
+                </LinearGradient>
               </Animated.View>
             )}
 
@@ -515,8 +548,9 @@ export default function HomeScreen() {
                   onPress={() => router.push("/contribute")}
                   activeOpacity={0.7}
                 >
+                  <View style={styles.contributeAccentLine} />
                   <View style={styles.contributeIconWrap}>
-                    <Ionicons name="add" size={20} color={Colors.primary} />
+                    <Ionicons name="add" size={20} color="#FF8A65" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.contributeTitle}>Know a product we don't have?</Text>
@@ -547,7 +581,7 @@ function getGreeting() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F8F6",
+    backgroundColor: Colors.screenBg,
   },
   headerGradient: {
     paddingHorizontal: 20,
@@ -598,6 +632,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.primary,
   },
+  scanButtonGlowWrap: {
+    borderRadius: 26,
+  },
   scanButton: {
     width: 52,
     height: 52,
@@ -605,21 +642,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: { elevation: 4 },
-      web: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-    }),
   },
   insightCard: {
     flexDirection: "row",
@@ -630,22 +652,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    backgroundColor: "#F8FBF8",
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+    ...cardShadow("subtle"),
   },
   insightText: {
     fontSize: 13,
@@ -679,21 +689,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: Colors.white,
     padding: 6,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    ...cardShadow("medium"),
   },
   productCard: {
     flexDirection: "row",
@@ -703,21 +699,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 8,
     gap: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    ...cardShadow("subtle"),
+  },
+  productAccentLine: {
+    width: 3,
+    height: "70%" as any,
+    borderRadius: 1.5,
+    backgroundColor: Colors.primaryPale,
   },
   productInfo: {
     flex: 1,
@@ -809,6 +797,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
   },
   scoreBadgeText: {
     fontSize: 16,
@@ -827,21 +817,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: Colors.white,
     alignItems: "center" as const,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-      android: { elevation: 2 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      },
-    }),
+    ...cardShadow("medium"),
   },
   welcomeIconWrap: {
     width: 64,
@@ -867,6 +843,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     maxWidth: 260,
   },
+  welcomeBtnGradient: {
+    borderRadius: 16,
+  },
   welcomeBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -875,7 +854,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
   },
   welcomeBtnText: {
     fontSize: 16,
@@ -891,27 +869,19 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     backgroundColor: Colors.white,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: { elevation: 1 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-    }),
+    ...cardShadow("subtle"),
+  },
+  contributeAccentLine: {
+    width: 3,
+    height: "70%" as any,
+    borderRadius: 1.5,
+    backgroundColor: Colors.primary,
   },
   contributeIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: "#FFF3E0",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },

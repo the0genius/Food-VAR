@@ -20,7 +20,7 @@ export default function TabLayout() {
     return <View style={{ flex: 1, backgroundColor: Colors.white }} />;
   }
 
-  const tabBarHeight = Platform.OS === "web" ? 84 : 88;
+  const tabBarHeight = Platform.OS === "web" ? 84 : 70;
 
   return (
     <Tabs
@@ -28,19 +28,39 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.light.tabIconDefault,
+        tabBarShowLabel: false,
         tabBarStyle: {
           height: tabBarHeight,
-          paddingTop: 6,
-          borderTopWidth: 0.5,
-          borderTopColor: Colors.lightGray,
+          position: "absolute",
+          bottom: 12,
+          marginHorizontal: 16,
+          left: 0,
+          right: 0,
+          borderRadius: 24,
           backgroundColor: Colors.white,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginTop: 2,
+          borderWidth: 0.5,
+          borderColor: "rgba(0,0,0,0.04)",
+          ...Platform.select({
+            ios: {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.08,
+              shadowRadius: 16,
+            },
+            android: {
+              elevation: 8,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.08,
+              shadowRadius: 16,
+            },
+            web: {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.08,
+              shadowRadius: 16,
+            },
+          }),
         },
       }}
     >
@@ -59,7 +79,7 @@ export default function TabLayout() {
           title: "Scan",
           tabBarIcon: ({ color, size }) => (
             <View style={styles.scanIconWrap}>
-              <Ionicons name="scan" size={size + 4} color={Colors.white} />
+              <Ionicons name="scan" size={size} color={Colors.white} />
             </View>
           ),
         }}
@@ -88,12 +108,33 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   scanIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -8,
+    marginTop: -20,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#2E7D32",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+        shadowColor: "#2E7D32",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+      },
+      web: {
+        shadowColor: "#2E7D32",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+      },
+    }),
   },
 });
