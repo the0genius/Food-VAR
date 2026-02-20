@@ -46,72 +46,37 @@ interface ScoreData {
   product: any;
 }
 
-const GAUGE_SIZE = 200;
+const GAUGE_SIZE = 180;
 const STROKE_WIDTH = 10;
 const RADIUS = (GAUGE_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-const CATEGORY_ICONS: Record<string, { icon: string; color: string; bg: string }> = {
-  snacks: { icon: "cafe-outline", color: "#E65100", bg: "#FFF3E0" },
-  beverages: { icon: "water-outline", color: "#0277BD", bg: "#E1F5FE" },
-  drinks: { icon: "water-outline", color: "#0277BD", bg: "#E1F5FE" },
-  dairy: { icon: "snow-outline", color: "#6A1B9A", bg: "#F3E5F5" },
-  bakery: { icon: "pizza-outline", color: "#BF360C", bg: "#FBE9E7" },
-  breakfast: { icon: "sunny-outline", color: "#F9A825", bg: "#FFFDE7" },
-  cereal: { icon: "sunny-outline", color: "#F9A825", bg: "#FFFDE7" },
-  grains: { icon: "leaf-outline", color: "#558B2F", bg: "#F1F8E9" },
-  meat: { icon: "flame-outline", color: "#C62828", bg: "#FFEBEE" },
-  seafood: { icon: "fish-outline", color: "#00838F", bg: "#E0F7FA" },
-  fruits: { icon: "nutrition-outline", color: "#AD1457", bg: "#FCE4EC" },
-  vegetables: { icon: "leaf-outline", color: "#2E7D32", bg: "#E8F5E9" },
-  frozen: { icon: "snow-outline", color: "#1565C0", bg: "#E3F2FD" },
-  condiments: { icon: "color-fill-outline", color: "#EF6C00", bg: "#FFF3E0" },
-  sauces: { icon: "color-fill-outline", color: "#EF6C00", bg: "#FFF3E0" },
-  pasta: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
-  noodles: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
-  meals: { icon: "restaurant-outline", color: "#D84315", bg: "#FBE9E7" },
-  instant: { icon: "flash-outline", color: "#EF6C00", bg: "#FFF3E0" },
-  ready: { icon: "timer-outline", color: "#5D4037", bg: "#EFEBE9" },
-  candy: { icon: "heart-outline", color: "#C2185B", bg: "#FCE4EC" },
-  chocolate: { icon: "heart-outline", color: "#4E342E", bg: "#EFEBE9" },
-  supplements: { icon: "medkit-outline", color: "#00695C", bg: "#E0F2F1" },
-  health: { icon: "fitness-outline", color: "#00695C", bg: "#E0F2F1" },
-  spreads: { icon: "layers-outline", color: "#F57F17", bg: "#FFFDE7" },
-  oils: { icon: "water-outline", color: "#827717", bg: "#F9FBE7" },
-  soup: { icon: "cafe-outline", color: "#E65100", bg: "#FFF3E0" },
-  canned: { icon: "cube-outline", color: "#5D4037", bg: "#EFEBE9" },
-  deli: { icon: "cut-outline", color: "#C62828", bg: "#FFEBEE" },
-  default: { icon: "cube-outline", color: Colors.primary, bg: Colors.primaryPale },
-};
-
-function getCategoryConfig(category?: string): { icon: string; color: string; bg: string } {
-  if (!category) return CATEGORY_ICONS.default;
-  const key = category.toLowerCase().trim();
-  for (const [k, v] of Object.entries(CATEGORY_ICONS)) {
-    if (key.includes(k) || k.includes(key)) return v;
-  }
-  return CATEGORY_ICONS.default;
-}
 
 function getScoreColor(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return Colors.danger;
   if (score <= 30) return Colors.scoreRed;
   if (score <= 60) return Colors.scoreAmber;
-  return Colors.scoreGreen;
+  return Colors.primary;
 }
 
 function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
   if (isAllergenAlert) return ["#E53935", "#C62828"];
   if (score <= 30) return ["#EF5350", "#C62828"];
   if (score <= 60) return ["#FFA726", "#EF6C00"];
-  return ["#66BB6A", "#2E7D32"];
+  return [Colors.primaryLight, Colors.primary];
 }
 
 function getScoreColorLight(score: number, isAllergenAlert: boolean): string {
   if (isAllergenAlert) return "#FFEBEE";
   if (score <= 30) return "#FFF0F0";
   if (score <= 60) return "#FFF8F0";
-  return "#F0FFF0";
+  return Colors.primaryPale;
+}
+
+function getScoreBg(score: number, isAllergenAlert: boolean): string {
+  if (isAllergenAlert) return "#FFF5F5";
+  if (score <= 30) return "#FFF8F8";
+  if (score <= 60) return "#FFFBF5";
+  return "#F0F9F0";
 }
 
 function getPersonalizedHeadline(score: number, label: string, headline: string, isAllergenAlert: boolean, adviceText?: string): string {
@@ -173,6 +138,8 @@ function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" 
     "very low", "minimal", "moderate sugar", "moderate sodium", "moderate fat",
     "source of", "plenty", "balanced", "reasonable",
     "not too high", "within range", "good fiber", "adequate",
+    "plant based", "plant-based", "whole grain", "whole-grain",
+    "heart healthy", "heart-healthy",
   ];
   if (positivePatterns.some(w => lower.includes(w))) return "positive";
 
@@ -190,10 +157,41 @@ function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" 
   return "neutral";
 }
 
-function getHighlightStyle(severity: "warning" | "neutral" | "positive"): { bg: string; color: string; icon: string } {
-  if (severity === "warning") return { bg: "#FFF3E0", color: "#E65100", icon: "alert-circle" };
-  if (severity === "positive") return { bg: "#E8F5E9", color: "#2E7D32", icon: "checkmark-circle" };
-  return { bg: "#F5F5F5", color: Colors.mediumGray, icon: "information-circle" };
+function getHighlightIcon(text: string, severity: "warning" | "neutral" | "positive"): string {
+  const lower = text.toLowerCase();
+  if (lower.includes("fiber")) return "leaf";
+  if (lower.includes("sodium") || lower.includes("salt")) return "heart";
+  if (lower.includes("sugar")) return "cafe";
+  if (lower.includes("protein")) return "barbell";
+  if (lower.includes("fat")) return "water";
+  if (lower.includes("calorie")) return "flame";
+  if (lower.includes("plant") || lower.includes("vegan") || lower.includes("vegetarian")) return "leaf";
+  if (lower.includes("vitamin") || lower.includes("mineral")) return "sparkles";
+  if (lower.includes("carb")) return "nutrition";
+  if (lower.includes("cholesterol")) return "heart";
+  if (severity === "positive") return "checkmark-circle";
+  if (severity === "warning") return "alert-circle";
+  return "information-circle";
+}
+
+function getHighlightColor(severity: "warning" | "neutral" | "positive"): { bg: string; color: string } {
+  if (severity === "warning") return { bg: "#FFF3E0", color: "#E65100" };
+  if (severity === "positive") return { bg: Colors.primaryPale, color: Colors.primary };
+  return { bg: "#F5F5F5", color: Colors.mediumGray };
+}
+
+function getHighlightSubtitle(text: string): string {
+  const lower = text.toLowerCase();
+  if (lower.includes("fiber")) return "Digestive health";
+  if (lower.includes("sodium") && (lower.includes("low") || lower.includes("good"))) return "Heart healthy";
+  if (lower.includes("sugar") && (lower.includes("low") || lower.includes("no") || lower.includes("zero"))) return "Blood sugar friendly";
+  if (lower.includes("sugar") && (lower.includes("high") || lower.includes("added"))) return "Watch intake";
+  if (lower.includes("protein") && (lower.includes("high") || lower.includes("good"))) return "Muscle support";
+  if (lower.includes("fat") && (lower.includes("low") || lower.includes("good"))) return "Heart friendly";
+  if (lower.includes("plant") || lower.includes("vegan")) return "100% Plant based";
+  if (lower.includes("calorie") && lower.includes("low")) return "Light choice";
+  if (lower.includes("vitamin") || lower.includes("mineral")) return "Essential nutrients";
+  return "";
 }
 
 const DAILY_VALUES: Record<string, number> = {
@@ -215,6 +213,42 @@ function formatNutrientValue(value: number | null): string {
   return s.endsWith(".0") ? s.slice(0, -2) : s;
 }
 
+const NUTRITION_LABEL_MAP: Record<string, { label: string; unit: string }> = {
+  transFat: { label: "Trans Fat", unit: "g" },
+  cholesterol: { label: "Cholesterol", unit: "mg" },
+  potassium: { label: "Potassium", unit: "mg" },
+  calcium: { label: "Calcium", unit: "mg" },
+  iron: { label: "Iron", unit: "mg" },
+  vitaminA: { label: "Vitamin A", unit: "mcg" },
+  vitaminC: { label: "Vitamin C", unit: "mg" },
+  vitaminD: { label: "Vitamin D", unit: "mcg" },
+  vitaminB12: { label: "Vitamin B12", unit: "mcg" },
+  vitaminB6: { label: "Vitamin B6", unit: "mg" },
+  addedSugars: { label: "Added Sugars", unit: "g" },
+  sugarAlcohols: { label: "Sugar Alcohols", unit: "g" },
+  magnesium: { label: "Magnesium", unit: "mg" },
+  zinc: { label: "Zinc", unit: "mg" },
+  folate: { label: "Folate", unit: "mcg" },
+  phosphorus: { label: "Phosphorus", unit: "mg" },
+};
+
+function formatNutrientKey(key: string): string {
+  const mapped = NUTRITION_LABEL_MAP[key];
+  if (mapped) return mapped.label;
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .replace(/Pct$/, " %")
+    .trim();
+}
+
+function getNutrientUnit(key: string): string {
+  const mapped = NUTRITION_LABEL_MAP[key];
+  if (mapped) return mapped.unit;
+  if (key.endsWith("Pct")) return "%";
+  return "";
+}
+
 function ScoreRing({
   score,
   isAllergenAlert,
@@ -228,7 +262,6 @@ function ScoreRing({
 
   const [gradientColors] = useState(getScoreGradient(score, isAllergenAlert));
   const scoreColor = getScoreColor(score, isAllergenAlert);
-  const bgCircleColor = getScoreColorLight(score, isAllergenAlert);
 
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 400 });
@@ -278,10 +311,7 @@ function ScoreRing({
 
   return (
     <Animated.View style={[ringStyles.container, containerStyle]}>
-      <View style={[ringStyles.glowOuter, { backgroundColor: scoreColor + "10", shadowColor: scoreColor }]} />
-      <View style={[ringStyles.glowInner, { backgroundColor: scoreColor + "08" }]} />
-
-      <Svg width={GAUGE_SIZE} height={GAUGE_SIZE} style={ringStyles.svg}>
+      <Svg width={GAUGE_SIZE} height={GAUGE_SIZE}>
         <Defs>
           <SvgGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={gradientColors[0]} />
@@ -292,7 +322,7 @@ function ScoreRing({
           cx={GAUGE_SIZE / 2}
           cy={GAUGE_SIZE / 2}
           r={RADIUS}
-          stroke={scoreColor + "15"}
+          stroke={scoreColor + "18"}
           strokeWidth={STROKE_WIDTH}
           fill="none"
         />
@@ -301,7 +331,7 @@ function ScoreRing({
           cy={GAUGE_SIZE / 2}
           r={RADIUS}
           stroke="url(#scoreGrad)"
-          strokeWidth={STROKE_WIDTH + 2}
+          strokeWidth={STROKE_WIDTH + 1}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${CIRCUMFERENCE}`}
@@ -314,8 +344,8 @@ function ScoreRing({
         <Text style={[ringStyles.scoreNumber, { color: scoreColor }]}>
           {displayedNumber}
         </Text>
-        <Text style={[ringStyles.scoreLabel, { color: scoreColor + "90" }]}>
-          {score <= 30 ? "poor" : score <= 60 ? "fair" : score <= 80 ? "good" : "great"}
+        <Text style={[ringStyles.scoreLabel, { color: scoreColor }]}>
+          {score <= 30 ? "POOR" : score <= 60 ? "FAIR" : score <= 80 ? "GOOD" : "GREAT"}
         </Text>
       </View>
     </Animated.View>
@@ -326,33 +356,8 @@ const ringStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
-  },
-  glowOuter: {
-    position: "absolute",
-    width: GAUGE_SIZE + 60,
-    height: GAUGE_SIZE + 60,
-    borderRadius: (GAUGE_SIZE + 60) / 2,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 40,
-      },
-      android: { elevation: 0 },
-      web: {
-        boxShadow: "0 0 40px rgba(0,0,0,0.05)",
-      } as any,
-    }),
-  },
-  glowInner: {
-    position: "absolute",
-    width: GAUGE_SIZE + 20,
-    height: GAUGE_SIZE + 20,
-    borderRadius: (GAUGE_SIZE + 20) / 2,
-  },
-  svg: {
-    transform: [{ rotate: "0deg" }],
+    marginTop: 8,
+    marginBottom: 4,
   },
   scoreCenter: {
     position: "absolute",
@@ -360,112 +365,71 @@ const ringStyles = StyleSheet.create({
     justifyContent: "center",
   },
   scoreNumber: {
-    fontSize: 56,
+    fontSize: 52,
     fontWeight: "800" as const,
-    letterSpacing: -3,
+    letterSpacing: -2,
   },
   scoreLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700" as const,
     marginTop: -2,
-    letterSpacing: 2,
-    textTransform: "uppercase" as const,
+    letterSpacing: 3,
   },
 });
-
-const NUTRITION_LABEL_MAP: Record<string, { label: string; unit: string }> = {
-  transFat: { label: "Trans Fat", unit: "g" },
-  cholesterol: { label: "Cholesterol", unit: "mg" },
-  potassium: { label: "Potassium", unit: "mg" },
-  calcium: { label: "Calcium", unit: "mg" },
-  iron: { label: "Iron", unit: "mg" },
-  vitaminA: { label: "Vitamin A", unit: "mcg" },
-  vitaminC: { label: "Vitamin C", unit: "mg" },
-  vitaminD: { label: "Vitamin D", unit: "mcg" },
-  vitaminB12: { label: "Vitamin B12", unit: "mcg" },
-  vitaminB6: { label: "Vitamin B6", unit: "mg" },
-  addedSugars: { label: "Added Sugars", unit: "g" },
-  sugarAlcohols: { label: "Sugar Alcohols", unit: "g" },
-  magnesium: { label: "Magnesium", unit: "mg" },
-  zinc: { label: "Zinc", unit: "mg" },
-  folate: { label: "Folate", unit: "mcg" },
-  phosphorus: { label: "Phosphorus", unit: "mg" },
-};
-
-function formatNutrientKey(key: string): string {
-  const mapped = NUTRITION_LABEL_MAP[key];
-  if (mapped) return mapped.label;
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .replace(/Pct$/, " %")
-    .trim();
-}
-
-function getNutrientUnit(key: string): string {
-  const mapped = NUTRITION_LABEL_MAP[key];
-  if (mapped) return mapped.unit;
-  if (key.endsWith("Pct")) return "%";
-  return "";
-}
 
 function NutrientRow({
   label,
   value,
   unit,
   index,
-  dailyValueKey,
+  isIndented,
 }: {
   label: string;
   value: number | null;
   unit: string;
   index: number;
-  dailyValueKey?: string;
+  isIndented?: boolean;
 }) {
   if (value === null || value === undefined) return null;
 
-  const dvKey = dailyValueKey || label.toLowerCase().replace(/\s/g, "").replace("sat.fat", "saturatedFat");
-  const dailyValue = DAILY_VALUES[dvKey];
-  const dvPercent = dailyValue ? Math.min((value / dailyValue) * 100, 100) : 0;
-  const dvColor = dvPercent > 75 ? Colors.scoreRed : dvPercent > 40 ? Colors.scoreAmber : Colors.scoreGreen;
-
-  const hasDV = !!dailyValue;
-  const fillBar = hasDV && dvPercent >= 1;
-
   return (
-    <Animated.View
-      entering={FadeInDown.delay(600 + index * 60).duration(300)}
-      style={styles.nutrientRow}
-    >
-      <View style={styles.nutrientLeft}>
-        <Text style={styles.nutrientLabel}>{label}</Text>
-        {hasDV ? (
-          <View style={styles.nutrientBarTrack}>
-            {fillBar ? (
-              <View
-                style={[
-                  styles.nutrientBarFill,
-                  { width: `${Math.max(dvPercent, 6)}%`, backgroundColor: dvColor },
-                ]}
-              />
-            ) : null}
-          </View>
-        ) : null}
-      </View>
-      <Text style={[styles.nutrientValue, fillBar && dvPercent > 50 ? { color: dvColor } : null]}>
+    <View style={[styles.nutrientRow, isIndented && styles.nutrientRowIndented]}>
+      <Text style={[styles.nutrientLabel, isIndented && styles.nutrientLabelIndented]}>
+        {label}
+      </Text>
+      <Text style={styles.nutrientValue}>
         {formatNutrientValue(value)}
         <Text style={styles.nutrientUnit}>{unit}</Text>
       </Text>
-    </Animated.View>
+    </View>
   );
 }
 
-function CategoryIcon({ category }: { category?: string }) {
-  const config = getCategoryConfig(category);
+function HighlightCard({ text, index }: { text: string; index: number }) {
+  const severity = getHighlightSeverity(text);
+  const colors = getHighlightColor(severity);
+  const icon = getHighlightIcon(text, severity);
+  const subtitle = getHighlightSubtitle(text);
+
+  const shortTitle = text.length > 30 ? text.substring(0, 28) + "…" : text;
+
   return (
-    <View style={[styles.categoryIconWrap, { backgroundColor: config.bg }]}>
-      <Ionicons name={config.icon as any} size={28} color={config.color} />
-    </View>
+    <Animated.View
+      entering={FadeInDown.delay(400 + index * 80).duration(300)}
+      style={[styles.highlightCard, { backgroundColor: colors.bg }]}
+    >
+      <View style={[styles.highlightIconWrap, { backgroundColor: colors.color + "18" }]}>
+        <Ionicons name={icon as any} size={18} color={colors.color} />
+      </View>
+      <Text style={[styles.highlightTitle, { color: Colors.charcoal }]} numberOfLines={2}>
+        {shortTitle}
+      </Text>
+      {subtitle ? (
+        <Text style={[styles.highlightSubtitle, { color: colors.color }]}>
+          {subtitle}
+        </Text>
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -484,6 +448,7 @@ export default function ResultScreen() {
   const [error, setError] = useState("");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [reAnalyzed, setReAnalyzed] = useState(false);
+  const [showFullNutrition, setShowFullNutrition] = useState(false);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -602,7 +567,7 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color={Colors.charcoal} />
+            <Ionicons name="close" size={22} color={Colors.charcoal} />
           </TouchableOpacity>
         </View>
         <View style={styles.limitCard}>
@@ -634,7 +599,7 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Ionicons name="close" size={24} color={Colors.charcoal} />
+            <Ionicons name="close" size={22} color={Colors.charcoal} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorState}>
@@ -656,7 +621,10 @@ export default function ResultScreen() {
   const product = data.product;
   const scoreColor = getScoreColor(data.score, data.isAllergenAlert);
   const headlineText = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert, data.advice);
-  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText, data.advice);
+
+  const hasAdditionalNutrition = product.nutritionFacts && Object.keys(product.nutritionFacts).filter(
+    (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
+  ).length > 0;
 
   return (
     <View style={styles.container}>
@@ -673,7 +641,7 @@ export default function ResultScreen() {
 
       <ScrollView
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 40,
+          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -682,7 +650,7 @@ export default function ResultScreen() {
             entering={FadeIn.duration(400)}
             style={styles.allergenBanner}
           >
-            <Ionicons name="warning" size={24} color={Colors.white} />
+            <Ionicons name="warning" size={22} color={Colors.white} />
             <View style={{ flex: 1 }}>
               <Text style={styles.allergenTitle}>Allergen Alert</Text>
               <Text style={styles.allergenText}>
@@ -697,65 +665,43 @@ export default function ResultScreen() {
             entering={FadeIn.duration(400)}
             style={styles.reAnalyzedBanner}
           >
-            <Ionicons name="refresh-circle" size={20} color={Colors.primary} />
+            <Ionicons name="refresh-circle" size={18} color={Colors.primary} />
             <Text style={styles.reAnalyzedText}>
               Updated for your latest health profile
             </Text>
           </Animated.View>
         )}
 
-        <LinearGradient
-          colors={[getScoreColorLight(data.score, data.isAllergenAlert), "#F6F8F600"]}
-          style={styles.heroGradient}
-        >
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.productHeader}>
-            <CategoryIcon category={product.category} />
-            <Text style={styles.productName}>{product.name}</Text>
-            <Text style={styles.productBrand}>
-              {product.brand || "Unknown Brand"}
-              {product.category ? ` · ${product.category}` : ""}
-            </Text>
-          </Animated.View>
-
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.scoreSection}>
           <ScoreRing
             score={data.score}
             isAllergenAlert={data.isAllergenAlert}
           />
 
-          <Animated.View
-            entering={FadeInDown.delay(200).duration(400)}
-            style={styles.headlineWrap}
-          >
-            <View style={[styles.headlinePill, { backgroundColor: scoreColor + "14", borderColor: scoreColor + "35" }]}>
-              <Ionicons
-                name={data.score > 60 ? "checkmark-circle" : data.score > 30 ? "alert-circle" : "close-circle"}
-                size={18}
-                color={headlineColor}
-              />
-              <Text style={[styles.headlineText, { color: headlineColor }]}>
-                {headlineText}
-              </Text>
-            </View>
-          </Animated.View>
-        </LinearGradient>
+          <Text style={styles.headlineText}>{headlineText}</Text>
+          <Text style={styles.productInfoText}>
+            {product.name}
+            {product.brand ? ` · ${product.brand}` : ""}
+            {product.servingSize ? ` · ${product.servingSize}` : ""}
+          </Text>
+        </Animated.View>
 
         {data.advice ? (
           <Animated.View
-            entering={FadeInDown.delay(350).duration(400)}
-            style={[styles.adviceCard, { borderLeftColor: scoreColor + "40" }]}
+            entering={FadeInDown.delay(250).duration(400)}
+            style={[styles.adviceCard, { backgroundColor: getScoreBg(data.score, data.isAllergenAlert) }]}
           >
             <View style={styles.adviceTitleRow}>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.primary} />
-              <Text style={styles.adviceTitleText}>What this means for you</Text>
+              <Ionicons name="sparkles" size={16} color={scoreColor} />
+              <Text style={[styles.adviceTitleText, { color: scoreColor }]}>
+                WHAT THIS MEANS FOR YOU
+              </Text>
             </View>
             <Text style={styles.adviceText}>{data.advice}</Text>
 
             {data.coachTip ? (
-              <View style={[styles.coachTipCard, { backgroundColor: getScoreColorLight(data.score, data.isAllergenAlert), borderColor: scoreColor + "20" }]}>
-                <View style={styles.coachTipHeader}>
-                  <Ionicons name="bulb-outline" size={15} color={scoreColor} />
-                  <Text style={[styles.coachTipLabel, { color: scoreColor }]}>Quick tip</Text>
-                </View>
+              <View style={styles.coachTipRow}>
+                <Ionicons name="bulb-outline" size={14} color={scoreColor} />
                 <Text style={styles.coachTipText}>{data.coachTip}</Text>
               </View>
             ) : null}
@@ -764,85 +710,78 @@ export default function ResultScreen() {
 
         {data.highlights && data.highlights.length > 0 && (
           <Animated.View
-            entering={FadeInDown.delay(450).duration(400)}
-            style={styles.highlightsCard}
+            entering={FadeInDown.delay(350).duration(400)}
+            style={styles.highlightsSection}
           >
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="flag-outline" size={15} color={Colors.primary} />
-              <Text style={styles.sectionTitleText}>Key Highlights</Text>
+            <Text style={styles.sectionTitle}>Key Highlights</Text>
+            <View style={styles.highlightsGrid}>
+              {data.highlights.map((h: string, i: number) => (
+                <HighlightCard key={i} text={h} index={i} />
+              ))}
             </View>
-            {data.highlights.map((h: string, i: number) => {
-              const severity = getHighlightSeverity(h);
-              const hs = getHighlightStyle(severity);
-              return (
-                <View key={i} style={[styles.highlightRow, i < data.highlights.length - 1 && styles.highlightRowBorder]}>
-                  <View style={[styles.highlightIconWrap, { backgroundColor: hs.bg }]}>
-                    <Ionicons name={hs.icon as any} size={14} color={hs.color} />
-                  </View>
-                  <Text style={[styles.highlightText, { color: hs.color }]}>{h}</Text>
-                </View>
-              );
-            })}
           </Animated.View>
         )}
 
         <Animated.View
-          entering={FadeInDown.delay(500).duration(400)}
-          style={styles.nutritionCard}
+          entering={FadeInDown.delay(450).duration(400)}
+          style={styles.nutritionSection}
         >
-          <View style={styles.nutritionTitleRow}>
-            <View style={styles.sectionTitleRow}>
-              <Ionicons name="nutrition-outline" size={15} color={Colors.primary} />
-              <Text style={styles.sectionTitleText}>Nutrition Facts</Text>
-            </View>
-            {product.servingSize ? (
-              <Text style={styles.servingSizeLabel}>per {product.servingSize}</Text>
-            ) : null}
+          <Text style={styles.sectionTitle}>Nutrition Facts</Text>
+          {product.servingSize ? (
+            <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
+          ) : null}
+          <View style={styles.nutritionTable}>
+            <NutrientRow label="Calories" value={product.calories} unit="" index={0} />
+            <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} />
+            <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented />
+            <NutrientRow label="Cholesterol" value={product.nutritionFacts?.cholesterol ?? null} unit="mg" index={3} />
+            <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} />
+            <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} />
+            <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented />
+            <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented />
+            <NutrientRow label="Protein" value={product.protein} unit="g" index={8} />
           </View>
-          <View style={styles.nutritionGrid}>
-            <NutrientRow label="Calories" value={product.calories} unit="" index={0} dailyValueKey="calories" />
-            <NutrientRow label="Protein" value={product.protein} unit="g" index={1} dailyValueKey="protein" />
-            <NutrientRow label="Carbs" value={product.carbohydrates} unit="g" index={2} dailyValueKey="carbohydrates" />
-            <NutrientRow label="Sugar" value={product.sugar} unit="g" index={3} dailyValueKey="sugar" />
-            <NutrientRow label="Fat" value={product.fat} unit="g" index={4} dailyValueKey="fat" />
-            <NutrientRow label="Sat. Fat" value={product.saturatedFat} unit="g" index={5} dailyValueKey="saturatedFat" />
-            <NutrientRow label="Fiber" value={product.fiber} unit="g" index={6} dailyValueKey="fiber" />
-            <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={7} dailyValueKey="sodium" />
-          </View>
-        </Animated.View>
 
-        {product.nutritionFacts && Object.keys(product.nutritionFacts).filter(
-          (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
-        ).length > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(550).duration(400)}
-            style={styles.nutritionCard}
-          >
-            <Text style={styles.nutritionTitle}>Additional Nutrition</Text>
-            <View style={styles.nutritionGrid}>
-              {Object.entries(product.nutritionFacts)
-                .filter(([_, v]) => v !== null && v !== undefined && typeof v === "number")
-                .map(([key, val], i) => (
-                  <NutrientRow
-                    key={key}
-                    label={formatNutrientKey(key)}
-                    value={val as number}
-                    unit={getNutrientUnit(key)}
-                    index={i}
-                  />
-                ))}
-            </View>
-          </Animated.View>
-        )}
+          {hasAdditionalNutrition && (
+            <>
+              {showFullNutrition ? (
+                <View style={styles.nutritionTable}>
+                  {Object.entries(product.nutritionFacts)
+                    .filter(([k, v]) => v !== null && v !== undefined && typeof v === "number" && k !== "cholesterol")
+                    .map(([key, val], i) => (
+                      <NutrientRow
+                        key={key}
+                        label={formatNutrientKey(key)}
+                        value={val as number}
+                        unit={getNutrientUnit(key)}
+                        index={i}
+                      />
+                    ))}
+                </View>
+              ) : null}
+              <TouchableOpacity
+                style={styles.viewFullBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowFullNutrition(!showFullNutrition);
+                }}
+              >
+                <Text style={styles.viewFullBtnText}>
+                  {showFullNutrition ? "HIDE DETAILS" : "VIEW FULL LABEL"}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </Animated.View>
 
         {product.allergens && product.allergens.length > 0 && (
           <Animated.View
-            entering={FadeInDown.delay(600).duration(400)}
-            style={styles.allergensCard}
+            entering={FadeInDown.delay(500).duration(400)}
+            style={styles.allergensSection}
           >
-            <View style={styles.allergensHeader}>
+            <View style={styles.allergensSectionHeader}>
               <Ionicons name="warning-outline" size={16} color={Colors.danger} />
-              <Text style={styles.allergensTitle}>Allergens</Text>
+              <Text style={styles.allergensSectionTitle}>Allergens</Text>
             </View>
             <View style={styles.allergenChips}>
               {product.allergens.map((a: string, i: number) => (
@@ -856,18 +795,15 @@ export default function ResultScreen() {
 
         {product.ingredients ? (
           <Animated.View
-            entering={FadeInDown.delay(650).duration(400)}
-            style={styles.ingredientsCard}
+            entering={FadeInDown.delay(550).duration(400)}
+            style={styles.ingredientsSection}
           >
-            <View style={styles.ingredientsHeader}>
-              <Ionicons name="list-outline" size={16} color={Colors.primary} />
-              <Text style={styles.ingredientsTitle}>Ingredients</Text>
-            </View>
+            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ingredients</Text>
             <Text style={styles.ingredientsText}>{product.ingredients}</Text>
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.scanAnotherWrap}>
+        <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
           <TouchableOpacity
             style={styles.scanAnotherBtn}
             onPress={() => {
@@ -876,15 +812,8 @@ export default function ResultScreen() {
             }}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={[Colors.primary, "#1B5E20"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.scanAnotherGradient}
-            >
-              <Ionicons name="scan-outline" size={18} color={Colors.white} />
-              <Text style={styles.scanAnotherText}>Scan Another</Text>
-            </LinearGradient>
+            <Ionicons name="scan-outline" size={20} color={Colors.white} />
+            <Text style={styles.scanAnotherText}>Scan Another</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
@@ -895,7 +824,7 @@ export default function ResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: Colors.white,
   },
   centerContent: {
     justifyContent: "center",
@@ -905,29 +834,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   closeBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.white,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.06)",
-    ...cardShadow("medium"),
   },
   shareBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.white,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.06)",
-    ...cardShadow("medium"),
   },
   loadingText: {
     fontSize: 15,
@@ -1026,15 +947,12 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 8,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginHorizontal: 24,
+    marginBottom: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
     backgroundColor: Colors.primaryPale,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("subtle"),
   },
   reAnalyzedText: {
     fontSize: 13,
@@ -1046,101 +964,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
+    marginHorizontal: 24,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 16,
     backgroundColor: Colors.danger,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
   },
   allergenTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700" as const,
     color: Colors.white,
   },
   allergenText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.white,
     opacity: 0.9,
     marginTop: 2,
   },
-  heroGradient: {
-    paddingBottom: 8,
-    paddingTop: 8,
-  },
-  categoryIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginBottom: 10,
-    ...cardShadow("subtle"),
-  },
-  productHeader: {
+  scoreSection: {
     alignItems: "center",
     paddingHorizontal: 24,
-    marginBottom: 0,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
-  productName: {
+  headlineText: {
     fontSize: 24,
-    fontWeight: "800" as const,
+    fontWeight: "700" as const,
     color: Colors.charcoal,
     textAlign: "center",
     letterSpacing: -0.5,
-    marginTop: 2,
+    marginTop: 12,
   },
-  productBrand: {
-    fontSize: 13,
-    color: Colors.mediumGray,
-    marginTop: 4,
-    fontWeight: "500" as const,
-    letterSpacing: 0.2,
-  },
-  headlineWrap: {
-    alignItems: "center",
-    marginBottom: 20,
-    paddingHorizontal: 24,
-  },
-  headlinePill: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 7,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    ...cardShadow("subtle"),
-  },
-  headlineText: {
+  productInfoText: {
     fontSize: 14,
-    fontWeight: "700" as const,
+    color: Colors.mediumGray,
     textAlign: "center",
-    letterSpacing: -0.1,
-  },
-  sectionTitleRow: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 6,
-    marginBottom: 12,
-  },
-  sectionTitleText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.charcoal,
-    letterSpacing: -0.2,
+    marginTop: 6,
+    fontWeight: "400" as const,
   },
   adviceCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
+    marginHorizontal: 24,
+    marginBottom: 28,
     padding: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderLeftWidth: 3,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("medium"),
+    borderRadius: 16,
   },
   adviceTitleRow: {
     flexDirection: "row" as const,
@@ -1149,169 +1015,137 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   adviceTitleText: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.charcoal,
-    letterSpacing: -0.1,
+    fontSize: 11,
+    fontWeight: "800" as const,
+    letterSpacing: 1.2,
   },
   adviceText: {
     fontSize: 14,
-    color: "#444444",
+    color: Colors.charcoal,
     lineHeight: 22,
-    letterSpacing: -0.1,
   },
-  coachTipCard: {
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    ...cardShadow("subtle"),
-  },
-  coachTipHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  coachTipLabel: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    letterSpacing: 0.3,
-    textTransform: "uppercase" as const,
+  coachTipRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.08)",
   },
   coachTipText: {
     fontSize: 13,
-    color: "#444444",
+    color: Colors.charcoal,
     lineHeight: 20,
-  },
-  highlightsCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 16,
-    paddingTop: 16,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("medium"),
-  },
-  highlightRow: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 10,
-    paddingVertical: 12,
-  },
-  highlightRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEEEEE",
-  },
-  highlightIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-  },
-  highlightText: {
-    fontSize: 13,
-    fontWeight: "600" as const,
     flex: 1,
+    fontStyle: "italic" as const,
   },
-  nutritionCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("medium"),
-  },
-  nutritionTitleRow: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
-    alignItems: "center" as const,
-    marginBottom: 4,
-  },
-  servingSizeLabel: {
-    fontSize: 12,
-    color: Colors.mediumGray,
-    fontWeight: "500" as const,
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  nutritionTitle: {
-    fontSize: 15,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: "700" as const,
     color: Colors.charcoal,
-    marginBottom: 14,
+    letterSpacing: -0.3,
+    marginBottom: 16,
   },
-  nutritionGrid: {
-    gap: 0,
+  highlightsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 28,
+  },
+  highlightsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  highlightCard: {
+    width: "47%" as any,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 100,
+  },
+  highlightIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 10,
+  },
+  highlightTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    lineHeight: 18,
+    marginBottom: 3,
+  },
+  highlightSubtitle: {
+    fontSize: 12,
+    fontWeight: "500" as const,
+  },
+  nutritionSection: {
+    paddingHorizontal: 24,
+    marginBottom: 28,
+  },
+  servingLabel: {
+    fontSize: 13,
+    color: Colors.mediumGray,
+    marginTop: -10,
+    marginBottom: 12,
+  },
+  nutritionTable: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E8E8E8",
   },
   nutrientRow: {
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    paddingVertical: 13,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#E8E8E8",
   },
-  nutrientLeft: {
-    flex: 1,
-    gap: 5,
-    marginRight: 12,
+  nutrientRowIndented: {
+    paddingLeft: 16,
   },
   nutrientLabel: {
-    fontSize: 14,
-    color: "#555555",
+    fontSize: 15,
+    color: Colors.charcoal,
     fontWeight: "500" as const,
   },
-  nutrientBarTrack: {
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: "#EEEEEE",
-    overflow: "hidden" as const,
-  },
-  nutrientBarFill: {
-    height: 5,
-    borderRadius: 2.5,
+  nutrientLabelIndented: {
+    color: Colors.mediumGray,
+    fontWeight: "400" as const,
   },
   nutrientValue: {
     fontSize: 15,
     color: Colors.charcoal,
-    fontWeight: "700" as const,
-    minWidth: 36,
-    textAlign: "right" as const,
+    fontWeight: "500" as const,
   },
   nutrientUnit: {
-    fontSize: 12,
-    fontWeight: "500" as const,
+    fontSize: 15,
+    fontWeight: "400" as const,
     color: Colors.mediumGray,
   },
-  allergensCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 0.5,
-    borderColor: Colors.dangerPale,
-    ...cardShadow("medium"),
+  viewFullBtn: {
+    alignItems: "center" as const,
+    paddingVertical: 16,
   },
-  allergensHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  viewFullBtnText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+    letterSpacing: 0.8,
+  },
+  allergensSection: {
+    paddingHorizontal: 24,
+    marginBottom: 28,
+  },
+  allergensSectionHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  allergensTitle: {
-    fontSize: 14,
+  allergensSectionTitle: {
+    fontSize: 16,
     fontWeight: "700" as const,
     color: Colors.danger,
   },
@@ -1321,69 +1155,42 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   allergenChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
     backgroundColor: Colors.dangerPale,
-    borderWidth: 1,
-    borderColor: Colors.danger,
   },
   allergenChipText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600" as const,
     color: Colors.danger,
     textTransform: "capitalize" as const,
   },
-  ingredientsCard: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("medium"),
-  },
-  ingredientsHeader: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 6,
-    marginBottom: 10,
-  },
-  ingredientsTitle: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.primary,
+  ingredientsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 28,
   },
   ingredientsText: {
-    fontSize: 13,
-    color: Colors.charcoal,
-    lineHeight: 20,
+    fontSize: 14,
+    color: Colors.mediumGray,
+    lineHeight: 22,
   },
   scanAnotherWrap: {
-    paddingHorizontal: 40,
-    marginTop: 12,
-    marginBottom: 24,
-    alignItems: "center" as const,
+    paddingHorizontal: 24,
+    marginBottom: 8,
   },
   scanAnotherBtn: {
-    borderRadius: 24,
-    overflow: "hidden" as const,
-    ...coloredShadow(Colors.primary, "medium"),
-  },
-  scanAnotherGradient: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 24,
+    gap: 10,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    borderRadius: 28,
   },
   scanAnotherText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700" as const,
     color: Colors.white,
-    letterSpacing: 0.2,
   },
 });
