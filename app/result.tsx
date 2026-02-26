@@ -694,27 +694,19 @@ export default function ResultScreen() {
             </Text>
           </LinearGradient>
 
-          <View style={styles.allergenCenterContent}>
+          <View style={styles.allergenAlertCard}>
             <MotiView
               from={{ scale: 0.7 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring" as const, damping: 10, delay: 200 }}
-              style={styles.allergenIconWrap}
             >
-              <ShieldWarning size={90} color={C.danger} weight="fill" />
+              <ShieldWarning size={64} color={C.danger} weight="fill" />
             </MotiView>
 
             <Text style={styles.allergenAlertLabel}>ALLERGEN ALERT</Text>
             <Text style={styles.allergenContainsText}>
               Contains {data.matchedAllergens.join(", ")}
             </Text>
-            <Text style={styles.allergenNotSafe}>Not safe for you</Text>
-          </View>
-
-          <View style={styles.allergenScoreWrap}>
-            <View style={[styles.scoreRingContainer, { ...cardShadow("medium") }]}>
-              <ScoreRing score={data.score} isAllergenAlert={data.isAllergenAlert} />
-            </View>
           </View>
 
           <View style={styles.allergenProductInfo}>
@@ -754,24 +746,17 @@ export default function ResultScreen() {
           ) : null}
 
           <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
-            <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.scanAnotherGradient}
+            <TouchableOpacity
+              style={styles.allergenCta}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.replace("/(tabs)/scan");
+              }}
+              activeOpacity={0.85}
             >
-              <TouchableOpacity
-                style={styles.scanAnotherInner}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  router.replace("/(tabs)/scan");
-                }}
-                activeOpacity={0.85}
-              >
-                <Barcode size={20} color="white" weight="bold" />
-                <Text style={styles.scanAnotherText}>Scan Another</Text>
-              </TouchableOpacity>
-            </LinearGradient>
+              <Barcode size={20} color="white" weight="bold" />
+              <Text style={styles.scanAnotherText}>Scan Another</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -1441,12 +1426,16 @@ const styles = StyleSheet.create({
     color: "white",
     flex: 1,
   },
-  allergenCenterContent: {
+  allergenAlertCard: {
+    backgroundColor: C.card,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    padding: 24,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 24,
     alignItems: "center" as const,
-    paddingHorizontal: 20,
-  },
-  allergenIconWrap: {
-    marginTop: 40,
   },
   allergenAlertLabel: {
     fontSize: 13,
@@ -1462,16 +1451,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "center" as const,
   },
-  allergenNotSafe: {
-    fontSize: 15,
-    color: C.muted,
-    marginTop: 4,
-  },
-  allergenScoreWrap: {
-    marginTop: 24,
-  },
   allergenProductInfo: {
-    paddingHorizontal: 20,
-    marginTop: 16,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  allergenCta: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    paddingVertical: 15,
+    borderRadius: 999,
+    backgroundColor: C.text,
   },
 });
