@@ -46,9 +46,9 @@ interface ScoreData {
   product: any;
 }
 
-const GAUGE_SIZE = 200;
-const STROKE_WIDTH = 16;
-const GLOW_STROKE_WIDTH = 28;
+const GAUGE_SIZE = 240;
+const STROKE_WIDTH = 20;
+const GLOW_STROKE_WIDTH = 32;
 const RADIUS = (GAUGE_SIZE - GLOW_STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -323,7 +323,7 @@ function ScoreRing({
           stroke={scoreColor}
           strokeWidth={GLOW_STROKE_WIDTH}
           fill="none"
-          opacity={0.12}
+          opacity={0.2}
           strokeLinecap="round"
           strokeDasharray={`${CIRCUMFERENCE}`}
           strokeDashoffset={strokeDashoffset}
@@ -605,7 +605,7 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={22} color={C.text} />
+            <X size={24} color={C.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.limitCard}>
@@ -637,7 +637,7 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={22} color={C.text} />
+            <X size={24} color={C.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorState}>
@@ -670,10 +670,10 @@ export default function ResultScreen() {
       <View style={[styles.container, { backgroundColor: C.dangerBg }]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={22} color={C.text} />
+            <X size={24} color={C.text} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-            <ShareNetwork size={20} color={C.text} />
+            <ShareNetwork size={22} color={C.text} />
           </TouchableOpacity>
         </View>
 
@@ -783,10 +783,10 @@ export default function ResultScreen() {
         style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}
       >
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={22} color={C.text} />
+          <X size={24} color={C.text} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <ShareNetwork size={20} color={C.text} />
+          <ShareNetwork size={22} color={C.text} />
         </TouchableOpacity>
       </View>
 
@@ -1140,16 +1140,28 @@ const styles = StyleSheet.create({
   scoreRingContainer: {
     backgroundColor: C.card,
     borderRadius: 28,
-    padding: 28,
+    padding: 16,
     marginHorizontal: 20,
     marginTop: 16,
+    marginBottom: 24,
     alignItems: "center" as const,
     borderWidth: 0.5,
     borderColor: C.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   productInfoSection: {
-    paddingHorizontal: 20,
-    marginTop: 16,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    ...cardShadow("subtle"),
   },
   productName: {
     fontSize: 22,
@@ -1182,18 +1194,16 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: C.card,
-    borderWidth: 0.5,
-    borderColor: C.border,
+    backgroundColor: "#F0F0F0",
   },
   chipNeutralText: {
-    color: C.muted,
+    color: "#666666",
     fontSize: 12,
     fontWeight: "600" as const,
   },
   adviceCard: {
     marginHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 24,
     padding: 18,
     borderRadius: 20,
     backgroundColor: C.card,
@@ -1228,7 +1238,7 @@ const styles = StyleSheet.create({
   },
   adviceHeadline: {
     fontSize: 16,
-    fontWeight: "700" as const,
+    fontWeight: "800" as const,
     marginBottom: 8,
   },
   adviceText: {
@@ -1269,12 +1279,12 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: C.bg,
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   highlightDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 999,
     marginTop: 5,
   },
@@ -1293,7 +1303,7 @@ const styles = StyleSheet.create({
   },
   nutritionSection: {
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 24,
   },
   nutritionCard: {
     borderRadius: 20,
@@ -1321,7 +1331,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   nutrientRow: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 0.5,
     borderBottomColor: C.divider,
   },
@@ -1354,7 +1364,7 @@ const styles = StyleSheet.create({
   },
   allergensSection: {
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 24,
   },
   allergensSectionHeader: {
     flexDirection: "row" as const,
@@ -1376,17 +1386,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: C.dangerBg,
+    backgroundColor: "#FFEBEE",
+    borderWidth: 1,
+    borderColor: "#E53935",
   },
   allergenChipText: {
     fontSize: 13,
-    fontWeight: "600" as const,
-    color: C.danger,
+    fontWeight: "700" as const,
+    color: "#E53935",
     textTransform: "capitalize" as const,
   },
   ingredientsSection: {
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginBottom: 24,
   },
   ingredientsText: {
     fontSize: 14,
