@@ -1,56 +1,83 @@
 import { Platform } from "react-native";
 
+export const C = {
+  bg: '#F6F8F7',
+  card: '#FFFFFF',
+  tinted: '#E8F5E9',
+
+  primary: '#2E7D32',
+  mint: '#3DD68C',
+  teal: '#2EC4B6',
+
+  text: '#1B1B1B',
+  muted: '#666666',
+  placeholder: '#999999',
+
+  border: 'rgba(0,0,0,0.07)',
+  divider: '#F0F0F0',
+
+  danger: '#E53935',
+  dangerBg: '#FFEBEE',
+  darkRed: '#D32F2F',
+  amber: '#FB8C00',
+  amberBg: '#FFF3E0',
+  tealScore: '#2EC4B6',
+  tealBg: '#E0F7FA',
+  green: '#43A047',
+  greenBg: '#E8F5E9',
+};
+
 const Colors = {
-  primary: "#2E7D32",
+  primary: C.primary,
   primaryDark: "#1B5E20",
   primaryLight: "#66BB6A",
-  primaryPale: "#E8F5E9",
+  primaryPale: C.tinted,
   primaryMist: "#F1F8F1",
 
   accent: "#FF8A65",
   accentLight: "#FFCCBC",
   accentPale: "#FFF3E0",
 
-  white: "#FFFFFF",
+  white: C.card,
   softWhite: "#F5FAF5",
   warmWhite: "#FAFAF7",
-  charcoal: "#1B1B1B",
+  charcoal: C.text,
   darkGray: "#333333",
-  mediumGray: "#666666",
-  softGray: "#999999",
+  mediumGray: C.muted,
+  softGray: C.placeholder,
   lightGray: "#E0E0E0",
-  faintGray: "#F0F0F0",
+  faintGray: C.divider,
 
-  scoreRed: "#E53935",
-  scoreAmber: "#FB8C00",
-  scoreGreen: "#43A047",
-  danger: "#E53935",
-  dangerPale: "#FFEBEE",
+  scoreRed: C.danger,
+  scoreAmber: C.amber,
+  scoreGreen: C.green,
+  danger: C.danger,
+  dangerPale: C.dangerBg,
   info: "#1976D2",
   infoPale: "#E3F2FD",
 
-  cardBg: "#FFFFFF",
-  cardBgElevated: "#FFFFFF",
+  cardBg: C.card,
+  cardBgElevated: C.card,
   cardBgSubtle: "#F5FAF5",
-  screenBg: "#F6F8F7",
+  screenBg: C.bg,
 
   gradientGreen: ["#2E7D32", "#43A047", "#66BB6A"] as const,
   gradientGreenSoft: ["#EDF2EF", "#F1F5F3", "#F6F8F7"] as const,
   gradientHeader: ["#2E7D32", "#388E3C", "#43A047"] as const,
-  mintCTA: "#3DD68C",
-  mintTeal: "#2EC4B6",
+  mintCTA: C.mint,
+  mintTeal: C.teal,
   gradientCTA: ["#3DD68C", "#2EC4B6"] as const,
 
   light: {
-    text: "#1B1B1B",
-    textSecondary: "#666666",
-    background: "#F6F8F7",
+    text: C.text,
+    textSecondary: C.muted,
+    background: C.bg,
     backgroundSecondary: "#F5FAF5",
-    tint: "#2E7D32",
+    tint: C.primary,
     tabIconDefault: "#BDBDBD",
-    tabIconSelected: "#2E7D32",
+    tabIconSelected: C.primary,
     border: "#DCE8DC",
-    card: "#FFFFFF",
+    card: C.card,
   },
 };
 
@@ -97,6 +124,33 @@ export function coloredShadow(color: string, intensity: "subtle" | "medium" | "s
     android: { elevation: intensity === "subtle" ? 2 : intensity === "medium" ? 4 : 8 } as any,
     web: shadow,
   });
+}
+
+export function getScoreColor(score: number): string {
+  if (score === 0) return C.danger;
+  if (score <= 15) return C.darkRed;
+  if (score <= 35) return C.danger;
+  if (score <= 50) return C.amber;
+  if (score <= 74) return C.tealScore;
+  return C.green;
+}
+
+export function getScoreBgColor(score: number): string {
+  if (score === 0) return C.dangerBg;
+  if (score <= 15) return '#FFE8E8';
+  if (score <= 35) return C.dangerBg;
+  if (score <= 50) return C.amberBg;
+  if (score <= 74) return C.tealBg;
+  return C.greenBg;
+}
+
+export function getScoreLabel(score: number): string {
+  if (score === 0) return "Allergen";
+  if (score <= 15) return "Avoid";
+  if (score <= 35) return "Risky";
+  if (score <= 50) return "Caution";
+  if (score <= 74) return "Good";
+  return "Great";
 }
 
 export default Colors;

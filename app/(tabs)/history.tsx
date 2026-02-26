@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,19 +11,18 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import Animated, {
-  FadeInDown,
-  FadeIn,
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  ClockCounterClockwise,
+  CaretRight,
+  MagnifyingGlass,
+  Barcode,
+} from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import Colors, { cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -49,77 +48,36 @@ function getDateGroup(dateStr: string): string {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-function getScoreColor(score: number) {
-  if (score === 0) return Colors.danger;
-  if (score <= 15) return "#D32F2F";
-  if (score <= 35) return Colors.scoreRed;
-  if (score <= 50) return Colors.scoreAmber;
-  if (score <= 74) return "#2EC4B6";
-  return Colors.scoreGreen;
-}
-
-function getScoreBgColor(score: number) {
-  if (score <= 35) return "#FFEBEE";
-  if (score <= 50) return "#FFF3E0";
-  return "#E8F5E9";
-}
-
-function SkeletonPulse({ children }: { children: React.ReactNode }) {
-  const opacity = useSharedValue(0.3);
-
-  useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.7, { duration: 800 }), -1, true);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
-}
-
 function SkeletonHistoryCard() {
   return (
-    <SkeletonPulse>
-      <View style={styles.historyCard}>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: Colors.lightGray,
-          }}
+    <View style={styles.historyCard}>
+      <MotiView
+        from={{ opacity: 0.4 }}
+        animate={{ opacity: 0.9 }}
+        transition={{ loop: true, type: "timing" as const, duration: 850 }}
+        style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: "#EBEBEB" }}
+      />
+      <View style={{ flex: 1 }}>
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing" as const, duration: 850 }}
+          style={{ width: "70%", height: 14, borderRadius: 6, backgroundColor: "#EBEBEB" }}
         />
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              width: "70%",
-              height: 14,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-            }}
-          />
-          <View
-            style={{
-              width: "50%",
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-              marginTop: 6,
-            }}
-          />
-          <View
-            style={{
-              width: "30%",
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: Colors.lightGray,
-              marginTop: 6,
-            }}
-          />
-        </View>
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing" as const, duration: 850 }}
+          style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: "#EBEBEB", marginTop: 6 }}
+        />
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing" as const, duration: 850 }}
+          style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: "#EBEBEB", marginTop: 6 }}
+        />
       </View>
-    </SkeletonPulse>
+    </View>
   );
 }
 
@@ -158,17 +116,19 @@ function HistoryItem({
   sectionTitle: string;
 }) {
   const date = new Date(item.createdAt);
-  const dateStr = date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
   const timeStr = date.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
 
+  const isScanned = item.accessMethod === "scanned" || item.barcode;
+
   return (
-    <Animated.View entering={FadeInDown.delay(index * 40).duration(300)}>
+    <MotiView
+      from={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: index * 40, type: "timing" as const }}
+    >
       {showSectionHeader && (
         <Text style={styles.sectionDate}>{sectionTitle}</Text>
       )}
@@ -189,21 +149,64 @@ function HistoryItem({
         activeOpacity={0.7}
       >
         <ScoreBadge score={item.score} />
+        <View style={styles.accessIconBox}>
+          {isScanned ? (
+            <Barcode size={15} color={C.placeholder} />
+          ) : (
+            <MagnifyingGlass size={15} color={C.placeholder} />
+          )}
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.historyName} numberOfLines={1}>
             {item.productName}
           </Text>
-          <Text style={styles.historyBrand} numberOfLines={1}>
-            {item.productBrand || ""}
-            {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
-          </Text>
+          <View style={styles.historyMetaRow}>
+            <Text style={styles.historyBrand} numberOfLines={1}>
+              {item.productBrand || ""}
+              {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
+            </Text>
+          </View>
           <Text style={styles.historyDate}>
-            {dateStr} at {timeStr}
+            {timeStr}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={Colors.lightGray} />
+        <CaretRight size={15} color={C.placeholder} />
       </TouchableOpacity>
-    </Animated.View>
+    </MotiView>
+  );
+}
+
+function SortChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  if (active) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        <LinearGradient
+          colors={["#3DD68C", "#2E7D32"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.sortChipGradient}
+        >
+          <Text style={styles.sortChipTextActive}>{label}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+  return (
+    <TouchableOpacity
+      style={styles.sortChipInactive}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.sortChipTextInactive}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -248,13 +251,13 @@ export default function HistoryScreen() {
       >
         <Text style={styles.headerTitle}>History</Text>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={16} color={Colors.mediumGray} />
+          <MagnifyingGlass size={18} color={C.placeholder} />
           <TextInput
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
             placeholder="Search history..."
-            placeholderTextColor={Colors.mediumGray}
+            placeholderTextColor={C.placeholder}
           />
         </View>
         <View style={styles.sortRow}>
@@ -265,20 +268,12 @@ export default function HistoryScreen() {
               { key: "score_low", label: "Worst" },
             ] as { key: SortOption; label: string }[]
           ).map((s) => (
-            <TouchableOpacity
+            <SortChip
               key={s.key}
-              style={[styles.sortChip, sort === s.key && styles.sortChipActive]}
+              label={s.label}
+              active={sort === s.key}
               onPress={() => handleSort(s.key)}
-            >
-              <Text
-                style={[
-                  styles.sortChipText,
-                  sort === s.key && styles.sortChipTextActive,
-                ]}
-              >
-                {s.label}
-              </Text>
-            </TouchableOpacity>
+            />
           ))}
         </View>
       </View>
@@ -290,8 +285,8 @@ export default function HistoryScreen() {
           <RefreshControl
             refreshing={!!historyQuery.isRefetching}
             onRefresh={() => historyQuery.refetch()}
-            tintColor={Colors.primary}
-            colors={[Colors.primary]}
+            tintColor={C.primary}
+            colors={[C.primary]}
           />
         }
         ListHeaderComponent={
@@ -335,12 +330,29 @@ export default function HistoryScreen() {
           !historyQuery.isLoading ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="time-outline" size={44} color={Colors.primary} />
+                <ClockCounterClockwise size={32} color="#CCCCCC" weight="thin" />
               </View>
-              <Text style={styles.emptyTitle}>No Scan History</Text>
+              <Text style={styles.emptyTitle}>No scan history yet.</Text>
               <Text style={styles.emptyText}>
-                Products you check will appear here with their scores
+                Start scanning to track your food choices.
               </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push("/(tabs)/scan");
+                }}
+                style={{ marginTop: 24 }}
+              >
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.emptyCTAButton}
+                >
+                  <Text style={styles.emptyCTAText}>Scan a Product</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           ) : null
         }
@@ -352,12 +364,12 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: C.card,
     zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -366,123 +378,158 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "700",
-    color: Colors.charcoal,
+    fontWeight: "900" as const,
+    color: C.text,
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    height: 40,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
+    backgroundColor: C.card,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 8,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    color: Colors.charcoal,
+    fontSize: 15,
+    color: C.text,
   },
   sortRow: {
     flexDirection: "row",
     gap: 8,
+    marginBottom: 8,
   },
-  sortChip: {
+  sortChipGradient: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sortChipInactive: {
+    backgroundColor: C.card,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-    ...cardShadow("subtle"),
-  },
-  sortChipActive: {
-    backgroundColor: "#3DD68C",
-    borderColor: "#3DD68C",
-  },
-  sortChipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.mediumGray,
+    borderWidth: 0.5,
+    borderColor: C.border,
   },
   sortChipTextActive: {
-    color: Colors.white,
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: "#FFFFFF",
+  },
+  sortChipTextInactive: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: C.muted,
   },
   sectionDate: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.mediumGray,
-    marginTop: 16,
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    fontSize: 11,
+    fontWeight: "700" as const,
+    letterSpacing: 1.3,
+    color: C.placeholder,
+    textTransform: "uppercase",
+    marginTop: 24,
+    marginBottom: 10,
   },
   historyCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    marginBottom: 8,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    marginBottom: 10,
     gap: 12,
     borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("subtle"),
+    borderColor: C.border,
+    ...cardShadow("medium"),
+  },
+  accessIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: C.bg,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scoreBadge: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   scoreBadgeText: {
     fontSize: 16,
-    fontWeight: "800",
+    fontWeight: "800" as const,
   },
   historyName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.charcoal,
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: C.text,
+  },
+  historyMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   historyBrand: {
-    fontSize: 13,
-    color: Colors.mediumGray,
+    fontSize: 12,
+    color: C.muted,
     marginTop: 2,
   },
   historyDate: {
     fontSize: 11,
-    color: Colors.lightGray,
-    marginTop: 4,
-    fontWeight: "500",
+    color: C.placeholder,
+    marginTop: 2,
+    fontWeight: "500" as const,
   },
   emptyState: {
     alignItems: "center",
     paddingTop: 80,
-    gap: 10,
+    paddingBottom: 80,
+    gap: 6,
   },
   emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primaryPale,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: Colors.charcoal,
-    marginTop: 8,
+    fontWeight: "700" as const,
+    color: C.text,
+    marginTop: 4,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     maxWidth: 260,
+    marginTop: 6,
+  },
+  emptyCTAButton: {
+    borderRadius: 999,
+    paddingHorizontal: 28,
+    paddingVertical: 15,
+    alignItems: "center",
+  },
+  emptyCTAText: {
+    color: "#FFFFFF",
+    fontWeight: "700" as const,
+    fontSize: 15,
   },
 });

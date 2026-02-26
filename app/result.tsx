@@ -6,13 +6,12 @@ import {
   StyleSheet,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Share,
   Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { X, ShareNetwork, ArrowLeft, Lock, WarningCircle, Warning, ShieldWarning, Robot, Barcode, ArrowsClockwise, CaretRight } from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -27,10 +26,11 @@ import Animated, {
   FadeInUp,
   interpolateColor,
 } from "react-native-reanimated";
+import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -46,18 +46,19 @@ interface ScoreData {
   product: any;
 }
 
-const GAUGE_SIZE = 160;
-const STROKE_WIDTH = 10;
-const RADIUS = (GAUGE_SIZE - STROKE_WIDTH) / 2;
+const GAUGE_SIZE = 200;
+const STROKE_WIDTH = 16;
+const GLOW_STROKE_WIDTH = 28;
+const RADIUS = (GAUGE_SIZE - GLOW_STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getScoreColor(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return Colors.danger;
-  if (score <= 15) return "#D32F2F";
-  if (score <= 35) return Colors.scoreRed;
-  if (score <= 50) return Colors.scoreAmber;
-  if (score <= 74) return "#2EC4B6";
-  return "#3DD68C";
+  if (isAllergenAlert) return C.danger;
+  if (score <= 15) return C.darkRed;
+  if (score <= 35) return C.danger;
+  if (score <= 50) return C.amber;
+  if (score <= 74) return C.tealScore;
+  return C.green;
 }
 
 function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
@@ -70,11 +71,7 @@ function getScoreGradient(score: number, isAllergenAlert: boolean): [string, str
 }
 
 function getScoreTrackColor(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return "#FFCDD2";
-  if (score <= 15) return "#FFCDD2";
-  if (score <= 35) return "#FFCDD2";
-  if (score <= 50) return "#FFE0B2";
-  return "#D4F5E9";
+  return "#F0F0F0";
 }
 
 function getScoreBg(score: number, isAllergenAlert: boolean): string {
@@ -117,11 +114,11 @@ const CAUTION_WORDS = [
 ];
 
 function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string): string {
-  if (isAllergenAlert) return Colors.danger;
-  if (score <= 35) return Colors.scoreRed;
+  if (isAllergenAlert) return C.danger;
+  if (score <= 35) return C.danger;
   const headlineLower = (headline || "").toLowerCase();
   const isCautionaryHeadline = CAUTION_WORDS.some(w => headlineLower.includes(w));
-  if (isCautionaryHeadline) return Colors.scoreAmber;
+  if (isCautionaryHeadline) return C.amber;
 
   if (adviceText && score <= 70) {
     const adviceLower = adviceText.toLowerCase();
@@ -132,31 +129,10 @@ function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: str
       "could affect", "could impact",
     ];
     const hasConcern = conditionConcerns.some(w => adviceLower.includes(w));
-    if (hasConcern) return Colors.scoreAmber;
+    if (hasConcern) return C.amber;
   }
 
-  return Colors.charcoal;
-}
-
-function getHighlightEmoji(text: string): string {
-  const lower = text.toLowerCase();
-  if (lower.includes("fiber")) return "🥦";
-  if (lower.includes("sodium") || lower.includes("salt")) return "💚";
-  if (lower.includes("sugar")) return "🍊";
-  if (lower.includes("protein")) return "💪";
-  if (lower.includes("fat") && (lower.includes("low") || lower.includes("good"))) return "💚";
-  if (lower.includes("fat")) return "🧈";
-  if (lower.includes("calorie") && lower.includes("low")) return "✨";
-  if (lower.includes("calorie")) return "🔥";
-  if (lower.includes("plant") || lower.includes("vegan")) return "🌿";
-  if (lower.includes("vegetarian")) return "🥗";
-  if (lower.includes("vitamin") || lower.includes("mineral")) return "✨";
-  if (lower.includes("carb")) return "🍞";
-  if (lower.includes("cholesterol")) return "❤️";
-  if (lower.includes("organic") || lower.includes("natural")) return "🌱";
-  if (lower.includes("gluten")) return "⚠️";
-  if (lower.includes("allergen")) return "⚠️";
-  return "📋";
+  return C.text;
 }
 
 function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" {
@@ -191,31 +167,10 @@ function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" 
   return "neutral";
 }
 
-function getHighlightSubtitle(text: string): string {
-  const lower = text.toLowerCase();
-  if (lower.includes("fiber") && (lower.includes("high") || lower.includes("good"))) return "Digestive health";
-  if (lower.includes("fiber") && lower.includes("per")) return "";
-  if (lower.includes("sodium") && (lower.includes("low") || lower.includes("good"))) return "Heart healthy";
-  if (lower.includes("sugar") && (lower.includes("low") || lower.includes("no") || lower.includes("zero"))) return "Blood sugar friendly";
-  if (lower.includes("sugar") && (lower.includes("high") || lower.includes("added"))) return "Watch intake";
-  if (lower.includes("protein") && (lower.includes("high") || lower.includes("good"))) return "Muscle support";
-  if (lower.includes("fat") && (lower.includes("low") || lower.includes("good"))) return "Heart friendly";
-  if (lower.includes("plant") || lower.includes("vegan")) return "100% Vegan";
-  if (lower.includes("calorie") && lower.includes("low")) return "Light choice";
-  if (lower.includes("vitamin") || lower.includes("mineral")) return "Essential nutrients";
-  if (lower.includes("gluten")) return "Check allergens";
-  return "";
-}
-
-function getHighlightBgColor(severity: "warning" | "neutral" | "positive"): string {
-  if (severity === "warning") return "#FFF8F0";
-  return "#FFFFFF";
-}
-
-function getHighlightEmojiContainerBg(severity: "warning" | "neutral" | "positive"): string {
-  if (severity === "warning") return "#FFF3E0";
-  if (severity === "positive") return "#E8F5E9";
-  return "#F0F4F8";
+function getHighlightDotColor(severity: "warning" | "neutral" | "positive", tierColor: string): string {
+  if (severity === "warning") return C.amber;
+  if (severity === "positive") return C.green;
+  return tierColor;
 }
 
 const DAILY_VALUES: Record<string, number> = {
@@ -273,6 +228,15 @@ function getNutrientUnit(key: string): string {
   return "";
 }
 
+function getNutrientBarColor(key: string, value: number): string {
+  const dailyVal = DAILY_VALUES[key];
+  if (!dailyVal) return C.green;
+  const pct = value / dailyVal;
+  if (pct > 0.4) return C.danger;
+  if (pct > 0.2) return C.amber;
+  return C.green;
+}
+
 function ScoreRing({
   score,
   isAllergenAlert,
@@ -294,10 +258,11 @@ function ScoreRing({
     progress.value = withDelay(
       300,
       withTiming(score / 100, {
-        duration: 1400,
+        duration: 1000,
         easing: Easing.out(Easing.cubic),
       })
     );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [score]);
 
   const containerStyle = useAnimatedStyle(() => ({
@@ -310,7 +275,7 @@ function ScoreRing({
   useEffect(() => {
     let frame: number;
     const startTime = Date.now();
-    const duration = 1400;
+    const duration = 1000;
     const delay = 300;
 
     const timeout = setTimeout(() => {
@@ -355,8 +320,21 @@ function ScoreRing({
           cx={GAUGE_SIZE / 2}
           cy={GAUGE_SIZE / 2}
           r={RADIUS}
+          stroke={scoreColor}
+          strokeWidth={GLOW_STROKE_WIDTH}
+          fill="none"
+          opacity={0.12}
+          strokeLinecap="round"
+          strokeDasharray={`${CIRCUMFERENCE}`}
+          strokeDashoffset={strokeDashoffset}
+          transform={`rotate(-90, ${GAUGE_SIZE / 2}, ${GAUGE_SIZE / 2})`}
+        />
+        <Circle
+          cx={GAUGE_SIZE / 2}
+          cy={GAUGE_SIZE / 2}
+          r={RADIUS}
           stroke="url(#scoreGrad)"
-          strokeWidth={STROKE_WIDTH + 1}
+          strokeWidth={STROKE_WIDTH}
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${CIRCUMFERENCE}`}
@@ -381,7 +359,7 @@ const ringStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 12,
+    marginTop: 4,
     marginBottom: 8,
   },
   scoreCenter: {
@@ -390,15 +368,16 @@ const ringStyles = StyleSheet.create({
     justifyContent: "center",
   },
   scoreNumber: {
-    fontSize: 48,
-    fontWeight: "800" as const,
+    fontSize: 54,
+    fontWeight: "900" as const,
     letterSpacing: -2,
   },
   scoreLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    marginTop: -2,
-    letterSpacing: 3,
+    marginTop: 4,
+    letterSpacing: 1.8,
+    textTransform: "uppercase" as const,
   },
 });
 
@@ -408,74 +387,68 @@ function NutrientRow({
   unit,
   index,
   isIndented,
+  nutrientKey,
 }: {
   label: string;
   value: number | null;
   unit: string;
   index: number;
   isIndented?: boolean;
+  nutrientKey?: string;
 }) {
   if (value === null || value === undefined) return null;
 
+  const barColor = nutrientKey ? getNutrientBarColor(nutrientKey, value) : C.green;
+  const dailyVal = nutrientKey ? DAILY_VALUES[nutrientKey] : undefined;
+  const barPct = dailyVal ? Math.min(value / dailyVal, 1) : 0;
+
   return (
-    <View
-      style={[
-        styles.nutrientRow,
-        isIndented ? styles.nutrientRowIndented : styles.nutrientRowParent,
-      ]}
-    >
-      <Text
-        style={{
-          fontSize: isIndented ? 14 : 15,
-          fontWeight: isIndented ? "400" : "700",
-          color: isIndented ? "#555555" : "#1B1B1B",
-          paddingLeft: isIndented ? 24 : 0,
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          fontSize: isIndented ? 14 : 15,
-          fontWeight: isIndented ? "400" : "600",
-          color: isIndented ? "#555555" : "#1B1B1B",
-        }}
-      >
-        {formatNutrientValue(value)}
-        <Text style={{ fontSize: 13, fontWeight: "400", color: "#666666" }}>{unit}</Text>
-      </Text>
+    <View style={styles.nutrientRow}>
+      <View style={styles.nutrientRowTop}>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: isIndented ? ("400" as const) : ("600" as const),
+            color: C.text,
+            paddingLeft: isIndented ? 24 : 0,
+            flex: 1,
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "700" as const,
+            color: C.text,
+          }}
+        >
+          {formatNutrientValue(value)}
+          <Text style={{ fontSize: 12, fontWeight: "400" as const, color: C.muted }}>{unit ? ` ${unit}` : ""}</Text>
+        </Text>
+      </View>
+      {dailyVal && barPct > 0 && (
+        <View style={styles.nutrientBarTrack}>
+          <View style={[styles.nutrientBarFill, { width: `${barPct * 100}%` as any, backgroundColor: barColor }]} />
+        </View>
+      )}
     </View>
   );
 }
 
-function HighlightCard({ text, index }: { text: string; index: number }) {
+function HighlightItem({ text, index, tierColor }: { text: string; index: number; tierColor: string }) {
   const severity = getHighlightSeverity(text);
-  const emoji = getHighlightEmoji(text);
-  const subtitle = getHighlightSubtitle(text);
-  const bgColor = getHighlightBgColor(severity);
-  const emojiBg = getHighlightEmojiContainerBg(severity);
-
-  const shortTitle = text.length > 30 ? text.substring(0, 28) + "…" : text;
+  const dotColor = getHighlightDotColor(severity, tierColor);
 
   return (
     <Animated.View
       entering={FadeInDown.delay(400 + index * 80).duration(300)}
-      style={[styles.highlightCard, { backgroundColor: "#FFFFFF" }]}
+      style={styles.highlightItem}
     >
-      <View style={[styles.highlightEmojiWrap, { backgroundColor: emojiBg }]}>
-        <Text style={styles.highlightEmoji}>{emoji}</Text>
-      </View>
-      <Text style={styles.highlightTitle} numberOfLines={2}>
-        {shortTitle}
+      <View style={[styles.highlightDot, { backgroundColor: dotColor }]} />
+      <Text style={styles.highlightText} numberOfLines={3}>
+        {text}
       </Text>
-      {subtitle ? (
-        <Text style={[
-          styles.highlightSubtitle,
-          { color: severity === "warning" ? "#E65100" : Colors.primary }
-        ]}>
-          {subtitle}
-        </Text>
-      ) : null}
     </Animated.View>
   );
 }
@@ -604,7 +577,24 @@ export default function ResultScreen() {
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing", duration: 850 }}
+          style={{ width: 200, height: 200, borderRadius: 100, backgroundColor: "#EBEBEB" }}
+        />
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing", duration: 850 }}
+          style={{ width: 180, height: 20, borderRadius: 10, backgroundColor: "#EBEBEB", marginTop: 20 }}
+        />
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing", duration: 850 }}
+          style={{ width: 120, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB", marginTop: 10 }}
+        />
         <Text style={styles.loadingText}>{params.historyId ? "Checking for profile updates..." : "Analyzing for your profile..."}</Text>
       </View>
     );
@@ -615,12 +605,12 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color={Colors.charcoal} />
+            <X size={22} color={C.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.limitCard}>
           <View style={styles.limitIconWrap}>
-            <Ionicons name="lock-closed" size={36} color={Colors.primary} />
+            <Lock size={36} color={C.primary} />
           </View>
           <Text style={styles.limitTitle}>Daily limit reached</Text>
           <Text style={styles.limitSubtitle}>
@@ -634,7 +624,7 @@ export default function ResultScreen() {
             style={styles.limitBtn}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={18} color={Colors.white} />
+            <ArrowLeft size={18} color="white" />
             <Text style={styles.limitBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -647,11 +637,11 @@ export default function ResultScreen() {
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color={Colors.charcoal} />
+            <X size={22} color={C.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorState}>
-          <Ionicons name="alert-circle" size={48} color={Colors.scoreAmber} />
+          <WarningCircle size={48} color={C.amber} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
@@ -675,16 +665,128 @@ export default function ResultScreen() {
     (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
   ).length > 0;
 
+  if (data.isAllergenAlert) {
+    return (
+      <View style={[styles.container, { backgroundColor: C.dangerBg }]}>
+        <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+            <X size={22} color={C.text} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+            <ShareNetwork size={20} color={C.text} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <LinearGradient
+            colors={["#E53935", "#C62828"]}
+            style={styles.allergenTopBanner}
+          >
+            <Warning size={22} color="white" weight="fill" />
+            <Text style={styles.allergenTopBannerText}>
+              Allergen Alert — Contains: {data.matchedAllergens.join(", ")}
+            </Text>
+          </LinearGradient>
+
+          <View style={styles.allergenCenterContent}>
+            <MotiView
+              from={{ scale: 0.7 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring" as const, damping: 10, delay: 200 }}
+              style={styles.allergenIconWrap}
+            >
+              <ShieldWarning size={90} color={C.danger} weight="fill" />
+            </MotiView>
+
+            <Text style={styles.allergenAlertLabel}>ALLERGEN ALERT</Text>
+            <Text style={styles.allergenContainsText}>
+              Contains {data.matchedAllergens.join(", ")}
+            </Text>
+            <Text style={styles.allergenNotSafe}>Not safe for you</Text>
+          </View>
+
+          <View style={styles.allergenScoreWrap}>
+            <View style={[styles.scoreRingContainer, { ...cardShadow("medium") }]}>
+              <ScoreRing score={data.score} isAllergenAlert={data.isAllergenAlert} />
+            </View>
+          </View>
+
+          <View style={styles.allergenProductInfo}>
+            <Text style={styles.productName}>{product.name}</Text>
+            {product.brand ? <Text style={styles.productBrand}>{product.brand}</Text> : null}
+            <View style={styles.chipRow}>
+              {product.category ? (
+                <View style={styles.chip}>
+                  <Text style={styles.chipText}>{product.category}</Text>
+                </View>
+              ) : null}
+              {params.accessMethod ? (
+                <View style={styles.chipNeutral}>
+                  <Text style={styles.chipNeutralText}>
+                    {params.accessMethod === "scan" ? "Scanned" : "Searched"}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {data.advice ? (
+            <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.adviceCard}>
+              <View style={styles.adviceHeader}>
+                <LinearGradient
+                  colors={[C.tinted, "#D4EDDA"]}
+                  style={styles.adviceIconBox}
+                >
+                  <Robot size={16} color={C.primary} weight="fill" />
+                </LinearGradient>
+                <Text style={styles.adviceLabel}>FOODVAR VERDICT</Text>
+              </View>
+              <View style={styles.adviceDivider} />
+              <Text style={[styles.adviceHeadline, { color: scoreColor }]}>{headlineText}</Text>
+              <Text style={styles.adviceText}>{data.advice}</Text>
+            </Animated.View>
+          ) : null}
+
+          <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
+            <LinearGradient
+              colors={["#3DD68C", "#2E7D32"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.scanAnotherGradient}
+            >
+              <TouchableOpacity
+                style={styles.scanAnotherInner}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.replace("/(tabs)/scan");
+                }}
+                activeOpacity={0.85}
+              >
+                <Barcode size={20} color="white" weight="bold" />
+                <Text style={styles.scanAnotherText}>Scan Another</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </Animated.View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View
         style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}
       >
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={22} color={Colors.charcoal} />
+          <X size={22} color={C.text} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Ionicons name="share-outline" size={20} color={Colors.charcoal} />
+          <ShareNetwork size={20} color={C.text} />
         </TouchableOpacity>
       </View>
 
@@ -694,126 +796,119 @@ export default function ResultScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {data.isAllergenAlert && (
-          <Animated.View
-            entering={FadeIn.duration(400)}
-            style={styles.allergenBanner}
-          >
-            <Ionicons name="warning" size={20} color={Colors.white} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.allergenTitle}>Allergen Alert</Text>
-              <Text style={styles.allergenText}>
-                Contains: {data.matchedAllergens.join(", ")}
-              </Text>
-            </View>
-          </Animated.View>
-        )}
-
         {reAnalyzed && (
           <Animated.View
             entering={FadeIn.duration(400)}
             style={styles.reAnalyzedBanner}
           >
-            <Ionicons name="refresh-circle" size={18} color={Colors.primary} />
+            <ArrowsClockwise size={18} color={C.primary} />
             <Text style={styles.reAnalyzedText}>
               Updated for your latest health profile
             </Text>
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.scoreSection}>
-          <ScoreRing
-            score={data.score}
-            isAllergenAlert={data.isAllergenAlert}
-          />
+        <Animated.View entering={FadeInDown.duration(500)}>
+          <View style={[styles.scoreRingContainer, { ...cardShadow("medium") }]}>
+            <ScoreRing
+              score={data.score}
+              isAllergenAlert={data.isAllergenAlert}
+            />
+          </View>
+        </Animated.View>
 
-          <Text style={[styles.headlineText, { color: headlineColor }]}>{headlineText}</Text>
-          <Text style={styles.productInfoText}>
-            {product.name}
-            {product.brand ? ` · ${product.brand}` : ""}
-            {product.servingSize ? ` · ${product.servingSize}` : ""}
-          </Text>
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.productInfoSection}>
+          <Text style={styles.productName}>{product.name}</Text>
+          {product.brand ? <Text style={styles.productBrand}>{product.brand}</Text> : null}
+          <View style={styles.chipRow}>
+            {product.category ? (
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>{product.category}</Text>
+              </View>
+            ) : null}
+            {params.accessMethod ? (
+              <View style={styles.chipNeutral}>
+                <Text style={styles.chipNeutralText}>
+                  {params.accessMethod === "scan" ? "Scanned" : "Searched"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </Animated.View>
 
         {data.advice ? (
           <Animated.View
             entering={FadeInDown.delay(250).duration(400)}
-            style={[
-              styles.adviceCard,
-              {
-                backgroundColor: "#FFFFFF",
-                borderColor: "#E8ECEA",
-              },
-            ]}
+            style={styles.adviceCard}
           >
-            <View style={styles.adviceTitleRow}>
-              <Text style={styles.adviceEmoji}>✨</Text>
-              <Text style={[styles.adviceTitleText, { color: "#3DD68C" }]}>
-                AI NUTRITIONIST ADVICE
-              </Text>
+            <View style={styles.adviceHeader}>
+              <LinearGradient
+                colors={[C.tinted, "#D4EDDA"]}
+                style={styles.adviceIconBox}
+              >
+                <Robot size={16} color={C.primary} weight="fill" />
+              </LinearGradient>
+              <Text style={styles.adviceLabel}>FOODVAR VERDICT</Text>
             </View>
+            <View style={styles.adviceDivider} />
+            <Text style={[styles.adviceHeadline, { color: headlineColor }]}>{headlineText}</Text>
             <Text style={styles.adviceText}>{data.advice}</Text>
 
             {data.coachTip ? (
               <View style={styles.coachTipRow}>
-                <Text style={styles.coachTipEmoji}>💡</Text>
+                <View style={styles.coachTipDot} />
                 <Text style={styles.coachTipText}>{data.coachTip}</Text>
               </View>
             ) : null}
+
+            {data.highlights && data.highlights.length > 0 && (() => {
+              const vaguePatterns = [
+                /^contains\s/i,
+                /^critical\s?allergen/i,
+                /^not\s?suitable/i,
+                /^check\s?allergen/i,
+                /^allergen/i,
+                /^avoid/i,
+                /^warning/i,
+                /^caution/i,
+                /^unsafe/i,
+                /^dangerous/i,
+              ];
+              const filtered = data.highlights.filter((h: string) =>
+                !vaguePatterns.some(p => p.test(h.trim()))
+              );
+              return filtered.length > 0 ? (
+                <View style={styles.highlightsInAdvice}>
+                  {filtered.map((h: string, i: number) => (
+                    <HighlightItem key={i} text={h} index={i} tierColor={scoreColor} />
+                  ))}
+                </View>
+              ) : null;
+            })()}
           </Animated.View>
         ) : null}
-
-        {data.highlights && data.highlights.length > 0 && (() => {
-          const vaguePatterns = [
-            /^contains\s/i,
-            /^critical\s?allergen/i,
-            /^not\s?suitable/i,
-            /^check\s?allergen/i,
-            /^allergen/i,
-            /^avoid/i,
-            /^warning/i,
-            /^caution/i,
-            /^unsafe/i,
-            /^dangerous/i,
-          ];
-          const filtered = data.highlights.filter((h: string) =>
-            !vaguePatterns.some(p => p.test(h.trim()))
-          );
-          return filtered.length > 0 ? (
-            <Animated.View
-              entering={FadeInDown.delay(350).duration(400)}
-              style={styles.highlightsSection}
-            >
-              <Text style={styles.sectionTitle}>Key Highlights</Text>
-              <View style={styles.highlightsGrid}>
-                {filtered.map((h: string, i: number) => (
-                  <HighlightCard key={i} text={h} index={i} />
-                ))}
-              </View>
-            </Animated.View>
-          ) : null;
-        })()}
 
         <Animated.View
           entering={FadeInDown.delay(450).duration(400)}
           style={styles.nutritionSection}
         >
           <View style={styles.nutritionCard}>
-            <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
-            {product.servingSize ? (
-              <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
-            ) : null}
-            <View style={styles.nutritionDividerThick} />
+            <View style={styles.nutritionHeader}>
+              <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
+              {product.servingSize ? (
+                <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
+              ) : null}
+            </View>
             <View style={styles.nutritionTable}>
-              <NutrientRow label="Calories" value={product.calories} unit="" index={0} />
-              <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} />
-              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented />
+              <NutrientRow label="Calories" value={product.calories} unit="" index={0} nutrientKey="calories" />
+              <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} nutrientKey="fat" />
+              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented nutrientKey="saturatedFat" />
               <NutrientRow label="Cholesterol" value={product.nutritionFacts?.cholesterol ?? null} unit="mg" index={3} />
-              <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} />
-              <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} />
-              <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented />
-              <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented />
-              <NutrientRow label="Protein" value={product.protein} unit="g" index={8} />
+              <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} nutrientKey="sodium" />
+              <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} nutrientKey="carbohydrates" />
+              <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented nutrientKey="fiber" />
+              <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented nutrientKey="sugar" />
+              <NutrientRow label="Protein" value={product.protein} unit="g" index={8} nutrientKey="protein" />
             </View>
 
             {hasAdditionalNutrition && (
@@ -855,7 +950,7 @@ export default function ResultScreen() {
             style={styles.allergensSection}
           >
             <View style={styles.allergensSectionHeader}>
-              <Text style={styles.allergensSectionEmoji}>⚠️</Text>
+              <Warning size={16} color={C.danger} weight="fill" />
               <Text style={styles.allergensSectionTitle}>Allergens</Text>
             </View>
             <View style={styles.allergenChips}>
@@ -879,17 +974,24 @@ export default function ResultScreen() {
         ) : null}
 
         <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
-          <TouchableOpacity
-            style={styles.scanAnotherBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.replace("/(tabs)/scan");
-            }}
-            activeOpacity={0.85}
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.scanAnotherGradient}
           >
-            <Ionicons name="scan-outline" size={20} color={Colors.white} />
-            <Text style={styles.scanAnotherText}>Scan Another</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.scanAnotherInner}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.replace("/(tabs)/scan");
+              }}
+              activeOpacity={0.85}
+            >
+              <Barcode size={20} color="white" weight="bold" />
+              <Text style={styles.scanAnotherText}>Scan Another</Text>
+            </TouchableOpacity>
+          </LinearGradient>
         </Animated.View>
       </ScrollView>
     </View>
@@ -899,7 +1001,7 @@ export default function ResultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   centerContent: {
     justifyContent: "center",
@@ -927,7 +1029,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     marginTop: 16,
     fontWeight: "500" as const,
   },
@@ -940,7 +1042,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: Colors.charcoal,
+    color: C.text,
     textAlign: "center",
     lineHeight: 24,
     fontWeight: "500" as const,
@@ -949,16 +1051,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: C.primary,
     marginTop: 8,
   },
   retryBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: "white",
   },
   limitCard: {
-    backgroundColor: Colors.white,
+    backgroundColor: C.card,
     borderRadius: 24,
     paddingVertical: 36,
     paddingHorizontal: 28,
@@ -970,7 +1072,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: C.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 20,
@@ -978,13 +1080,13 @@ const styles = StyleSheet.create({
   limitTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: Colors.charcoal,
+    color: C.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   limitSubtitle: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center" as const,
     lineHeight: 22,
     marginBottom: 16,
@@ -992,12 +1094,12 @@ const styles = StyleSheet.create({
   limitDivider: {
     width: "80%" as any,
     height: 1,
-    backgroundColor: Colors.lightGray,
+    backgroundColor: C.divider,
     marginBottom: 16,
   },
   limitHint: {
     fontSize: 14,
-    color: Colors.primary,
+    color: C.primary,
     textAlign: "center" as const,
     lineHeight: 20,
     fontWeight: "500" as const,
@@ -1008,7 +1110,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: C.primary,
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
@@ -1016,222 +1118,243 @@ const styles = StyleSheet.create({
   limitBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: "white",
   },
   reAnalyzedBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 8,
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: C.tinted,
   },
   reAnalyzedText: {
     fontSize: 13,
     fontWeight: "500" as const,
-    color: Colors.primary,
+    color: C.primary,
     flex: 1,
   },
-  allergenBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginHorizontal: 24,
-    marginBottom: 8,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: Colors.danger,
+  scoreRingContainer: {
+    backgroundColor: C.card,
+    borderRadius: 28,
+    padding: 28,
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: "center" as const,
+    borderWidth: 0.5,
+    borderColor: C.border,
   },
-  allergenTitle: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.white,
+  productInfoSection: {
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
-  allergenText: {
-    fontSize: 12,
-    color: Colors.white,
-    opacity: 0.9,
-    marginTop: 2,
-  },
-  scoreSection: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    paddingBottom: 28,
-  },
-  headlineText: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.charcoal,
-    textAlign: "center",
+  productName: {
+    fontSize: 22,
+    fontWeight: "800" as const,
     letterSpacing: -0.5,
-    marginTop: 12,
+    color: C.text,
   },
-  productInfoText: {
+  productBrand: {
     fontSize: 14,
-    color: Colors.softGray,
-    textAlign: "center",
-    marginTop: 6,
-    fontWeight: "400" as const,
+    color: C.muted,
+    marginTop: 4,
+  },
+  chipRow: {
+    flexDirection: "row" as const,
+    marginTop: 8,
+    gap: 8,
+  },
+  chip: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: C.tinted,
+  },
+  chipText: {
+    color: C.primary,
+    fontSize: 12,
+    fontWeight: "600" as const,
+  },
+  chipNeutral: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
+  },
+  chipNeutralText: {
+    color: C.muted,
+    fontSize: 12,
+    fontWeight: "600" as const,
   },
   adviceCard: {
-    marginHorizontal: 24,
-    marginBottom: 32,
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    ...cardShadow("medium"),
   },
-  adviceTitleRow: {
+  adviceHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 6,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 12,
   },
-  adviceEmoji: {
-    fontSize: 14,
+  adviceIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
-  adviceTitleText: {
+  adviceLabel: {
     fontSize: 11,
-    fontWeight: "800" as const,
+    fontWeight: "700" as const,
     letterSpacing: 1.2,
+    color: C.primary,
+    textTransform: "uppercase" as const,
+  },
+  adviceDivider: {
+    height: 0.5,
+    backgroundColor: C.divider,
+    marginBottom: 12,
+  },
+  adviceHeadline: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    marginBottom: 8,
   },
   adviceText: {
     fontSize: 14,
-    color: Colors.charcoal,
-    lineHeight: 22,
+    color: C.text,
+    lineHeight: 23,
   },
   coachTipRow: {
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
-    gap: 8,
+    gap: 10,
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.06)",
+    borderTopColor: C.divider,
   },
-  coachTipEmoji: {
-    fontSize: 14,
-    marginTop: 1,
+  coachTipDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: C.amber,
+    marginTop: 5,
   },
   coachTipText: {
     fontSize: 13,
-    color: Colors.mediumGray,
+    color: C.muted,
     lineHeight: 20,
     flex: 1,
     fontStyle: "italic" as const,
   },
+  highlightsInAdvice: {
+    marginTop: 14,
+    gap: 8,
+  },
+  highlightItem: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 10,
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  highlightDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    marginTop: 5,
+  },
+  highlightText: {
+    fontSize: 13,
+    color: C.text,
+    lineHeight: 20,
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.charcoal,
+    color: C.text,
     letterSpacing: -0.3,
     marginBottom: 16,
   },
-  highlightsSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
-  },
-  highlightsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  highlightCard: {
-    width: "47%" as any,
-    borderRadius: 16,
-    padding: 16,
-    minHeight: 100,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("subtle"),
-  },
-  highlightEmojiWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginBottom: 10,
-  },
-  highlightEmoji: {
-    fontSize: 18,
-  },
-  highlightTitle: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.charcoal,
-    lineHeight: 18,
-    marginBottom: 3,
-  },
-  highlightSubtitle: {
-    fontSize: 12,
-    fontWeight: "500" as const,
-  },
   nutritionSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
   nutritionCard: {
-    backgroundColor: "#F9FAFA",
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#E8ECEA",
+    borderRadius: 20,
+    overflow: "hidden" as const,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    backgroundColor: C.card,
+  },
+  nutritionHeader: {
+    backgroundColor: C.text,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   nutritionTitle: {
-    fontSize: 22,
-    fontWeight: "800" as const,
-    color: Colors.charcoal,
-    letterSpacing: -0.3,
+    fontSize: 17,
+    fontWeight: "900" as const,
+    color: "white",
   },
   servingLabel: {
-    fontSize: 13,
-    color: Colors.mediumGray,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
     marginTop: 2,
-    marginBottom: 0,
   },
-  nutritionDividerThick: {
-    height: 3,
-    backgroundColor: Colors.charcoal,
-    marginTop: 10,
-    marginBottom: 0,
+  nutritionTable: {
+    paddingHorizontal: 16,
   },
-  nutritionTable: {},
   nutrientRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.divider,
+  },
+  nutrientRowTop: {
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D8DCDA",
   },
-  nutrientRowParent: {
-    borderTopWidth: 1,
-    borderTopColor: "#C8CCC9",
+  nutrientBarTrack: {
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: C.bg,
+    marginTop: 6,
   },
-  nutrientRowIndented: {
-    borderTopColor: "#E8ECEA",
+  nutrientBarFill: {
+    height: 3,
+    borderRadius: 999,
   },
   viewFullBtn: {
     alignItems: "center" as const,
-    paddingTop: 16,
-    paddingBottom: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#D8DCDA",
-    marginTop: 0,
+    paddingVertical: 14,
+    borderTopWidth: 0.5,
+    borderTopColor: C.divider,
   },
   viewFullBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: "#2EC4B6",
+    color: C.tealScore,
     letterSpacing: 0.5,
   },
   allergensSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
   allergensSectionHeader: {
     flexDirection: "row" as const,
@@ -1239,13 +1362,10 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 12,
   },
-  allergensSectionEmoji: {
-    fontSize: 16,
-  },
   allergensSectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.danger,
+    color: C.danger,
   },
   allergenChips: {
     flexDirection: "row",
@@ -1256,40 +1376,89 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: Colors.dangerPale,
+    backgroundColor: C.dangerBg,
   },
   allergenChipText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.danger,
+    color: C.danger,
     textTransform: "capitalize" as const,
   },
   ingredientsSection: {
-    paddingHorizontal: 24,
-    marginBottom: 32,
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
   ingredientsText: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     lineHeight: 22,
   },
   scanAnotherWrap: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     marginBottom: 8,
-    marginTop: 4,
+    marginTop: 20,
   },
-  scanAnotherBtn: {
+  scanAnotherGradient: {
+    borderRadius: 999,
+    padding: 1,
+  },
+  scanAnotherInner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: "#3DD68C",
-    paddingVertical: 18,
-    borderRadius: 28,
+    paddingVertical: 15,
+    borderRadius: 999,
   },
   scanAnotherText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: "white",
+  },
+  allergenTopBanner: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+  },
+  allergenTopBannerText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "white",
+    flex: 1,
+  },
+  allergenCenterContent: {
+    alignItems: "center" as const,
+    paddingHorizontal: 20,
+  },
+  allergenIconWrap: {
+    marginTop: 40,
+  },
+  allergenAlertLabel: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: C.danger,
+    letterSpacing: 1.5,
+    marginTop: 16,
+  },
+  allergenContainsText: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: C.text,
+    marginTop: 8,
+    textAlign: "center" as const,
+  },
+  allergenNotSafe: {
+    fontSize: 15,
+    color: C.muted,
+    marginTop: 4,
+  },
+  allergenScoreWrap: {
+    marginTop: 24,
+  },
+  allergenProductInfo: {
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
 });

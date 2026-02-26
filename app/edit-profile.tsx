@@ -6,26 +6,40 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  X,
+  Check,
+  CheckCircle,
+  Drop,
+  Heart,
+  Heartbeat,
+  FirstAid,
+  Person,
+  Grains,
+  Leaf,
+  TrendDown,
+  Barbell,
+  Pill,
+} from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import Colors from "@/constants/colors";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import Colors, { C, cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const CONDITIONS = [
-  { id: "diabetes_type2", label: "Diabetes (Type 2)", icon: "water-outline" as const },
-  { id: "diabetes_type1", label: "Diabetes (Type 1)", icon: "water-outline" as const },
-  { id: "hypertension", label: "Hypertension", icon: "heart-outline" as const },
-  { id: "high_cholesterol", label: "High Cholesterol", icon: "fitness-outline" as const },
-  { id: "kidney_disease", label: "Kidney Disease", icon: "medical-outline" as const },
-  { id: "gout", label: "Gout", icon: "body-outline" as const },
-  { id: "ibs", label: "IBS", icon: "nutrition-outline" as const },
-  { id: "celiac", label: "Celiac Disease", icon: "leaf-outline" as const },
+  { id: "diabetes_type2", label: "Diabetes (Type 2)", Icon: Drop },
+  { id: "diabetes_type1", label: "Diabetes (Type 1)", Icon: Drop },
+  { id: "hypertension", label: "Hypertension", Icon: Heart },
+  { id: "high_cholesterol", label: "High Cholesterol", Icon: Heartbeat },
+  { id: "kidney_disease", label: "Kidney Disease", Icon: FirstAid },
+  { id: "gout", label: "Gout", Icon: Person },
+  { id: "ibs", label: "IBS", Icon: Grains },
+  { id: "celiac", label: "Celiac Disease", Icon: Leaf },
 ];
 
 const ALLERGIES = [
@@ -41,10 +55,10 @@ const ALLERGIES = [
 ];
 
 const GOALS = [
-  { id: "weight_loss", label: "Lose Weight", icon: "trending-down-outline" as const },
-  { id: "muscle_gain", label: "Build Muscle", icon: "barbell-outline" as const },
-  { id: "general_wellness", label: "General Wellness", icon: "leaf-outline" as const },
-  { id: "manage_condition", label: "Manage Condition", icon: "medkit-outline" as const },
+  { id: "weight_loss", label: "Lose Weight", Icon: TrendDown },
+  { id: "muscle_gain", label: "Build Muscle", Icon: Barbell },
+  { id: "general_wellness", label: "General Wellness", Icon: Leaf },
+  { id: "manage_condition", label: "Manage Condition", Icon: Pill },
 ];
 
 const DIETS = [
@@ -101,15 +115,25 @@ export default function EditProfileScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={24} color={Colors.charcoal} />
+          <X size={22} color={C.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Health Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator size="small" color={Colors.white} />
-          ) : (
-            <Ionicons name="checkmark" size={22} color={Colors.white} />
-          )}
+        <TouchableOpacity onPress={handleSave} style={styles.saveBtnWrapper} disabled={saving}>
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            style={styles.saveBtn}
+          >
+            {saving ? (
+              <MotiView
+                from={{ opacity: 0.4 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ loop: true, type: "timing", duration: 850 }}
+                style={styles.savingDot}
+              />
+            ) : (
+              <Check size={22} color="#fff" weight="bold" />
+            )}
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
@@ -120,133 +144,185 @@ export default function EditProfileScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.section}>
+        <MotiView
+          from={{ opacity: 0, translateY: 15 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400 }}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Health Conditions</Text>
           <Text style={styles.sectionSubtitle}>
             Select any conditions you manage
           </Text>
           <View style={styles.chipGrid}>
-            {CONDITIONS.map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                style={[
-                  styles.conditionChip,
-                  conditions.includes(c.id) && styles.conditionChipActive,
-                ]}
-                onPress={() => toggleItem(conditions, setConditions, c.id)}
-              >
-                <Ionicons
-                  name={c.icon}
-                  size={18}
-                  color={conditions.includes(c.id) ? Colors.white : Colors.primary}
-                />
-                <Text
+            {CONDITIONS.map((c) => {
+              const isActive = conditions.includes(c.id);
+              const IconComp = c.Icon;
+              return (
+                <TouchableOpacity
+                  key={c.id}
                   style={[
-                    styles.chipText,
-                    conditions.includes(c.id) && styles.chipTextActive,
+                    styles.conditionChip,
+                    isActive && styles.conditionChipActive,
                   ]}
+                  onPress={() => toggleItem(conditions, setConditions, c.id)}
                 >
-                  {c.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  {isActive ? (
+                    <CheckCircle size={18} color="#fff" weight="fill" />
+                  ) : (
+                    <IconComp size={18} color={C.primary} />
+                  )}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      isActive && styles.chipTextActive,
+                    ]}
+                  >
+                    {c.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </Animated.View>
+        </MotiView>
 
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.section}>
+        <MotiView
+          from={{ opacity: 0, translateY: 15 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 100 }}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Allergies & Intolerances</Text>
           <Text style={styles.sectionSubtitle}>
             Products with your allergens will be flagged
           </Text>
           <View style={styles.chipGrid}>
-            {ALLERGIES.map((a) => (
-              <TouchableOpacity
-                key={a.id}
-                style={[
-                  styles.allergyChip,
-                  allergies.includes(a.id) && styles.allergyChipActive,
-                ]}
-                onPress={() => toggleItem(allergies, setAllergies, a.id)}
-              >
-                <Text
+            {ALLERGIES.map((a) => {
+              const isActive = allergies.includes(a.id);
+              return (
+                <TouchableOpacity
+                  key={a.id}
                   style={[
-                    styles.chipText,
-                    allergies.includes(a.id) && styles.chipTextActive,
+                    styles.allergyChip,
+                    isActive && styles.allergyChipActive,
                   ]}
+                  onPress={() => toggleItem(allergies, setAllergies, a.id)}
                 >
-                  {a.label}
-                </Text>
-                {allergies.includes(a.id) && (
-                  <Ionicons name="checkmark" size={14} color={Colors.white} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      isActive && styles.chipTextActive,
+                    ]}
+                  >
+                    {a.label}
+                  </Text>
+                  {isActive && (
+                    <CheckCircle size={14} color="#fff" weight="fill" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </Animated.View>
+        </MotiView>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.section}>
+        <MotiView
+          from={{ opacity: 0, translateY: 15 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 200 }}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Your Goal</Text>
           <View style={styles.goalGrid}>
-            {GOALS.map((g) => (
-              <TouchableOpacity
-                key={g.id}
-                style={[
-                  styles.goalCard,
-                  goal === g.id && styles.goalCardActive,
-                ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setGoal(g.id);
-                }}
-              >
-                <Ionicons
-                  name={g.icon}
-                  size={24}
-                  color={goal === g.id ? Colors.white : Colors.primary}
-                />
-                <Text
+            {GOALS.map((g) => {
+              const isActive = goal === g.id;
+              const IconComp = g.Icon;
+              return (
+                <TouchableOpacity
+                  key={g.id}
                   style={[
-                    styles.goalText,
-                    goal === g.id && styles.goalTextActive,
+                    styles.goalCard,
+                    isActive && styles.goalCardActive,
                   ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setGoal(g.id);
+                  }}
                 >
-                  {g.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  {isActive ? (
+                    <CheckCircle size={24} color="#fff" weight="fill" />
+                  ) : (
+                    <IconComp size={24} color={C.primary} />
+                  )}
+                  <Text
+                    style={[
+                      styles.goalText,
+                      isActive && styles.goalTextActive,
+                    ]}
+                  >
+                    {g.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </Animated.View>
+        </MotiView>
 
-        <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
+        <MotiView
+          from={{ opacity: 0, translateY: 15 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400, delay: 300 }}
+          style={styles.section}
+        >
           <Text style={styles.sectionTitle}>Dietary Preference</Text>
           <View style={styles.dietList}>
-            {DIETS.map((d) => (
-              <TouchableOpacity
-                key={d.id}
-                style={[
-                  styles.dietRow,
-                  diet === d.id && styles.dietRowActive,
-                ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setDiet(d.id);
-                }}
-              >
-                <Text
+            {DIETS.map((d) => {
+              const isActive = diet === d.id;
+              return (
+                <TouchableOpacity
+                  key={d.id}
                   style={[
-                    styles.dietText,
-                    diet === d.id && styles.dietTextActive,
+                    styles.dietRow,
+                    isActive && styles.dietRowActive,
                   ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setDiet(d.id);
+                  }}
                 >
-                  {d.label}
-                </Text>
-                {diet === d.id && (
-                  <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.dietText,
+                      isActive && styles.dietTextActive,
+                    ]}
+                  >
+                    {d.label}
+                  </Text>
+                  {isActive && (
+                    <CheckCircle size={20} color={C.primary} weight="fill" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
-        </Animated.View>
+        </MotiView>
+
+        <TouchableOpacity
+          style={styles.gradientSaveWrapper}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.gradientSaveBtn}
+          >
+            <Text style={styles.gradientSaveText}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -255,7 +331,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   header: {
     flexDirection: "row",
@@ -263,14 +339,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
+    backgroundColor: C.card,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.border,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: Colors.charcoal,
+    color: C.text,
     letterSpacing: -0.3,
   },
   closeBtn: {
@@ -279,14 +355,24 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: C.bg,
+  },
+  saveBtnWrapper: {
+    borderRadius: 18,
+    overflow: "hidden",
   },
   saveBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
+  },
+  savingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#fff",
   },
   section: {
     marginTop: 24,
@@ -294,13 +380,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.charcoal,
+    color: C.text,
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     marginBottom: 16,
   },
   chipGrid: {
@@ -314,14 +400,19 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryPale,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    borderRadius: 14,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    ...cardShadow("subtle"),
   },
   conditionChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   allergyChip: {
     flexDirection: "row",
@@ -329,22 +420,22 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
+    borderRadius: 999,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
   },
   allergyChipActive: {
-    backgroundColor: Colors.danger,
-    borderColor: Colors.danger,
+    backgroundColor: C.danger,
+    borderColor: C.danger,
   },
   chipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
   },
   chipTextActive: {
-    color: Colors.white,
+    color: "#fff",
   },
   goalGrid: {
     flexDirection: "row",
@@ -356,22 +447,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 18,
     borderRadius: 14,
-    backgroundColor: Colors.primaryPale,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
     gap: 8,
+    ...cardShadow("subtle"),
   },
   goalCardActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   goalText: {
     fontSize: 13,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
   },
   goalTextActive: {
-    color: Colors.white,
+    color: "#fff",
   },
   dietList: {
     gap: 8,
@@ -383,21 +479,39 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    ...cardShadow("subtle"),
   },
   dietRowActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryPale,
+    borderColor: C.primary,
+    backgroundColor: C.tinted,
+    borderWidth: 1.5,
   },
   dietText: {
     fontSize: 15,
     fontWeight: "500",
-    color: Colors.charcoal,
+    color: C.text,
   },
   dietTextActive: {
-    fontWeight: "600",
-    color: Colors.primary,
+    fontWeight: "600" as const,
+    color: C.primary,
+  },
+  gradientSaveWrapper: {
+    marginTop: 28,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  gradientSaveBtn: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 999,
+  },
+  gradientSaveText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#fff",
   },
 });

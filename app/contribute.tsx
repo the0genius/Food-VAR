@@ -5,19 +5,24 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  ActivityIndicator,
   Image,
   Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+  X,
+  Package,
+  Camera,
+  Check,
+  WarningCircle,
+  Confetti,
+} from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import Animated, {
   FadeIn,
   FadeInDown,
-  FadeInUp,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -25,13 +30,15 @@ import Animated, {
   withSequence,
   Easing,
 } from "react-native-reanimated";
-import Colors from "@/constants/colors";
+import { MotiView } from "moti";
+import { LinearGradient } from "expo-linear-gradient";
+import Colors, { C, cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type FlowStep = "front_photo" | "back_photo" | "analyzing" | "error";
+type FlowStep = "front_photo" | "back_photo" | "analyzing" | "success" | "error";
 
 function PulsingDot({ delay }: { delay: number }) {
   const opacity = useSharedValue(0.3);
@@ -65,8 +72,10 @@ export default function ContributeScreen() {
   const [backImage, setBackImage] = useState<{ uri: string; base64: string } | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [successProduct, setSuccessProduct] = useState<any>(null);
   const hasLaunched = useRef(false);
   const frontImageRef = useRef<{ uri: string; base64: string } | null>(null);
+  const lottiePlayedRef = useRef(false);
 
   const barcode = params.barcode || "";
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -217,9 +226,12 @@ export default function ContributeScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      setAnalyzeStatus("Getting your score...");
-
       const product = contributeData.product;
+      setSuccessProduct(product);
+      setStep("success");
+
+      lottiePlayedRef.current = true;
+
       if (user && product) {
         setTimeout(() => {
           router.replace({
@@ -230,9 +242,7 @@ export default function ContributeScreen() {
               accessMethod: "contribute",
             },
           });
-        }, 800);
-      } else {
-        router.back();
+        }, 3000);
       }
     } catch (e) {
       console.error("Process error:", e);
@@ -255,59 +265,116 @@ export default function ContributeScreen() {
     <View style={[styles.container, { paddingTop: (insets.top || webTopInset) + 8 }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={24} color={Colors.charcoal} />
+          <X size={22} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Product</Text>
+        <View style={styles.headerCenter}>
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            style={styles.headerIconBg}
+          >
+            <Package size={16} color="#fff" weight="fill" />
+          </LinearGradient>
+          <Text style={styles.headerTitle}>Add Product</Text>
+        </View>
         <View style={{ width: 36 }} />
       </View>
 
       {step === "front_photo" && (
-        <Animated.View entering={FadeIn.duration(400)} style={styles.captureState}>
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "timing", duration: 400 }}
+          style={styles.captureState}
+        >
           <View style={styles.stepBadge}>
             <Text style={styles.stepBadgeText}>Step 1 of 2</Text>
           </View>
-          <Ionicons name="cube-outline" size={72} color={Colors.primaryLight} />
+
+          <View style={styles.dashedSlot}>
+            {frontImage ? (
+              <View style={styles.filledSlot}>
+                <Image source={{ uri: frontImage.uri }} style={styles.slotImage} />
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  style={styles.slotCheckBadge}
+                >
+                  <Check size={14} color="#fff" weight="bold" />
+                </LinearGradient>
+              </View>
+            ) : (
+              <>
+                <Camera size={40} color={C.placeholder} />
+                <Text style={styles.dashedSlotText}>Front of Package</Text>
+              </>
+            )}
+          </View>
+
           <Text style={styles.captureTitle}>Front of Package</Text>
           <Text style={styles.captureSubtitle}>
             Take a photo of the front of the product so we can identify it
           </Text>
-          {frontImage && (
-            <Image source={{ uri: frontImage.uri }} style={styles.previewThumb} />
-          )}
           {!frontImage && (
-            <TouchableOpacity style={styles.captureBtn} onPress={launchFrontCamera}>
-              <Ionicons name="camera" size={22} color={Colors.white} />
-              <Text style={styles.captureBtnText}>Open Camera</Text>
+            <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchFrontCamera}>
+              <LinearGradient
+                colors={["#3DD68C", "#2E7D32"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.captureBtn}
+              >
+                <Camera size={22} color="#fff" weight="fill" />
+                <Text style={styles.captureBtnText}>Open Camera</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
-        </Animated.View>
+        </MotiView>
       )}
 
       {step === "back_photo" && (
-        <Animated.View entering={FadeIn.duration(400)} style={styles.captureState}>
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "timing", duration: 400 }}
+          style={styles.captureState}
+        >
           <View style={styles.stepBadge}>
             <Text style={styles.stepBadgeText}>Step 2 of 2</Text>
           </View>
+
           <View style={styles.thumbRow}>
             {frontImage && (
               <View style={styles.thumbDone}>
                 <Image source={{ uri: frontImage.uri }} style={styles.thumbDoneImg} />
-                <View style={styles.thumbCheck}>
-                  <Ionicons name="checkmark" size={12} color={Colors.white} />
-                </View>
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  style={styles.thumbCheck}
+                >
+                  <Check size={12} color="#fff" weight="bold" />
+                </LinearGradient>
               </View>
             )}
           </View>
-          <Ionicons name="document-text-outline" size={72} color={Colors.primaryLight} />
+
+          <View style={styles.dashedSlot}>
+            <Camera size={40} color={C.placeholder} />
+            <Text style={styles.dashedSlotText}>Nutrition Label</Text>
+          </View>
+
           <Text style={styles.captureTitle}>Nutrition Label</Text>
           <Text style={styles.captureSubtitle}>
             Now take a photo of the nutrition facts on the back
           </Text>
-          <TouchableOpacity style={styles.captureBtn} onPress={launchBackCamera}>
-            <Ionicons name="camera" size={22} color={Colors.white} />
-            <Text style={styles.captureBtnText}>Open Camera</Text>
+          <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchBackCamera}>
+            <LinearGradient
+              colors={["#3DD68C", "#2E7D32"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.captureBtn}
+            >
+              <Camera size={22} color="#fff" weight="fill" />
+              <Text style={styles.captureBtnText}>Open Camera</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </Animated.View>
+        </MotiView>
       )}
 
       {step === "analyzing" && (
@@ -340,14 +407,57 @@ export default function ContributeScreen() {
         </Animated.View>
       )}
 
+      {step === "success" && (
+        <MotiView
+          from={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 12, stiffness: 100 }}
+          style={styles.successState}
+        >
+          <View style={styles.confettiContainer}>
+            {[...Array(12)].map((_, i) => (
+              <MotiView
+                key={i}
+                from={{ opacity: 0, translateY: 0, scale: 0 }}
+                animate={{ opacity: [1, 0], translateY: -80 - Math.random() * 60, scale: [1.2, 0.5] }}
+                transition={{ type: "timing", duration: 1200, delay: i * 80 }}
+                style={[styles.confettiDot, {
+                  left: `${10 + (i * 7.5)}%` as any,
+                  backgroundColor: ["#3DD68C", "#2E7D32", "#FB8C00", "#E53935", "#2EC4B6", "#FFD700"][i % 6],
+                  width: 8 + Math.random() * 6,
+                  height: 8 + Math.random() * 6,
+                }]}
+              />
+            ))}
+          </View>
+          <Confetti size={64} color={C.mint} weight="fill" />
+          <Text style={styles.successTitle}>You're a legend!</Text>
+          <Text style={styles.successSubtitle}>
+            Thanks for contributing! Your product has been added to our database and will help others make healthier choices.
+          </Text>
+        </MotiView>
+      )}
+
       {step === "error" && (
-        <Animated.View entering={FadeIn.duration(400)} style={styles.errorState}>
-          <Ionicons name="alert-circle" size={56} color={Colors.scoreAmber} />
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400 }}
+          style={styles.errorState}
+        >
+          <WarningCircle size={56} color={C.amber} weight="fill" />
           <Text style={styles.errorTitle}>Couldn't Read Package</Text>
           <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
-            <Ionicons name="camera" size={20} color={Colors.white} />
-            <Text style={styles.retryBtnText}>Try Again</Text>
+          <TouchableOpacity style={styles.retryBtnWrapper} onPress={handleRetry}>
+            <LinearGradient
+              colors={["#3DD68C", "#2E7D32"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.retryBtn}
+            >
+              <Camera size={20} color="#fff" weight="fill" />
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.cancelBtn}
@@ -355,7 +465,7 @@ export default function ContributeScreen() {
           >
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </MotiView>
       )}
     </View>
   );
@@ -364,7 +474,7 @@ export default function ContributeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   header: {
     flexDirection: "row",
@@ -373,18 +483,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
+  headerCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.softWhite,
+    backgroundColor: C.card,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: C.border,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.charcoal,
+    color: C.text,
   },
   captureState: {
     flex: 1,
@@ -396,29 +520,73 @@ const styles = StyleSheet.create({
   stepBadge: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.primaryPale,
+    borderRadius: 999,
+    backgroundColor: C.tinted,
     marginBottom: 8,
   },
   stepBadgeText: {
     fontSize: 13,
     fontWeight: "600",
-    color: Colors.primary,
+    color: C.primary,
+  },
+  dashedSlot: {
+    width: 140,
+    height: 140,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: C.placeholder,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  dashedSlotText: {
+    fontSize: 12,
+    color: C.placeholder,
+    fontWeight: "500",
+  },
+  filledSlot: {
+    width: "100%",
+    height: "100%",
+    position: "relative",
+  },
+  slotImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 18,
+  },
+  slotCheckBadge: {
+    position: "absolute",
+    bottom: -6,
+    right: -6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: C.bg,
   },
   captureTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: Colors.charcoal,
+    color: C.text,
     textAlign: "center",
     letterSpacing: -0.3,
     marginTop: 4,
   },
   captureSubtitle: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     lineHeight: 22,
     maxWidth: 280,
+  },
+  captureBtnWrapper: {
+    marginTop: 16,
+    borderRadius: 999,
+    overflow: "hidden",
   },
   captureBtn: {
     flexDirection: "row",
@@ -426,20 +594,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 16,
     paddingHorizontal: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    marginTop: 16,
+    borderRadius: 999,
   },
   captureBtnText: {
     fontSize: 17,
     fontWeight: "700",
-    color: Colors.white,
-  },
-  previewThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 14,
-    marginTop: 8,
+    color: "#fff",
   },
   thumbRow: {
     flexDirection: "row",
@@ -453,7 +613,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: C.mint,
   },
   thumbCheck: {
     position: "absolute",
@@ -462,7 +622,6 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -482,7 +641,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.primaryPale,
+    borderColor: C.tinted,
   },
   analyzingContent: {
     alignItems: "center",
@@ -496,20 +655,55 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: Colors.primary,
+    backgroundColor: C.mint,
   },
   analyzingText: {
     fontSize: 18,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
     textAlign: "center",
   },
   analyzingHint: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
+  },
+  successState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  confettiContainer: {
+    position: "absolute",
+    top: "30%",
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 10,
+    pointerEvents: "none",
+  },
+  confettiDot: {
+    position: "absolute",
+    borderRadius: 999,
+    top: 60,
+  },
+  successTitle: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: C.text,
+    textAlign: "center",
+    marginTop: 12,
+  },
+  successSubtitle: {
+    fontSize: 15,
+    color: C.muted,
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 300,
   },
   errorState: {
     flex: 1,
@@ -521,14 +715,19 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.charcoal,
+    color: C.text,
     marginTop: 4,
   },
   errorText: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     lineHeight: 22,
+  },
+  retryBtnWrapper: {
+    marginTop: 12,
+    borderRadius: 999,
+    overflow: "hidden",
   },
   retryBtn: {
     flexDirection: "row",
@@ -536,21 +735,19 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    marginTop: 12,
+    borderRadius: 999,
   },
   retryBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.white,
+    color: "#fff",
   },
   cancelBtn: {
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   cancelBtnText: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     fontWeight: "500",
   },
 });

@@ -7,13 +7,11 @@ import {
   StyleSheet,
   Platform,
   Alert,
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Dimensions,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -25,16 +23,18 @@ import Animated, {
   withTiming,
   withSequence,
   Easing,
-  withDelay,
 } from "react-native-reanimated";
+import { MotiView } from "moti";
+import { MagnifyingGlass, Package, CaretRight, Camera, Barcode, XCircle, PlusCircle } from "phosphor-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Colors, { cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SCAN_COOLDOWN_MS = 2500;
+const SCAN_FRAME_SIZE = 260;
 
 function ScanLineOverlay() {
   const translateY = useSharedValue(0);
@@ -42,7 +42,7 @@ function ScanLineOverlay() {
   useState(() => {
     translateY.value = withRepeat(
       withSequence(
-        withTiming(180, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(SCAN_FRAME_SIZE, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
         withTiming(0, { duration: 2800, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
@@ -209,12 +209,26 @@ export default function ScanScreen() {
     });
   }
 
+  function getStatusDotColor() {
+    if (scanStatus === "found") return C.green;
+    if (scanStatus === "not_found") return C.amber;
+    if (processing) return C.amber;
+    return C.mint;
+  }
+
+  function getStatusText() {
+    if (scanStatus === "found") return foundProductName;
+    if (scanStatus === "not_found") return "Product not in database";
+    if (processing) return "Looking up barcode...";
+    return "Point at a barcode to scan";
+  }
+
   function renderCameraScanner() {
     if (Platform.OS === "web") {
       return (
         <View style={styles.webFallback}>
           <View style={styles.iconCircle}>
-            <Ionicons name="camera-outline" size={40} color={Colors.primaryLight} />
+            <Camera size={40} color={Colors.primaryLight} />
           </View>
           <Text style={styles.webFallbackTitle}>Camera not available on web</Text>
           <Text style={styles.webFallbackText}>
@@ -227,7 +241,12 @@ export default function ScanScreen() {
     if (!permission) {
       return (
         <View style={styles.permissionState}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <MotiView
+            from={{ opacity: 0.4 }}
+            animate={{ opacity: 0.9 }}
+            transition={{ loop: true, type: "timing", duration: 850 }}
+            style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "#EBEBEB" }}
+          />
         </View>
       );
     }
@@ -236,7 +255,7 @@ export default function ScanScreen() {
       return (
         <View style={styles.permissionState}>
           <View style={styles.iconCircle}>
-            <Ionicons name="camera-outline" size={36} color={Colors.primaryLight} />
+            <Camera size={36} color={Colors.primaryLight} />
           </View>
           <Text style={styles.permissionTitle}>Camera Access Needed</Text>
           <Text style={styles.permissionText}>
@@ -251,7 +270,7 @@ export default function ScanScreen() {
               style={styles.permissionBtn}
               onPress={requestPermission}
             >
-              <Ionicons name="camera" size={20} color={Colors.white} />
+              <Camera size={20} color={C.card} weight="fill" />
               <Text style={styles.permissionBtnText}>Allow Camera</Text>
             </TouchableOpacity>
           )}
@@ -281,35 +300,22 @@ export default function ScanScreen() {
         />
         <ScanLineOverlay />
 
-        <View style={styles.scanStatusBar}>
-          {scanStatus === "scanning" && !processing && (
-            <Animated.View entering={FadeIn.duration(400)} style={styles.statusRow}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Point at a barcode to scan</Text>
-            </Animated.View>
-          )}
-          {processing && scanStatus === "scanning" && (
-            <Animated.View entering={FadeIn.duration(300)} style={styles.statusRow}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-              <Text style={styles.statusText}>Looking up barcode...</Text>
-            </Animated.View>
-          )}
-          {scanStatus === "found" && (
-            <Animated.View entering={FadeIn.duration(300)} style={[styles.statusRow, styles.statusFound]}>
-              <Ionicons name="checkmark-circle" size={20} color={Colors.scoreGreen} />
-              <Text style={[styles.statusText, { color: Colors.scoreGreen }]}>
-                {foundProductName}
-              </Text>
-            </Animated.View>
-          )}
-          {scanStatus === "not_found" && (
-            <Animated.View entering={FadeIn.duration(300)} style={[styles.statusRow, styles.statusNotFound]}>
-              <Ionicons name="help-circle" size={20} color={Colors.scoreAmber} />
-              <Text style={[styles.statusText, { color: Colors.scoreAmber }]}>
-                Product not in database
-              </Text>
-            </Animated.View>
-          )}
+        <View style={styles.scanBottomArea}>
+          <Animated.View entering={FadeIn.duration(400)} style={styles.statusPill}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusDotColor() }]} />
+            <Text style={styles.statusText}>{getStatusText()}</Text>
+          </Animated.View>
+
+          <TouchableOpacity
+            style={styles.searchLinkPill}
+            onPress={() => {
+              setMode("search");
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          >
+            <Text style={styles.searchLinkText}>Can't scan it? Search by name</Text>
+            <CaretRight size={13} color="white" />
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -335,10 +341,10 @@ export default function ScanScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
-            <Ionicons
-              name="search"
+            <MagnifyingGlass
               size={16}
-              color={mode === "search" ? Colors.white : Colors.primary}
+              color={mode === "search" ? C.text : C.placeholder}
+              weight={mode === "search" ? "bold" : "regular"}
             />
             <Text
               style={[
@@ -356,10 +362,10 @@ export default function ScanScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
-            <Ionicons
-              name="scan-outline"
+            <Barcode
               size={16}
-              color={mode === "scanner" ? Colors.white : Colors.primary}
+              color={mode === "scanner" ? C.text : C.placeholder}
+              weight={mode === "scanner" ? "bold" : "regular"}
             />
             <Text
               style={[
@@ -376,68 +382,76 @@ export default function ScanScreen() {
       {mode === "search" && (
         <View style={styles.searchArea}>
           <View style={styles.searchInputWrap}>
-            <Ionicons name="search" size={18} color={Colors.mediumGray} />
+            <MagnifyingGlass size={18} color={C.placeholder} />
             <TextInput
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={handleSearch}
               placeholder="Search by name, brand, or category..."
-              placeholderTextColor={Colors.mediumGray}
+              placeholderTextColor={C.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               testID="search-input"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => handleSearch("")}>
-                <Ionicons
-                  name="close-circle"
-                  size={18}
-                  color={Colors.mediumGray}
-                />
+                <XCircle size={18} color={C.placeholder} weight="fill" />
               </TouchableOpacity>
             )}
           </View>
 
           {searching && (
-            <ActivityIndicator
-              style={{ marginTop: 20 }}
-              color={Colors.primary}
-            />
+            <View style={{ alignItems: "center", marginTop: 20, gap: 8 }}>
+              <MotiView
+                from={{ opacity: 0.4 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ loop: true, type: "timing", duration: 850 }}
+                style={{ width: 200, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB" }}
+              />
+              <MotiView
+                from={{ opacity: 0.4 }}
+                animate={{ opacity: 0.9 }}
+                transition={{ loop: true, type: "timing", duration: 850, delay: 100 }}
+                style={{ width: 140, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB" }}
+              />
+            </View>
           )}
 
           <FlatList
             data={searchResults}
             keyExtractor={(item) => String(item.id)}
             renderItem={({ item, index }) => (
-              <Animated.View entering={FadeInDown.delay(index * 40).duration(300)}>
+              <MotiView
+                from={{ opacity: 0, translateY: 8 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ delay: index * 50, type: "timing" }}
+              >
                 <TouchableOpacity
                   style={styles.searchResultCard}
                   onPress={() => handleProductSelect(item)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.resultIcon}>
-                    <Ionicons
-                      name="nutrition-outline"
-                      size={20}
-                      color={Colors.primary}
-                    />
+                    <Package size={22} color="#CCCCCC" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.resultName} numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <Text style={styles.resultBrand} numberOfLines={1}>
-                      {item.brand || ""}
-                      {item.category ? ` \u00B7 ${item.category}` : ""}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+                      <Text style={styles.resultBrand} numberOfLines={1}>
+                        {item.brand || ""}
+                      </Text>
+                      {item.category ? (
+                        <View style={styles.categoryChip}>
+                          <Text style={styles.categoryChipText}>{item.category}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={Colors.lightGray}
-                  />
+                  <CaretRight size={16} color={C.placeholder} />
                 </TouchableOpacity>
-              </Animated.View>
+              </MotiView>
             )}
             contentContainerStyle={{
               paddingHorizontal: 20,
@@ -448,24 +462,25 @@ export default function ScanScreen() {
             ListEmptyComponent={
               searchQuery.length >= 2 && !searching ? (
                 <View style={styles.emptyState}>
-                  <Ionicons
-                    name="search-outline"
-                    size={40}
-                    color={Colors.lightGray}
-                  />
-                  <Text style={styles.emptyText}>No products found</Text>
+                  <View style={styles.iconCircle}>
+                    <MagnifyingGlass size={32} color="#CCCCCC" weight="thin" />
+                  </View>
+                  <Text style={styles.emptyTitle}>No products found</Text>
+                  <Text style={styles.emptyText}>
+                    Try a different search term or add a new product
+                  </Text>
                   <TouchableOpacity
                     style={styles.contributeBtn}
                     onPress={() => router.push("/contribute")}
                   >
-                    <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                    <PlusCircle size={18} color={C.primary} />
                     <Text style={styles.contributeBtnText}>Add a product</Text>
                   </TouchableOpacity>
                 </View>
               ) : searchQuery.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={styles.iconCircle}>
-                    <Ionicons name="nutrition" size={32} color={Colors.primaryLight} />
+                    <Package size={32} color="#CCCCCC" weight="thin" />
                   </View>
                   <Text style={styles.emptyTitle}>Find Any Product</Text>
                   <Text style={styles.emptyText}>
@@ -483,17 +498,15 @@ export default function ScanScreen() {
   );
 }
 
-const SCAN_FRAME_SIZE = SCREEN_WIDTH * 0.7;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: Colors.white,
+    backgroundColor: C.card,
     zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -501,17 +514,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.charcoal,
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: C.text,
     letterSpacing: -0.5,
     marginBottom: 16,
   },
   modeToggle: {
     flexDirection: "row",
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: C.bg,
     borderRadius: 16,
-    padding: 3,
+    padding: 4,
   },
   modeBtn: {
     flex: 1,
@@ -520,19 +533,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: 13,
   },
   modeBtnActive: {
-    backgroundColor: "#3DD68C",
-    ...cardShadow("subtle"),
+    backgroundColor: C.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    ...Platform.select({
+      android: { elevation: 2 } as any,
+      default: {},
+    }),
   },
   modeBtnText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: Colors.primary,
+    fontWeight: "500" as const,
+    color: C.placeholder,
   },
   modeBtnTextActive: {
-    color: Colors.white,
+    color: C.text,
+    fontWeight: "700" as const,
   },
   searchArea: {
     flex: 1,
@@ -542,49 +563,73 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 20,
     marginTop: 16,
-    paddingHorizontal: 14,
-    height: 48,
-    backgroundColor: Colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: C.card,
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
+    borderWidth: 0.5,
+    borderColor: C.border,
     gap: 10,
-    ...cardShadow("subtle"),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    ...Platform.select({
+      android: { elevation: 1 } as any,
+      default: {},
+    }),
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: Colors.charcoal,
+    color: C.text,
   },
   searchResultCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    marginBottom: 8,
+    backgroundColor: C.card,
+    borderRadius: 20,
+    marginBottom: 10,
     gap: 12,
     borderWidth: 0.5,
-    borderColor: "rgba(0,0,0,0.04)",
-    ...cardShadow("subtle"),
+    borderColor: C.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    ...Platform.select({
+      android: { elevation: 3 } as any,
+      default: {},
+    }),
   },
   resultIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryPale,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
   },
   resultName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.charcoal,
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: C.text,
   },
   resultBrand: {
-    fontSize: 13,
-    color: Colors.mediumGray,
-    marginTop: 2,
+    fontSize: 12,
+    color: C.muted,
+  },
+  categoryChip: {
+    backgroundColor: C.bg,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  categoryChipText: {
+    fontSize: 11,
+    color: C.muted,
+    fontWeight: "500" as const,
   },
   emptyState: {
     alignItems: "center",
@@ -593,14 +638,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "800",
-    color: Colors.charcoal,
-    marginTop: 8,
+    fontWeight: "700" as const,
+    color: C.text,
+    marginTop: 4,
     letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     maxWidth: 260,
   },
@@ -610,17 +655,17 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: Colors.white,
+    borderRadius: 999,
+    backgroundColor: C.card,
     borderWidth: 1,
-    borderColor: Colors.primaryPale,
+    borderColor: C.border,
     marginTop: 8,
     ...cardShadow("subtle"),
   },
   contributeBtnText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: Colors.primary,
+    fontWeight: "600" as const,
+    color: C.primary,
   },
   cameraContainer: {
     flex: 1,
@@ -639,93 +684,106 @@ const styles = StyleSheet.create({
   },
   scanFrame: {
     width: SCAN_FRAME_SIZE,
-    height: SCAN_FRAME_SIZE * 0.6,
+    height: SCAN_FRAME_SIZE,
     position: "relative",
+    shadowColor: C.mint,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
   },
   scanCorner: {
     position: "absolute",
-    width: 32,
-    height: 32,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
+    width: 28,
+    height: 28,
+    borderColor: C.mint,
   },
   scanCornerTL: {
     top: 0,
     left: 0,
-    borderTopWidth: 3.5,
-    borderLeftWidth: 3.5,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
     borderTopLeftRadius: 10,
   },
   scanCornerTR: {
     top: 0,
     right: 0,
-    borderTopWidth: 3.5,
-    borderRightWidth: 3.5,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
     borderTopRightRadius: 10,
   },
   scanCornerBL: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 3.5,
-    borderLeftWidth: 3.5,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
     borderBottomLeftRadius: 10,
   },
   scanCornerBR: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 3.5,
-    borderRightWidth: 3.5,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
     borderBottomRightRadius: 10,
   },
   scanLine: {
     position: "absolute",
     left: 8,
     right: 8,
-    height: 2.5,
-    backgroundColor: Colors.primary,
+    height: 2,
+    backgroundColor: C.mint,
     opacity: 0.85,
     borderRadius: 1,
   },
-  scanStatusBar: {
+  scanBottomArea: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingVertical: 24,
-    paddingHorizontal: 24,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    ...cardShadow("medium"),
+    alignItems: "center",
+    paddingBottom: 40,
+    gap: 12,
   },
-  statusRow: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.72)",
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  statusFound: {},
-  statusNotFound: {},
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
+    width: 7,
+    height: 7,
+    borderRadius: 999,
   },
   statusText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.charcoal,
+    fontSize: 13,
+    fontWeight: "500" as const,
+    color: "white",
+  },
+  searchLinkPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  searchLinkText: {
+    fontSize: 13,
+    color: "white",
+    fontWeight: "500" as const,
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primaryPale,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: C.bg,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   permissionState: {
     flex: 1,
@@ -736,19 +794,19 @@ const styles = StyleSheet.create({
   },
   permissionTitle: {
     fontSize: 20,
-    fontWeight: "700",
-    color: Colors.charcoal,
+    fontWeight: "700" as const,
+    color: C.text,
     marginTop: 8,
   },
   permissionText: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     lineHeight: 22,
   },
   permissionHint: {
     fontSize: 13,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     marginTop: 8,
   },
@@ -765,8 +823,8 @@ const styles = StyleSheet.create({
   },
   permissionBtnText: {
     fontSize: 16,
-    fontWeight: "700",
-    color: Colors.white,
+    fontWeight: "700" as const,
+    color: C.card,
   },
   webFallback: {
     flex: 1,
@@ -777,13 +835,13 @@ const styles = StyleSheet.create({
   },
   webFallbackTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: Colors.charcoal,
+    fontWeight: "700" as const,
+    color: C.text,
     marginTop: 8,
   },
   webFallbackText: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center",
     lineHeight: 22,
   },

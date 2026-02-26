@@ -16,8 +16,10 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Expo SDK 54 with expo-router v6 for file-based routing
 - **Navigation**: Tab-based layout with 4 tabs (Home, Scan, History, Profile) plus modal screens for results, contributions, and onboarding
 - **State Management**: TanStack React Query for server state; React Context (`UserContext`) for user session/profile; AsyncStorage for local persistence of user session
-- **Styling**: React Native StyleSheet with a centralized color constants file (`constants/colors.ts`)
-- **Key Libraries**: react-native-reanimated (animations), expo-haptics (tactile feedback), expo-camera (barcode scanning), expo-image-picker (product image contribution), expo-linear-gradient (UI gradients)
+- **Styling**: React Native StyleSheet with centralized design tokens (`constants/colors.ts` exports both `Colors` default and `C` named token set)
+- **Icons**: phosphor-react-native (all screens use Phosphor icons — no @expo/vector-icons/Ionicons)
+- **Animations**: moti (MotiView for skeleton loaders, entry animations), react-native-reanimated (layout animations, shared values)
+- **Key Libraries**: expo-haptics (tactile feedback), expo-camera (barcode scanning), expo-image-picker (product image contribution), expo-linear-gradient (UI gradients throughout — FAB, buttons, headers, avatar, profile grid)
 - **API Communication**: `lib/query-client.ts` provides `apiRequest()` and `getApiUrl()` helpers using `expo/fetch`. The API URL is derived from `EXPO_PUBLIC_DOMAIN` environment variable
 
 ### Backend (Express.js)
@@ -86,6 +88,8 @@ Preferred communication style: Simple, everyday language.
 - `@google/genai` - Gemini AI SDK
 - `p-limit` / `p-retry` - Concurrency and retry utilities for batch AI processing
 - `react-native-reanimated` - Animations
+- `moti` - Declarative animations and skeleton loaders
+- `phosphor-react-native` - Icon library (replaces @expo/vector-icons)
 - `expo-camera` - Barcode scanning
 - `expo-image-picker` - Image selection for product contributions
 - `@react-native-async-storage/async-storage` - Local user session persistence

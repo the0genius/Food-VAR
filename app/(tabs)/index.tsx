@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
+import { C } from "@/constants/colors";
 import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
@@ -17,123 +17,74 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { MotiView } from "moti";
+import {
+  House,
+  Barcode,
+  CaretRight,
+  Lightbulb,
+  ScanSmiley,
+  ChartLineUp,
+  Package,
+  Plant,
+  Heart,
+  Star,
+  Drop,
+  Sparkle,
+  Crown,
+} from "phosphor-react-native";
 
-function SkeletonPulse({ children }: { children: React.ReactNode }) {
-  const opacity = useSharedValue(0.3);
-
-  useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.7, { duration: 800 }), -1, true);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: number | string; height: number; borderRadius?: number; style?: any }) {
+  return (
+    <MotiView
+      from={{ opacity: 0.4 }}
+      animate={{ opacity: 0.9 }}
+      transition={{ loop: true, type: "timing" as const, duration: 850 }}
+      style={[{ backgroundColor: "#EBEBEB", borderRadius, width: width as any, height }, style]}
+    />
+  );
 }
 
 function SkeletonProductCard() {
   return (
-    <SkeletonPulse>
-      <View style={styles.productCard}>
-        <View style={styles.productInfo}>
-          <View
-            style={{
-              width: "65%",
-              height: 14,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-            }}
-          />
-          <View
-            style={{
-              width: "45%",
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-              marginTop: 6,
-            }}
-          />
-          <View
-            style={{
-              flexDirection: "row" as const,
-              alignItems: "center" as const,
-              gap: 8,
-              marginTop: 8,
-            }}
-          >
-            <View
-              style={{
-                width: 50,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: Colors.lightGray,
-              }}
-            />
-            <View
-              style={{
-                width: 60,
-                height: 18,
-                borderRadius: 6,
-                backgroundColor: Colors.lightGray,
-              }}
-            />
-          </View>
-        </View>
+    <View style={styles.popularCard}>
+      <View style={styles.popularIconBox}>
+        <SkeletonBlock width={44} height={44} borderRadius={14} />
       </View>
-    </SkeletonPulse>
+      <View style={{ flex: 1 }}>
+        <SkeletonBlock width="65%" height={14} borderRadius={6} />
+        <SkeletonBlock width="45%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
+      </View>
+    </View>
   );
 }
 
 function SkeletonRecentCard() {
   return (
-    <SkeletonPulse>
-      <View style={styles.recentCard}>
-        <View
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            backgroundColor: Colors.lightGray,
-          }}
-        />
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              width: "60%",
-              height: 14,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-            }}
-          />
-          <View
-            style={{
-              width: "40%",
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: Colors.lightGray,
-              marginTop: 5,
-            }}
-          />
-        </View>
-      </View>
-    </SkeletonPulse>
+    <View style={styles.recentCard}>
+      <SkeletonBlock width={38} height={38} borderRadius={10} />
+      <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 8 }} />
+      <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
+    </View>
   );
 }
 
 function getScoreColor(score: number): string {
-  if (score === 0) return Colors.danger;
-  if (score <= 15) return "#D32F2F";
-  if (score <= 35) return Colors.scoreRed;
-  if (score <= 50) return Colors.scoreAmber;
-  if (score <= 74) return "#2EC4B6";
-  return Colors.scoreGreen;
+  if (score === 0) return C.danger;
+  if (score <= 15) return C.darkRed;
+  if (score <= 35) return C.danger;
+  if (score <= 50) return C.amber;
+  if (score <= 74) return C.tealScore;
+  return C.green;
 }
 
 function getScoreColorLight(score: number): string {
-  if (score <= 35) return "#FFEBEE";
-  if (score <= 50) return "#FFF3E0";
-  return "#E8F5E9";
+  if (score === 0) return C.dangerBg;
+  if (score <= 15) return "#FFE8E8";
+  if (score <= 35) return C.dangerBg;
+  if (score <= 50) return C.amberBg;
+  if (score <= 74) return C.tealBg;
+  return C.greenBg;
 }
 
 function getScoreLabel(score: number): string {
@@ -170,68 +121,27 @@ function dedupeScans(scans: any[]): any[] {
   });
 }
 
-function getInsightText(avgScore: number, weeklyScans: number, totalScans: number): { icon: string; text: string } {
+function getInsightText(avgScore: number, weeklyScans: number, totalScans: number): string {
   if (totalScans === 0) {
-    return { icon: "sparkles", text: "Scan your first product to get personalized insights" };
+    return "Scan your first product to get personalized insights";
   }
   if (avgScore >= 75) {
-    return { icon: "trophy", text: "Your choices are looking great! Keep making smart picks" };
+    return "Your choices are looking great! Keep making smart picks";
   }
   if (avgScore >= 55) {
-    return { icon: "trending-up", text: `Avg score: ${Math.round(avgScore)} — try swapping a few items for better picks` };
+    return `Avg score: ${Math.round(avgScore)} — try swapping a few items for better picks`;
   }
   if (avgScore >= 35) {
-    return { icon: "bulb", text: `Avg score: ${Math.round(avgScore)} — check out your Top Picks in Profile for ideas` };
+    return `Avg score: ${Math.round(avgScore)} — check out your Top Picks in Profile for ideas`;
   }
-  return { icon: "heart", text: `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you` };
+  return `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you`;
 }
 
-function ScoreBadge({ score }: { score: number }) {
+function ScoreBadgeSmall({ score }: { score: number }) {
   return (
-    <View style={[styles.scoreBadge, { backgroundColor: getScoreColorLight(score) }]}>
-      <Text style={[styles.scoreBadgeText, { color: getScoreColor(score) }]}>{score}</Text>
+    <View style={[styles.scoreBadgeSmall, { backgroundColor: getScoreColorLight(score) }]}>
+      <Text style={[styles.scoreBadgeSmallText, { color: getScoreColor(score) }]}>{score}</Text>
     </View>
-  );
-}
-
-function ProductCard({
-  item,
-  index,
-  onPress,
-}: {
-  item: any;
-  index: number;
-  onPress: () => void;
-}) {
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
-      <TouchableOpacity
-        style={styles.productCard}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={styles.productAccentLine} />
-        <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={styles.productBrand} numberOfLines={1}>
-            {item.brand || "Unknown brand"}
-          </Text>
-          <View style={styles.productMeta}>
-            <Text style={styles.productMetaText}>
-              {item.calories ? `${Math.round(item.calories)} cal` : ""}
-            </Text>
-            {item.category ? (
-              <View style={styles.categoryTag}>
-                <Text style={styles.categoryTagText}>{item.category}</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={Colors.lightGray} />
-      </TouchableOpacity>
-    </Animated.View>
   );
 }
 
@@ -245,99 +155,108 @@ function RecentScanCard({
   onPress: () => void;
 }) {
   const scoreLabel = getScoreLabel(item.score);
-  const scoreLabelColor = getScoreColor(item.score);
-  const timeAgo = item.createdAt ? getRelativeTime(item.createdAt) : "";
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
+    <MotiView
+      from={{ opacity: 0, translateX: 20 }}
+      animate={{ opacity: 1, translateX: 0 }}
+      transition={{ delay: index * 70, type: "timing" as const }}
+    >
       <TouchableOpacity
         style={styles.recentCard}
         onPress={onPress}
         activeOpacity={0.7}
       >
-        <ScoreBadge score={item.score} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.recentName} numberOfLines={1}>
-            {item.productName}
+        <View style={{ position: "absolute" as const, top: 10, right: 10 }}>
+          <ScoreBadgeSmall score={item.score} />
+        </View>
+        <Text style={styles.recentName} numberOfLines={2}>
+          {item.productName}
+        </Text>
+        <Text style={styles.recentBrand} numberOfLines={1}>
+          {item.productBrand || "Unknown"}
+        </Text>
+        <View style={[styles.scoreLabelPill, { backgroundColor: getScoreColorLight(item.score) }]}>
+          <Text style={[styles.scoreLabelPillText, { color: getScoreColor(item.score) }]}>
+            {scoreLabel}
           </Text>
-          <View style={styles.recentMeta}>
-            {item.productBrand ? (
-              <Text style={styles.recentBrand} numberOfLines={1}>
-                {item.productBrand}
-              </Text>
-            ) : null}
-            {item.productCategory ? (
-              <View style={styles.recentCategoryDot} />
-            ) : null}
-            {item.productCategory ? (
-              <Text style={styles.recentCategory} numberOfLines={1}>
-                {item.productCategory}
-              </Text>
-            ) : null}
-          </View>
         </View>
-        <View style={styles.recentRight}>
-          <View style={[styles.scoreLabelTag, { backgroundColor: getScoreColorLight(item.score) }]}>
-            <Text style={[styles.scoreLabelText, { color: scoreLabelColor }]}>
-              {scoreLabel}
+      </TouchableOpacity>
+    </MotiView>
+  );
+}
+
+function PopularProductCard({
+  item,
+  index,
+  onPress,
+}: {
+  item: any;
+  index: number;
+  onPress: () => void;
+}) {
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
+      <TouchableOpacity
+        style={styles.popularCard}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={[C.tinted, "#D0EDD1"]}
+          style={styles.popularIconBox}
+        >
+          <Package size={20} color={C.primary} />
+        </LinearGradient>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.popularName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={styles.popularMetaRow}>
+            <Text style={styles.popularBrand} numberOfLines={1}>
+              {item.brand || "Unknown brand"}
             </Text>
+            {item.calories ? (
+              <View style={styles.caloriesChip}>
+                <Text style={styles.caloriesChipText}>{Math.round(item.calories)} cal</Text>
+              </View>
+            ) : null}
           </View>
-          {timeAgo ? (
-            <Text style={styles.recentTime}>{timeAgo}</Text>
-          ) : null}
         </View>
+        <CaretRight size={16} color={C.placeholder} />
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
-function ScanProgressBar({ used, total }: { used: number; total: number }) {
+function AnimatedProgressBar({ used, total }: { used: number; total: number }) {
   const ratio = Math.min(used / total, 1);
-  const isNearLimit = used >= 8;
-  const barColor = isNearLimit ? Colors.scoreAmber : Colors.primary;
-
-  return (
-    <View style={styles.progressWrap}>
-      <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${ratio * 100}%`, backgroundColor: barColor },
-          ]}
-        />
-      </View>
-      <Text style={[styles.progressText, isNearLimit && { color: Colors.scoreAmber }]}>
-        {used}/{total}
-      </Text>
-    </View>
-  );
-}
-
-function ScanButtonWithGlow({ onPress }: { onPress: () => void }) {
-  const glowOpacity = useSharedValue(0.2);
+  const animWidth = useSharedValue(0);
 
   useEffect(() => {
-    glowOpacity.value = withRepeat(
-      withTiming(0.45, { duration: 1500 }),
-      -1,
-      true
-    );
-  }, []);
+    animWidth.value = withTiming(ratio * 100, { duration: 800 });
+  }, [ratio]);
 
-  const glowStyle = useAnimatedStyle(() => ({
-    ...coloredShadow(Colors.primary, "medium"),
-    shadowOpacity: glowOpacity.value,
+  const fillStyle = useAnimatedStyle(() => ({
+    width: `${animWidth.value}%` as any,
+    height: 5,
+    borderRadius: 999,
   }));
 
   return (
-    <Animated.View style={[styles.scanButtonGlowWrap, glowStyle]}>
-      <TouchableOpacity
-        style={styles.scanButton}
-        onPress={onPress}
-      >
-        <Ionicons name="scan" size={22} color={Colors.white} />
-      </TouchableOpacity>
-    </Animated.View>
+    <View style={styles.progressRow}>
+      <Text style={styles.progressLabel}>{used} of {total} checks used today</Text>
+      <View style={styles.progressTrack}>
+        <Animated.View style={fillStyle}>
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1, borderRadius: 999 }}
+          />
+        </Animated.View>
+      </View>
+    </View>
   );
 }
 
@@ -396,11 +315,13 @@ export default function HomeScreen() {
     router.push("/(tabs)/scan");
   }
 
-  const insight = getInsightText(
+  const insightText = getInsightText(
     stats?.avgScore || 0,
     stats?.weeklyScans || 0,
     stats?.totalScans || 0
   );
+
+  const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
   return (
     <View style={styles.container}>
@@ -411,16 +332,16 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={!!popularQuery.isRefetching || !!historyQuery.isRefetching || !!scansQuery.isRefetching}
             onRefresh={handleRefresh}
-            tintColor={Colors.primary}
-            colors={[Colors.primary]}
+            tintColor={C.primary}
+            colors={[C.primary]}
           />
         }
         ListHeaderComponent={
           <>
             <LinearGradient
-              colors={["#EDF2EF", "#F1F5F3", "#F6F8F7"]}
+              colors={["#F0FAF4", "#F6F8F7"]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              end={{ x: 0, y: 1 }}
               style={[
                 styles.headerGradient,
                 { paddingTop: (insets.top || webTopInset) + 16 },
@@ -428,78 +349,145 @@ export default function HomeScreen() {
             >
               <View style={styles.headerRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.greeting}>
-                    {getGreeting()}
-                    {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+                  <Text style={styles.greetingSmall}>
+                    {getGreeting()},
                   </Text>
-                  {!user?.isPro && (
-                    <ScanProgressBar used={scansToday} total={10} />
-                  )}
-                  {user?.isPro && (
-                    <View style={styles.proBadgeRow}>
-                      <Ionicons name="star" size={12} color="#FFD700" />
-                      <Text style={styles.proLabel}>Pro Member</Text>
-                    </View>
-                  )}
+                  <Text style={styles.greetingName}>
+                    {user?.name ? user.name.split(" ")[0] : "there"}
+                  </Text>
                 </View>
-                <ScanButtonWithGlow onPress={handleScanPress} />
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  style={styles.avatarCircle}
+                >
+                  <Text style={styles.avatarInitial}>{userInitial}</Text>
+                </LinearGradient>
               </View>
+
+              {!user?.isPro && (
+                <AnimatedProgressBar used={scansToday} total={10} />
+              )}
+              {user?.isPro && (
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.proBadge}
+                >
+                  <Crown size={12} color="#FFD700" weight="fill" />
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </LinearGradient>
+              )}
             </LinearGradient>
 
+            <MotiView
+              from={{ opacity: 0, translateY: -10 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: "timing" as const, duration: 500, delay: 100 }}
+              style={styles.heroBanner}
+            >
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.heroLine1}>Scan Smart.</Text>
+                <Text style={styles.heroLine2}>Eat Right.</Text>
+                <Text style={styles.heroSub}>Know what's in your food instantly.</Text>
+                <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#3DD68C", "#2E7D32"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.heroCTA}
+                  >
+                    <Barcode size={13} color="white" weight="bold" />
+                    <Text style={styles.heroCTAText}>Scan Now</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.heroIconCluster}>
+                <Plant size={40} color={C.primary} style={{ position: "absolute" as const, top: 18, left: 18 }} />
+                <Heart size={19} color={C.mint} weight="fill" style={{ position: "absolute" as const, top: 0, right: 0 }} />
+                <Star size={13} color={C.primary} style={{ position: "absolute" as const, top: 0, left: 6, opacity: 0.45 }} />
+                <Drop size={13} color={C.mint} style={{ position: "absolute" as const, bottom: 0, right: 6, opacity: 0.7 }} />
+                <Sparkle size={11} color={C.primary} style={{ position: "absolute" as const, bottom: 4, left: 0, opacity: 0.5 }} />
+              </View>
+            </MotiView>
+
             {!statsQuery.isLoading && (
-              <Animated.View entering={FadeInDown.duration(300)} style={styles.insightCard}>
-                <Ionicons
-                  name={insight.icon as any}
-                  size={18}
-                  color={Colors.primary}
-                />
-                <Text style={styles.insightText}>{insight.text}</Text>
-              </Animated.View>
+              <View style={styles.insightCard}>
+                <View style={styles.insightAccent} />
+                <LinearGradient
+                  colors={["#3DD68C22", "#2E7D3222"]}
+                  style={styles.insightIconBg}
+                >
+                  <Lightbulb size={17} color={C.primary} weight="fill" />
+                </LinearGradient>
+                <Text style={styles.insightText}>{insightText}</Text>
+              </View>
             )}
+
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <ScanSmiley size={18} color={C.mint} />
+                  <Text style={styles.statLabel}>Today</Text>
+                </View>
+                <Text style={styles.statNumber}>{scansToday}</Text>
+                <Text style={styles.statSub}>checks done</Text>
+              </View>
+              <View style={styles.statCard}>
+                <View style={styles.statHeader}>
+                  <ChartLineUp size={18} color={C.primary} />
+                  <Text style={styles.statLabel}>Avg Score</Text>
+                </View>
+                <Text style={[styles.statNumber, { color: stats?.avgScore ? getScoreColor(stats.avgScore) : C.text }]}>
+                  {stats?.avgScore ? Math.round(stats.avgScore) : "--"}
+                </Text>
+                <Text style={styles.statSub}>overall</Text>
+              </View>
+            </View>
 
             {recentScans.length === 0 && !historyQuery.isLoading && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
                 <View style={styles.welcomeIconWrap}>
-                  <Ionicons name="nutrition-outline" size={36} color={Colors.primary} />
+                  <Barcode size={36} color={C.primary} />
                 </View>
                 <Text style={styles.welcomeTitle}>Welcome to FoodVAR</Text>
                 <Text style={styles.welcomeSubtitle}>
                   Scan your first product to get a personalized health score based on your profile.
                 </Text>
-                <LinearGradient
-                  colors={["#3DD68C", "#2EC4B6"]}
-                  style={styles.welcomeBtnGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <TouchableOpacity style={styles.welcomeBtn} onPress={handleScanPress} activeOpacity={0.8}>
-                    <Ionicons name="scan" size={20} color={Colors.white} />
+                <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                  <LinearGradient
+                    colors={["#3DD68C", "#2E7D32"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.welcomeBtnGradient}
+                  >
+                    <Barcode size={20} color="white" weight="bold" />
                     <Text style={styles.welcomeBtnText}>Scan a Product</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+                  </LinearGradient>
+                </TouchableOpacity>
               </Animated.View>
             )}
 
             {historyQuery.isLoading && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Recent Scans</Text>
-                </View>
-                {[0, 1, 2].map((i) => (
-                  <SkeletonRecentCard key={i} />
-                ))}
+                <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
+                  {[0, 1, 2].map((i) => (
+                    <SkeletonRecentCard key={i} />
+                  ))}
+                </ScrollView>
               </View>
             )}
 
             {!historyQuery.isLoading && recentScans.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Recent Scans</Text>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
                   <TouchableOpacity onPress={() => router.push("/(tabs)/history")}>
-                    <Text style={styles.seeAll}>See All</Text>
+                    <Text style={styles.seeAll}>See all</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.recentListCard}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
                   {recentScans.map((item: any, i: number) => (
                     <RecentScanCard
                       key={item.id}
@@ -515,14 +503,12 @@ export default function HomeScreen() {
                       }
                     />
                   ))}
-                </View>
+                </ScrollView>
               </View>
             )}
 
             <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Popular Products</Text>
-              </View>
+              <Text style={[styles.sectionHeaderLabel, { marginTop: 4 }]}>POPULAR</Text>
               {popularQuery.isLoading && (
                 <>
                   {[0, 1, 2].map((i) => (
@@ -531,7 +517,7 @@ export default function HomeScreen() {
                 </>
               )}
               {!popularQuery.isLoading && popular.map((item: any, i: number) => (
-                <ProductCard
+                <PopularProductCard
                   key={item.id}
                   item={item}
                   index={i}
@@ -552,15 +538,17 @@ export default function HomeScreen() {
                   onPress={() => router.push("/contribute")}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.contributeAccentLine} />
-                  <View style={styles.contributeIconWrap}>
-                    <Ionicons name="add" size={20} color="#FF8A65" />
-                  </View>
+                  <LinearGradient
+                    colors={[C.tinted, "#D0EDD1"]}
+                    style={styles.contributeIconWrap}
+                  >
+                    <Package size={20} color={C.primary} />
+                  </LinearGradient>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.contributeTitle}>Know a product we don't have?</Text>
                     <Text style={styles.contributeSubtitle}>Add it to help others</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={Colors.lightGray} />
+                  <CaretRight size={16} color={C.placeholder} />
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -582,10 +570,23 @@ function getGreeting() {
   return "Good evening";
 }
 
+const CARD = {
+  backgroundColor: C.card,
+  borderRadius: 20,
+  padding: 16,
+  borderWidth: 0.5,
+  borderColor: C.border,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 8,
+  elevation: 3,
+} as const;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   headerGradient: {
     paddingHorizontal: 20,
@@ -597,220 +598,279 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.charcoal,
-    letterSpacing: -0.5,
-  },
-  progressWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 8,
-  },
-  progressBar: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.lightGray,
-    maxWidth: 120,
-  },
-  progressFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.mediumGray,
-  },
-  proBadgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 6,
-  },
-  proLabel: {
+  greetingSmall: {
     fontSize: 13,
-    fontWeight: "600",
-    color: Colors.primary,
+    color: C.muted,
+    fontWeight: "500",
   },
-  scanButtonGlowWrap: {
-    borderRadius: 26,
+  greetingName: {
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    color: C.text,
   },
-  scanButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#3DD68C",
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
-  insightCard: {
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "white",
+  },
+  progressRow: {
+    marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  progressLabel: {
+    fontSize: 12,
+    color: C.muted,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: "#E0EDE1",
+    overflow: "hidden",
+  },
+  proBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 10,
+    gap: 5,
+  },
+  proBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "white",
+    letterSpacing: 1.2,
+  },
+  heroBanner: {
+    ...CARD,
+    backgroundColor: C.tinted,
+    borderRadius: 20,
+    padding: 20,
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  heroLine1: {
+    fontSize: 19,
+    fontWeight: "900",
+    color: C.text,
+    letterSpacing: -0.5,
+  },
+  heroLine2: {
+    fontSize: 19,
+    fontWeight: "900",
+    color: C.primary,
+    letterSpacing: -0.5,
+  },
+  heroSub: {
+    fontSize: 12,
+    color: C.muted,
+    marginTop: 5,
+    lineHeight: 18,
+  },
+  heroCTA: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: 999,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: Colors.white,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-    ...cardShadow("subtle"),
+    paddingVertical: 9,
+    gap: 6,
+    marginTop: 14,
+  },
+  heroCTAText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "white",
+  },
+  heroIconCluster: {
+    width: 76,
+    height: 76,
+    position: "relative",
+  },
+  insightCard: {
+    ...CARD,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  insightAccent: {
+    width: 3,
+    borderRadius: 999,
+    backgroundColor: C.mint,
+    alignSelf: "stretch",
+  },
+  insightIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   insightText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.charcoal,
+    fontSize: 14,
+    color: C.text,
+    lineHeight: 21,
     flex: 1,
-    lineHeight: 18,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  statCard: {
+    ...CARD,
+    flex: 1,
+  },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.3,
+    color: C.placeholder,
+    textTransform: "uppercase",
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -1,
+    color: C.text,
+  },
+  statSub: {
+    fontSize: 11,
+    color: C.muted,
+    marginTop: 2,
   },
   section: {
     paddingHorizontal: 20,
     marginBottom: 20,
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 18,
+  sectionHeaderLabel: {
+    fontSize: 11,
     fontWeight: "700",
-    color: Colors.charcoal,
-    letterSpacing: -0.3,
+    letterSpacing: 1.3,
+    color: C.placeholder,
+    textTransform: "uppercase",
+    marginBottom: 12,
   },
   seeAll: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: "600",
-  },
-  recentListCard: {
-    borderRadius: 16,
-    backgroundColor: Colors.white,
-    padding: 6,
-    ...cardShadow("medium"),
-  },
-  productCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    backgroundColor: Colors.white,
-    borderRadius: 14,
-    marginBottom: 8,
-    gap: 12,
-    ...cardShadow("subtle"),
-  },
-  productAccentLine: {
-    width: 3,
-    height: "70%" as any,
-    borderRadius: 1.5,
-    backgroundColor: Colors.primaryPale,
-  },
-  productInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.charcoal,
-  },
-  productBrand: {
     fontSize: 13,
-    color: Colors.mediumGray,
-    marginTop: 2,
-  },
-  productMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 6,
-  },
-  productMetaText: {
-    fontSize: 12,
-    color: Colors.mediumGray,
-  },
-  categoryTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: Colors.primaryPale,
-  },
-  categoryTagText: {
-    fontSize: 11,
-    color: Colors.primary,
+    color: C.primary,
     fontWeight: "600",
   },
   recentCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 10,
-    borderRadius: 12,
-    gap: 10,
+    ...CARD,
+    width: 156,
+    padding: 14,
   },
   recentName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.charcoal,
-  },
-  recentMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 2,
+    fontSize: 13,
+    fontWeight: "700",
+    color: C.text,
+    marginTop: 8,
+    lineHeight: 18,
   },
   recentBrand: {
-    fontSize: 12,
-    color: Colors.mediumGray,
-  },
-  recentCategoryDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.lightGray,
-  },
-  recentCategory: {
-    fontSize: 12,
-    color: Colors.mediumGray,
-  },
-  recentRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  scoreLabelTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  scoreLabelText: {
     fontSize: 11,
-    fontWeight: "700",
+    color: C.muted,
+    marginTop: 3,
   },
-  recentTime: {
-    fontSize: 10,
-    color: Colors.mediumGray,
-    fontWeight: "500",
-  },
-  scoreBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+  scoreBadgeSmall: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
   },
-  scoreBadgeText: {
-    fontSize: 16,
+  scoreBadgeSmallText: {
     fontWeight: "800",
+    fontSize: 14,
+  },
+  scoreLabelPill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  scoreLabelPillText: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  popularCard: {
+    ...CARD,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 10,
+  },
+  popularIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  popularName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: C.text,
+  },
+  popularMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  popularBrand: {
+    fontSize: 12,
+    color: C.muted,
+  },
+  caloriesChip: {
+    backgroundColor: C.bg,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  caloriesChipText: {
+    fontSize: 11,
+    color: C.muted,
+    fontWeight: "500",
   },
   emptyText: {
     textAlign: "center",
-    color: Colors.mediumGray,
+    color: C.muted,
     fontSize: 14,
     paddingVertical: 24,
   },
@@ -818,16 +878,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 28,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
+    ...CARD,
     alignItems: "center" as const,
-    ...cardShadow("medium"),
   },
   welcomeIconWrap: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.primaryPale,
+    backgroundColor: C.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -835,68 +893,55 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.charcoal,
+    color: C.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   welcomeSubtitle: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     textAlign: "center" as const,
     lineHeight: 20,
     marginBottom: 20,
     maxWidth: 260,
   },
   welcomeBtnGradient: {
-    borderRadius: 16,
-  },
-  welcomeBtn: {
+    borderRadius: 999,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
     paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 15,
   },
   welcomeBtnText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: Colors.white,
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "white",
   },
   contributeCard: {
+    ...CARD,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
     marginHorizontal: 20,
     marginBottom: 20,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.white,
-    ...cardShadow("subtle"),
-  },
-  contributeAccentLine: {
-    width: 3,
-    height: "70%" as any,
-    borderRadius: 1.5,
-    backgroundColor: Colors.primary,
   },
   contributeIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#FFF3E0",
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   contributeTitle: {
     fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.charcoal,
+    fontWeight: "700" as const,
+    color: C.text,
   },
   contributeSubtitle: {
     fontSize: 12,
-    color: Colors.mediumGray,
+    color: C.muted,
     marginTop: 2,
   },
 });

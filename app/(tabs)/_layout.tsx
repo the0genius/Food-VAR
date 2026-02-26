@@ -1,10 +1,13 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { Platform, View, StyleSheet } from "react-native";
+import { Platform, View, StyleSheet, TouchableOpacity } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { House, Barcode, ClockCounterClockwise, User } from "phosphor-react-native";
+import { C } from "@/constants/colors";
 import Colors from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
+import * as Haptics from "expo-haptics";
 
 export default function TabLayout() {
   const { user, isLoading } = useUser();
@@ -17,48 +20,45 @@ export default function TabLayout() {
   }, [isLoading, user]);
 
   if (isLoading || !user?.onboardingCompleted) {
-    return <View style={{ flex: 1, backgroundColor: Colors.screenBg }} />;
+    return <View style={{ flex: 1, backgroundColor: C.bg }} />;
   }
 
-  const tabBarHeight = Platform.OS === "web" ? 84 : 70;
+  const tabBarHeight = Platform.OS === "web" ? 92 : 68;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#3DD68C",
-        tabBarInactiveTintColor: Colors.light.tabIconDefault,
+        tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: C.placeholder,
         tabBarShowLabel: false,
         tabBarStyle: {
           height: tabBarHeight,
           position: "absolute",
-          bottom: 12,
-          marginHorizontal: 16,
+          bottom: Platform.OS === "web" ? 24 : 24,
+          marginHorizontal: 20,
           left: 0,
           right: 0,
-          borderRadius: 24,
-          backgroundColor: Colors.white,
+          borderRadius: 32,
+          backgroundColor: C.card,
           borderWidth: 0.5,
-          borderColor: "rgba(0,0,0,0.04)",
+          borderColor: C.border,
+          paddingHorizontal: 8,
           ...Platform.select({
             ios: {
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.08,
-              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.14,
+              shadowRadius: 24,
             },
             android: {
-              elevation: 8,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.08,
-              shadowRadius: 16,
+              elevation: 16,
             },
             web: {
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.08,
-              shadowRadius: 16,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.14,
+              shadowRadius: 24,
             },
           }),
         },
@@ -68,8 +68,14 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? styles.activeIconPill : undefined}>
+              <House
+                size={focused ? 24 : 22}
+                color={focused ? C.primary : C.placeholder}
+                weight={focused ? "fill" : "regular"}
+              />
+            </View>
           ),
         }}
       />
@@ -77,10 +83,28 @@ export default function TabLayout() {
         name="scan"
         options={{
           title: "Scan",
-          tabBarIcon: ({ color, size }) => (
-            <View style={styles.scanIconWrap}>
-              <Ionicons name="scan" size={size} color={Colors.white} />
+          tabBarIcon: () => (
+            <View style={styles.scanFabWrap}>
+              <LinearGradient
+                colors={["#3DD68C", "#2E7D32"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.scanFab}
+              >
+                <Barcode size={26} color="white" weight="bold" />
+              </LinearGradient>
             </View>
+          ),
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              {...props}
+              onPress={(e) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                if (props.onPress) props.onPress(e);
+              }}
+              activeOpacity={0.8}
+              style={[props.style, { flex: 1, alignItems: "center", justifyContent: "center" }]}
+            />
           ),
         }}
       />
@@ -88,8 +112,14 @@ export default function TabLayout() {
         name="history"
         options={{
           title: "History",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? styles.activeIconPill : undefined}>
+              <ClockCounterClockwise
+                size={focused ? 24 : 22}
+                color={focused ? C.primary : C.placeholder}
+                weight={focused ? "fill" : "regular"}
+              />
+            </View>
           ),
         }}
       />
@@ -97,8 +127,14 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? styles.activeIconPill : undefined}>
+              <User
+                size={focused ? 24 : 22}
+                color={focused ? C.primary : C.placeholder}
+                weight={focused ? "fill" : "regular"}
+              />
+            </View>
           ),
         }}
       />
@@ -107,34 +143,37 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  scanIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#3DD68C",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: -20,
+  activeIconPill: {
+    backgroundColor: C.tinted,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  scanFabWrap: {
+    marginTop: -12,
     ...Platform.select({
       ios: {
-        shadowColor: "#3DD68C",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
+        shadowColor: C.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 6,
-        shadowColor: "#3DD68C",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
+        elevation: 12,
       },
       web: {
-        shadowColor: "#3DD68C",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
+        shadowColor: C.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.45,
+        shadowRadius: 16,
       },
     }),
+  },
+  scanFab: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

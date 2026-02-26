@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,31 +11,46 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  UserCircle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle,
+  Drop,
+  Heart,
+  Barbell,
+  Leaf,
+  FirstAid,
+  Person,
+  Grains,
+  Pill,
+  TrendDown,
+  Heartbeat,
+} from "phosphor-react-native";
 import Animated, {
-  FadeIn,
   FadeInDown,
-  FadeInUp,
-  SlideInRight,
-  SlideOutLeft,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
 } from "react-native-reanimated";
+import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const CONDITIONS = [
-  { id: "diabetes_type2", label: "Diabetes (Type 2)", icon: "water-outline" as const },
-  { id: "diabetes_type1", label: "Diabetes (Type 1)", icon: "water-outline" as const },
-  { id: "hypertension", label: "Hypertension", icon: "heart-outline" as const },
-  { id: "high_cholesterol", label: "High Cholesterol", icon: "fitness-outline" as const },
-  { id: "kidney_disease", label: "Kidney Disease", icon: "medical-outline" as const },
-  { id: "gout", label: "Gout", icon: "body-outline" as const },
-  { id: "ibs", label: "IBS", icon: "nutrition-outline" as const },
-  { id: "celiac", label: "Celiac Disease", icon: "leaf-outline" as const },
+  { id: "diabetes_type2", label: "Diabetes (Type 2)", Icon: Drop },
+  { id: "diabetes_type1", label: "Diabetes (Type 1)", Icon: Drop },
+  { id: "hypertension", label: "Hypertension", Icon: Heart },
+  { id: "high_cholesterol", label: "High Cholesterol", Icon: Heartbeat },
+  { id: "kidney_disease", label: "Kidney Disease", Icon: FirstAid },
+  { id: "gout", label: "Gout", Icon: Person },
+  { id: "ibs", label: "IBS", Icon: Grains },
+  { id: "celiac", label: "Celiac Disease", Icon: Leaf },
 ];
 
 const ALLERGIES = [
@@ -51,10 +66,10 @@ const ALLERGIES = [
 ];
 
 const GOALS = [
-  { id: "weight_loss", label: "Lose Weight", icon: "trending-down-outline" as const },
-  { id: "muscle_gain", label: "Build Muscle", icon: "barbell-outline" as const },
-  { id: "general_wellness", label: "General Wellness", icon: "leaf-outline" as const },
-  { id: "manage_condition", label: "Manage Condition", icon: "medkit-outline" as const },
+  { id: "weight_loss", label: "Lose Weight", Icon: TrendDown },
+  { id: "muscle_gain", label: "Build Muscle", Icon: Barbell },
+  { id: "general_wellness", label: "General Wellness", Icon: Leaf },
+  { id: "manage_condition", label: "Manage Condition", Icon: Pill },
 ];
 
 const DIETS = [
@@ -83,6 +98,11 @@ export default function OnboardingScreen() {
   const [loading, setLoading] = useState(false);
 
   const totalSteps = 5;
+  const progressWidth = useSharedValue(((0 + 1) / totalSteps) * 100);
+
+  const progressAnimStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value}%` as any,
+  }));
 
   function toggleItem(list: string[], setList: (v: string[]) => void, id: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -106,7 +126,9 @@ export default function OnboardingScreen() {
       setLoading(false);
     }
     if (step < totalSteps - 1) {
-      setStep(step + 1);
+      const nextStep = step + 1;
+      setStep(nextStep);
+      progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
     } else {
       setLoading(true);
       try {
@@ -128,15 +150,37 @@ export default function OnboardingScreen() {
     }
   }
 
+  function handleBack() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const prevStep = step - 1;
+    setStep(prevStep);
+    progressWidth.value = withTiming(((prevStep + 1) / totalSteps) * 100, { duration: 350 });
+  }
+
+  function handleSkip() {
+    const nextStep = step + 1;
+    setStep(nextStep);
+    progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
+  }
+
   function renderStep() {
     switch (step) {
       case 0:
         return (
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.stepContent}>
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-0"
+            style={styles.stepContent}
+          >
             <View style={styles.stepIcon}>
-              <View style={styles.stepIconCircle}>
-                <Ionicons name="person-circle-outline" size={56} color={Colors.primary} />
-              </View>
+              <LinearGradient
+                colors={["#3DD68C", "#2E7D32"]}
+                style={styles.stepIconCircle}
+              >
+                <UserCircle size={56} color="#fff" weight="fill" />
+              </LinearGradient>
             </View>
             <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
             <Text style={styles.stepSubtitle}>
@@ -149,7 +193,7 @@ export default function OnboardingScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="your@email.com"
-                placeholderTextColor={Colors.lightGray}
+                placeholderTextColor={C.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -163,158 +207,196 @@ export default function OnboardingScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Your name"
-                placeholderTextColor={Colors.lightGray}
+                placeholderTextColor={C.placeholder}
                 autoCapitalize="words"
                 testID="name-input"
               />
             </View>
-          </Animated.View>
+          </MotiView>
         );
       case 1:
         return (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.stepContent}>
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-1"
+            style={styles.stepContent}
+          >
             <Text style={styles.stepTitle}>Health Conditions</Text>
             <Text style={styles.stepSubtitle}>
               Select any conditions you manage. We'll tailor scores to your needs.
             </Text>
             <View style={styles.chipGrid}>
-              {CONDITIONS.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[
-                    styles.conditionChip,
-                    conditions.includes(c.id) && styles.conditionChipActive,
-                  ]}
-                  onPress={() => toggleItem(conditions, setConditions, c.id)}
-                  testID={`condition-${c.id}`}
-                >
-                  <Ionicons
-                    name={c.icon}
-                    size={20}
-                    color={conditions.includes(c.id) ? Colors.white : Colors.primary}
-                  />
-                  <Text
+              {CONDITIONS.map((c) => {
+                const isActive = conditions.includes(c.id);
+                const IconComp = c.Icon;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
                     style={[
-                      styles.conditionChipText,
-                      conditions.includes(c.id) && styles.conditionChipTextActive,
+                      styles.conditionChip,
+                      isActive && styles.conditionChipActive,
                     ]}
+                    onPress={() => toggleItem(conditions, setConditions, c.id)}
+                    testID={`condition-${c.id}`}
                   >
-                    {c.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {isActive ? (
+                      <CheckCircle size={20} color="#fff" weight="fill" />
+                    ) : (
+                      <IconComp size={20} color={C.primary} />
+                    )}
+                    <Text
+                      style={[
+                        styles.conditionChipText,
+                        isActive && styles.conditionChipTextActive,
+                      ]}
+                    >
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <Text style={styles.skipHint}>Skip if none apply</Text>
-          </Animated.View>
+          </MotiView>
         );
       case 2:
         return (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.stepContent}>
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-2"
+            style={styles.stepContent}
+          >
             <Text style={styles.stepTitle}>Allergies & Intolerances</Text>
             <Text style={styles.stepSubtitle}>
               Products with your allergens will be flagged immediately
             </Text>
             <View style={styles.chipGrid}>
-              {ALLERGIES.map((a) => (
-                <TouchableOpacity
-                  key={a.id}
-                  style={[
-                    styles.allergyChip,
-                    allergies.includes(a.id) && styles.allergyChipActive,
-                  ]}
-                  onPress={() => toggleItem(allergies, setAllergies, a.id)}
-                  testID={`allergy-${a.id}`}
-                >
-                  <Text
+              {ALLERGIES.map((a) => {
+                const isActive = allergies.includes(a.id);
+                return (
+                  <TouchableOpacity
+                    key={a.id}
                     style={[
-                      styles.allergyChipText,
-                      allergies.includes(a.id) && styles.allergyChipTextActive,
+                      styles.allergyChip,
+                      isActive && styles.allergyChipActive,
                     ]}
+                    onPress={() => toggleItem(allergies, setAllergies, a.id)}
+                    testID={`allergy-${a.id}`}
                   >
-                    {a.label}
-                  </Text>
-                  {allergies.includes(a.id) && (
-                    <Ionicons name="checkmark" size={16} color={Colors.white} />
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.allergyChipText,
+                        isActive && styles.allergyChipTextActive,
+                      ]}
+                    >
+                      {a.label}
+                    </Text>
+                    {isActive && (
+                      <CheckCircle size={16} color="#fff" weight="fill" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <Text style={styles.skipHint}>Skip if none apply</Text>
-          </Animated.View>
+          </MotiView>
         );
       case 3:
         return (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.stepContent}>
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-3"
+            style={styles.stepContent}
+          >
             <Text style={styles.stepTitle}>Your Goal</Text>
             <Text style={styles.stepSubtitle}>
               What matters most to you right now?
             </Text>
             <View style={styles.goalGrid}>
-              {GOALS.map((g) => (
-                <TouchableOpacity
-                  key={g.id}
-                  style={[
-                    styles.goalCard,
-                    goal === g.id && styles.goalCardActive,
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setGoal(g.id);
-                  }}
-                  testID={`goal-${g.id}`}
-                >
-                  <Ionicons
-                    name={g.icon}
-                    size={28}
-                    color={goal === g.id ? Colors.white : Colors.primary}
-                  />
-                  <Text
+              {GOALS.map((g) => {
+                const isActive = goal === g.id;
+                const IconComp = g.Icon;
+                return (
+                  <TouchableOpacity
+                    key={g.id}
                     style={[
-                      styles.goalCardText,
-                      goal === g.id && styles.goalCardTextActive,
+                      styles.goalCard,
+                      isActive && styles.goalCardActive,
                     ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setGoal(g.id);
+                    }}
+                    testID={`goal-${g.id}`}
                   >
-                    {g.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    {isActive ? (
+                      <CheckCircle size={28} color="#fff" weight="fill" />
+                    ) : (
+                      <IconComp size={28} color={C.primary} />
+                    )}
+                    <Text
+                      style={[
+                        styles.goalCardText,
+                        isActive && styles.goalCardTextActive,
+                      ]}
+                    >
+                      {g.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </Animated.View>
+          </MotiView>
         );
       case 4:
         return (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.stepContent}>
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-4"
+            style={styles.stepContent}
+          >
             <Text style={styles.stepTitle}>Dietary Preference</Text>
             <Text style={styles.stepSubtitle}>
               Help us suggest the best alternatives for you
             </Text>
             <View style={styles.dietList}>
-              {DIETS.map((d) => (
-                <TouchableOpacity
-                  key={d.id}
-                  style={[
-                    styles.dietRow,
-                    diet === d.id && styles.dietRowActive,
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setDiet(d.id);
-                  }}
-                  testID={`diet-${d.id}`}
-                >
-                  <Text
+              {DIETS.map((d) => {
+                const isActive = diet === d.id;
+                return (
+                  <TouchableOpacity
+                    key={d.id}
                     style={[
-                      styles.dietRowText,
-                      diet === d.id && styles.dietRowTextActive,
+                      styles.dietRow,
+                      isActive && styles.dietRowActive,
                     ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setDiet(d.id);
+                    }}
+                    testID={`diet-${d.id}`}
                   >
-                    {d.label}
-                  </Text>
-                  {diet === d.id && (
-                    <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.dietRowText,
+                        isActive && styles.dietRowTextActive,
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                    {isActive && (
+                      <CheckCircle size={22} color={C.primary} weight="fill" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Age (optional)</Text>
@@ -323,11 +405,11 @@ export default function OnboardingScreen() {
                 value={age}
                 onChangeText={setAge}
                 placeholder="e.g., 35"
-                placeholderTextColor={Colors.lightGray}
+                placeholderTextColor={C.placeholder}
                 keyboardType="numeric"
               />
             </View>
-          </Animated.View>
+          </MotiView>
         );
     }
   }
@@ -347,22 +429,21 @@ export default function OnboardingScreen() {
       >
         {step > 0 && (
           <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setStep(step - 1);
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
           >
-            <Ionicons name="chevron-back" size={24} color={Colors.charcoal} />
+            <ArrowLeft size={24} color={C.text} />
           </TouchableOpacity>
         )}
         <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${((step + 1) / totalSteps) * 100}%` },
-            ]}
-          />
+          <Animated.View style={[styles.progressFillContainer, progressAnimStyle]}>
+            <LinearGradient
+              colors={["#3DD68C", "#2E7D32"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.progressGradient}
+            />
+          </Animated.View>
         </View>
         <Text style={styles.stepIndicator}>
           {step + 1}/{totalSteps}
@@ -391,7 +472,7 @@ export default function OnboardingScreen() {
           testID="next-button"
         >
           <LinearGradient
-            colors={["#3DD68C", "#2EC4B6"]}
+            colors={["#3DD68C", "#2E7D32"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.nextBtn}
@@ -404,15 +485,13 @@ export default function OnboardingScreen() {
                   : "Continue"}
             </Text>
             {!loading && (
-              <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+              <ArrowRight size={20} color="#fff" weight="bold" />
             )}
           </LinearGradient>
         </TouchableOpacity>
         {step > 0 && step < totalSteps - 1 && (
           <TouchableOpacity
-            onPress={() => {
-              setStep(step + 1);
-            }}
+            onPress={handleSkip}
             style={styles.skipBtn}
           >
             <Text style={styles.skipBtnText}>Skip</Text>
@@ -426,7 +505,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.screenBg,
+    backgroundColor: C.bg,
   },
   header: {
     flexDirection: "row",
@@ -440,19 +519,23 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     flex: 1,
-    height: 5,
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 2.5,
+    height: 6,
+    backgroundColor: "#E0EDE1",
+    borderRadius: 999,
     overflow: "hidden",
   },
-  progressFill: {
+  progressFillContainer: {
     height: "100%",
-    backgroundColor: "#3DD68C",
-    borderRadius: 2.5,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressGradient: {
+    flex: 1,
+    borderRadius: 999,
   },
   stepIndicator: {
     fontSize: 13,
-    color: Colors.mediumGray,
+    color: C.placeholder,
     fontWeight: "600",
   },
   scrollContent: {
@@ -472,20 +555,19 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: Colors.primaryPale,
     alignItems: "center",
     justifyContent: "center",
   },
   stepTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: Colors.charcoal,
+    color: C.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   stepSubtitle: {
     fontSize: 15,
-    color: Colors.mediumGray,
+    color: C.muted,
     lineHeight: 22,
     marginBottom: 28,
   },
@@ -495,18 +577,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
     marginBottom: 8,
   },
   input: {
     height: 52,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
+    borderWidth: 0.5,
+    borderColor: C.border,
     borderRadius: 16,
     paddingHorizontal: 16,
-    fontSize: 16,
-    color: Colors.charcoal,
-    backgroundColor: Colors.white,
+    fontSize: 15,
+    color: C.text,
+    backgroundColor: C.card,
     ...cardShadow("subtle"),
   },
   chipGrid: {
@@ -521,26 +603,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryPale,
-    backgroundColor: Colors.white,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    backgroundColor: C.card,
     ...cardShadow("subtle"),
   },
   conditionChipActive: {
-    backgroundColor: "#3DD68C",
-    borderColor: "#3DD68C",
-    shadowColor: "#3DD68C",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   conditionChipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
   },
   conditionChipTextActive: {
-    color: Colors.white,
+    color: "#fff",
   },
   allergyChip: {
     flexDirection: "row",
@@ -548,15 +630,15 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: Colors.lightGray,
-    backgroundColor: Colors.white,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    backgroundColor: C.card,
   },
   allergyChipActive: {
-    backgroundColor: Colors.danger,
-    borderColor: Colors.danger,
-    shadowColor: Colors.danger,
+    backgroundColor: C.danger,
+    borderColor: C.danger,
+    shadowColor: C.danger,
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
@@ -564,10 +646,10 @@ const styles = StyleSheet.create({
   allergyChipText: {
     fontSize: 14,
     fontWeight: "500",
-    color: Colors.charcoal,
+    color: C.text,
   },
   allergyChipTextActive: {
-    color: Colors.white,
+    color: "#fff",
   },
   goalGrid: {
     gap: 10,
@@ -579,15 +661,15 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryPale,
-    backgroundColor: Colors.white,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    backgroundColor: C.card,
     ...cardShadow("subtle"),
   },
   goalCardActive: {
-    backgroundColor: "#3DD68C",
-    borderColor: "#3DD68C",
-    shadowColor: "#3DD68C",
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+    shadowColor: C.primary,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -595,10 +677,10 @@ const styles = StyleSheet.create({
   goalCardText: {
     fontSize: 15,
     fontWeight: "600",
-    color: Colors.charcoal,
+    color: C.text,
   },
   goalCardTextActive: {
-    color: Colors.white,
+    color: "#fff",
   },
   dietList: {
     gap: 8,
@@ -611,35 +693,35 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: Colors.white,
-    borderWidth: 1.5,
-    borderColor: "transparent",
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
     ...cardShadow("subtle"),
   },
   dietRowActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryPale,
-    borderWidth: 2,
+    borderColor: C.primary,
+    backgroundColor: C.tinted,
+    borderWidth: 1.5,
   },
   dietRowText: {
     fontSize: 15,
     fontWeight: "500",
-    color: Colors.charcoal,
+    color: C.text,
   },
   dietRowTextActive: {
-    color: Colors.primary,
-    fontWeight: "600",
+    color: C.primary,
+    fontWeight: "600" as const,
   },
   skipHint: {
     textAlign: "center",
     fontSize: 13,
-    color: Colors.mediumGray,
+    color: C.muted,
     marginTop: 20,
   },
   footer: {
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: Colors.white,
+    backgroundColor: C.card,
     alignItems: "center",
     gap: 8,
     shadowColor: "#000",
@@ -657,7 +739,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     height: 54,
-    borderRadius: 16,
+    borderRadius: 999,
     ...cardShadow("medium"),
   },
   nextBtnDisabled: {
@@ -666,14 +748,14 @@ const styles = StyleSheet.create({
   nextBtnText: {
     fontSize: 17,
     fontWeight: "700",
-    color: Colors.white,
+    color: "#fff",
   },
   skipBtn: {
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   skipBtnText: {
     fontSize: 14,
-    color: Colors.mediumGray,
+    color: C.muted,
     fontWeight: "500",
   },
 });
