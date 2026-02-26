@@ -1,0 +1,45 @@
+ROLE: Elite React Native UI Architect. 
+TASK: Surgically redesign the UI of the `app/result.tsx` (Product Result Screen) to meet a premium, Apple-level crisp aesthetic. 
+CONSTRAINT: Do NOT touch the state, API calls, data flow, scoring logic, or navigation. ONLY modify the visual presentation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GLOBAL FIXES & CONTRAST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- The main screen `<ScrollView>` or container MUST have `backgroundColor: C.bg` (#F6F8F7).
+- ALL cards MUST have `backgroundColor: C.card` (#FFFFFF), `borderRadius: 20`, and a crisp border: `borderWidth: 0.5`, `borderColor: C.border`.
+- Remove all unnecessary nested backgrounds. We must trust the whitespace. 
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. SCORE GAUGE & TYPOGRAPHY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- The main score number (e.g., "27") must be ultra-bold and tightly kerned: `fontSize: 64, fontWeight: '900', letterSpacing: -2`.
+- The score label (e.g., "RISKY") must be highly tracked: `fontSize: 12, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase'`.
+- Ensure the SVG Score Ring is clean, smooth, and uses the exact `C` color variables for the stroke.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. AI ADVICE / VERDICT CARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Remove the gray pill backgrounds from the nutritional highlights (Sugar, Carbs, Fiber). 
+- The highlights must be a clean, vertical list directly on the white card background. 
+- Format each highlight simply: A small colored dot (e.g., `backgroundColor: C.danger`, `width: 6, height: 6, borderRadius: 3`), followed by the text: `color: C.text, fontSize: 14, fontWeight: '500'`.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. NUTRITION FACTS CARD (CRITICAL FIX)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- KILL THE BLACK HEADER BLOCK. It violates the premium aesthetic.
+- The "Nutrition Facts" title should be a clean section header placed above the card or at the very top inside the white card: `fontSize: 12, fontWeight: '800', letterSpacing: 1.5, color: C.placeholder, textTransform: 'uppercase'`.
+- Fix the messy green/orange underlines. Replace them with proper, subtle progress bars placed *below* the nutrient text.
+  - Track: `height: 4, borderRadius: 2, backgroundColor: '#F0F0F0', width: '100%'`.
+  - Fill: `height: 4, borderRadius: 2` (use `C.danger`, `C.amber`, or `C.green` depending on the value).
+- Ensure the nutrient rows have a clean, 0.5px `borderBottom` in `C.divider` (#F0F0F0) for separation, omitting the border on the last item.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. ALLERGEN SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Make the "Allergens" title a standard section header (`C.danger`, uppercase, tracked out).
+- The allergen chips (Gluten, Soy) should have `backgroundColor: C.dangerBg`, `borderWidth: 0`, and text `color: C.danger, fontWeight: '700'`.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXECUTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Refactor the `app/result.tsx` code immediately applying these strict visual rules. Ensure you are importing the `C` color object from `/constants/colors.ts`. Maintain all existing Framer/Reanimated/Moti logic if present, just clean up the StyleSheet/NativeWind classes.
