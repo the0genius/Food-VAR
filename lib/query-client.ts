@@ -1,6 +1,32 @@
 import { fetch } from "expo/fetch";
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { AppState, Platform } from "react-native";
+import {
+  QueryClient,
+  QueryFunction,
+  focusManager,
+  onlineManager,
+} from "@tanstack/react-query";
 import { getAccessToken, getRefreshToken, setTokens } from "./auth-storage";
+
+if (Platform.OS !== "web") {
+  focusManager.setEventListener((handleFocus) => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      handleFocus(state === "active");
+    });
+    return () => subscription.remove();
+  });
+}
+
+if (Platform.OS !== "web") {
+  try {
+    const NetInfo = require("@react-native-community/netinfo");
+    onlineManager.setEventListener((setOnline: (online: boolean) => void) => {
+      return NetInfo.addEventListener((state: { isConnected: boolean | null }) => {
+        setOnline(!!state.isConnected);
+      });
+    });
+  } catch {}
+}
 
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
@@ -130,9 +156,12 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     },
     mutations: {
       retry: false,

@@ -59,7 +59,16 @@ The app is undergoing a phased production hardening process. Current status:
 - Body size limits: JSON 10MB (down from 50MB), URL-encoded 1MB
 - Health check includes scoring version
 
-### Phases 6-10: See `.local/session_plan.md` for full roadmap
+### Phase 6: Mobile Client Production — COMPLETE
+- Production query defaults: staleTime 5min, gcTime 10min, retry 2 with exponential backoff
+- `focusManager` connected to AppState (refetch on app resume)
+- `onlineManager` connected to NetInfo (native connectivity detection)
+- Accessibility labels on key interactive elements across all tabs
+- Error states with retry buttons on history and home screens
+- Manual barcode entry fallback: text input on scanner mode + web fallback
+- `@react-native-community/netinfo` added for native online/offline detection
+
+### Phases 7-10: See `.local/session_plan.md` for full roadmap
 
 ## User Preferences
 

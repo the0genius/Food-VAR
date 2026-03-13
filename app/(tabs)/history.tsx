@@ -20,6 +20,7 @@ import {
   CaretRight,
   MagnifyingGlass,
   Barcode,
+  WifiSlash,
 } from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
 import Colors, { C, cardShadow, getScoreColor, getScoreBgColor } from "@/constants/colors";
@@ -258,6 +259,8 @@ export default function HistoryScreen() {
             onChangeText={setSearch}
             placeholder="Search history..."
             placeholderTextColor={C.placeholder}
+            accessibilityLabel="Search history"
+            testID="history-search-input"
           />
         </View>
         <View style={styles.sortRow}>
@@ -327,7 +330,33 @@ export default function HistoryScreen() {
         }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          !historyQuery.isLoading ? (
+          historyQuery.isError ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconCircle}>
+                <WifiSlash size={32} color="#CCCCCC" weight="thin" />
+              </View>
+              <Text style={styles.emptyTitle}>Could not load history</Text>
+              <Text style={styles.emptyText}>
+                Check your connection and try again.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => historyQuery.refetch()}
+                style={{ marginTop: 24 }}
+                accessibilityLabel="Retry loading history"
+                accessibilityRole="button"
+              >
+                <LinearGradient
+                  colors={["#3DD68C", "#2E7D32"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.emptyCTAButton}
+                >
+                  <Text style={styles.emptyCTAText}>Retry</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          ) : !historyQuery.isLoading ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
                 <ClockCounterClockwise size={32} color="#CCCCCC" weight="thin" />

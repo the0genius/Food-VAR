@@ -414,7 +414,12 @@ export default function HomeScreen() {
                   <Text style={styles.heroLine1}>Scan Smart.</Text>
                   <Text style={styles.heroLine2}>Eat Right.</Text>
                   <Text style={styles.heroSub}>Discover the truth about your food in seconds.</Text>
-                  <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    onPress={handleScanPress}
+                    activeOpacity={0.8}
+                    accessibilityLabel="Scan a product"
+                    accessibilityRole="button"
+                  >
                     <LinearGradient
                       colors={["#3DD68C", "#2E7D32"]}
                       start={{ x: 0, y: 0 }}
@@ -567,7 +572,12 @@ export default function HomeScreen() {
                   ))}
                 </View>
               )}
-              {popular.length === 0 && !popularQuery.isLoading && (
+              {popularQuery.isError && popular.length === 0 && (
+                <View style={{ alignItems: "center", paddingVertical: 20, gap: 8 }}>
+                  <Text style={styles.emptyText}>Could not load products. Pull to refresh.</Text>
+                </View>
+              )}
+              {popular.length === 0 && !popularQuery.isLoading && !popularQuery.isError && (
                 <Text style={styles.emptyText}>
                   No products yet. Start scanning to build the database!
                 </Text>

@@ -223,6 +223,50 @@ export default function ScanScreen() {
     return "Point at a barcode to scan";
   }
 
+  const [manualBarcode, setManualBarcode] = useState("");
+  const [showManualEntry, setShowManualEntry] = useState(false);
+
+  async function handleManualBarcodeLookup() {
+    const barcode = manualBarcode.trim();
+    if (!barcode) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handleBarcodeScanned({ data: barcode });
+    setManualBarcode("");
+    setShowManualEntry(false);
+  }
+
+  function renderManualBarcodeEntry() {
+    return (
+      <View style={styles.manualEntryWrap}>
+        <View style={styles.manualEntryRow}>
+          <Barcode size={18} color={C.placeholder} />
+          <TextInput
+            style={styles.manualEntryInput}
+            value={manualBarcode}
+            onChangeText={setManualBarcode}
+            placeholder="Enter barcode number..."
+            placeholderTextColor={C.placeholder}
+            keyboardType="number-pad"
+            returnKeyType="go"
+            onSubmitEditing={handleManualBarcodeLookup}
+            accessibilityLabel="Enter barcode number"
+            testID="manual-barcode-input"
+          />
+          {manualBarcode.length > 0 && (
+            <TouchableOpacity
+              onPress={handleManualBarcodeLookup}
+              style={styles.manualEntryGoBtn}
+              accessibilityLabel="Look up barcode"
+              accessibilityRole="button"
+            >
+              <Text style={styles.manualEntryGoBtnText}>Go</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   function renderCameraScanner() {
     if (Platform.OS === "web") {
       return (
@@ -232,8 +276,9 @@ export default function ScanScreen() {
           </View>
           <Text style={styles.webFallbackTitle}>Camera not available on web</Text>
           <Text style={styles.webFallbackText}>
-            Use the Search tab or scan the QR code with your phone to use the camera scanner
+            Use the Search tab or enter a barcode number below
           </Text>
+          {renderManualBarcodeEntry()}
         </View>
       );
     }
@@ -262,9 +307,15 @@ export default function ScanScreen() {
             Allow camera access to scan product barcodes
           </Text>
           {permission.status === "denied" && !permission.canAskAgain ? (
-            <Text style={styles.permissionHint}>
-              Please enable camera access in your device settings
-            </Text>
+            <>
+              <Text style={styles.permissionHint}>
+                Please enable camera access in your device settings
+              </Text>
+              <Text style={[styles.permissionHint, { marginTop: 16, color: C.muted }]}>
+                Or enter a barcode manually:
+              </Text>
+              {renderManualBarcodeEntry()}
+            </>
           ) : (
             <TouchableOpacity
               style={styles.permissionBtn}
@@ -309,14 +360,21 @@ export default function ScanScreen() {
           <TouchableOpacity
             style={styles.searchLinkPill}
             onPress={() => {
-              setMode("search");
+              setShowManualEntry(!showManualEntry);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
+            accessibilityLabel="Enter barcode manually"
+            accessibilityRole="button"
           >
-            <Text style={styles.searchLinkText}>Can't scan it? Search by name</Text>
+            <Text style={styles.searchLinkText}>{showManualEntry ? "Hide manual entry" : "Type barcode instead"}</Text>
             <CaretRight size={13} color="white" />
           </TouchableOpacity>
         </View>
+        {showManualEntry && (
+          <View style={styles.manualOverlay}>
+            {renderManualBarcodeEntry()}
+          </View>
+        )}
       </View>
     );
   }
@@ -340,6 +398,9 @@ export default function ScanScreen() {
               setMode("search");
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
+            accessibilityLabel="Search mode"
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === "search" }}
           >
             <MagnifyingGlass
               size={16}
@@ -361,6 +422,9 @@ export default function ScanScreen() {
               setMode("scanner");
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
+            accessibilityLabel="Scanner mode"
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === "scanner" }}
           >
             <Barcode
               size={16}
@@ -844,5 +908,45 @@ const styles = StyleSheet.create({
     color: C.muted,
     textAlign: "center",
     lineHeight: 22,
+  },
+  manualEntryWrap: {
+    width: "100%",
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  manualEntryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.card,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    ...cardShadow("subtle"),
+  },
+  manualEntryInput: {
+    flex: 1,
+    fontSize: 15,
+    color: C.text,
+  },
+  manualEntryGoBtn: {
+    backgroundColor: C.mint,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  manualEntryGoBtnText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: C.card,
+  },
+  manualOverlay: {
+    position: "absolute",
+    bottom: 120,
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
 });

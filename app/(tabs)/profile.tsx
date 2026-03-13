@@ -191,6 +191,8 @@ export default function ProfileScreen() {
           style={styles.settingsBtn}
           onPress={handleEditProfile}
           activeOpacity={0.7}
+          accessibilityLabel="Edit health profile"
+          accessibilityRole="button"
         >
           <GearSix size={20} color={C.muted} />
         </TouchableOpacity>
@@ -471,7 +473,7 @@ export default function ProfileScreen() {
 
         {/* 6. Quick Actions */}
         <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.actionsWrap}>
-          <TouchableOpacity style={styles.actionCard} onPress={handleEditProfile} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.actionCard} onPress={handleEditProfile} activeOpacity={0.8} accessibilityLabel="Edit health profile" accessibilityRole="button">
             <View style={[styles.actionLeftBorder, { backgroundColor: C.mint }]} />
             <View style={styles.actionContent}>
               <View style={[styles.actionIconCircle, { backgroundColor: "#F0FAF4" }]}>
@@ -482,7 +484,7 @@ export default function ProfileScreen() {
             <CaretRight size={18} color={C.placeholder} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={handleLogout} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.actionCard} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
             <View style={[styles.actionLeftBorder, { backgroundColor: C.danger }]} />
             <View style={styles.actionContent}>
               <View style={[styles.actionIconCircle, { backgroundColor: C.dangerBg }]}>
