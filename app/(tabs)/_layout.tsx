@@ -20,14 +20,14 @@ function TabIcon({
 }) {
   return (
     <View style={styles.tabIconWrap}>
-      <Icon
-        size={22}
-        color={focused ? C.primary : C.placeholder}
-        weight={focused ? "fill" : "regular"}
-      />
-      {focused && (
-        <Text style={styles.tabLabel}>{label}</Text>
-      )}
+      <View style={styles.tabIconCenter}>
+        <Icon
+          size={22}
+          color={focused ? C.primary : C.placeholder}
+          weight={focused ? "fill" : "regular"}
+        />
+      </View>
+      <Text style={[styles.tabLabel, { opacity: focused ? 1 : 0 }]}>{label}</Text>
     </View>
   );
 }
@@ -146,13 +146,20 @@ const styles = StyleSheet.create({
   tabIconWrap: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+    height: 40,
+    width: 48,
+  },
+  tabIconCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+    height: 24,
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: "500",
     color: C.primary,
     lineHeight: 12,
+    marginTop: 2,
   },
   scanPill: {
     flexDirection: "row",
