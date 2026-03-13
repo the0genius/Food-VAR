@@ -9,7 +9,7 @@ import {
 } from "@shared/schema";
 import { eq, and, ilike, or, desc, sql, asc, ne, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId } from "./scoring-engine";
-import { getAdvice, extractNutritionFromImages } from "./ai-advice";
+import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -525,22 +525,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scoreResult.deductions
         );
       } else {
-        const topDeduction = scoreResult.deductions.find(d => d.category === "penalty");
-        const topBonus = scoreResult.deductions.find(d => d.category === "bonus");
-        const deterministicAdvice = scoreResult.isAllergenAlert
-          ? `This product contains allergens matching your profile (${scoreResult.matchedAllergens.join(", ")}). Avoid this product.`
-          : topDeduction
-            ? `Main concern: ${topDeduction.reason}.`
-            : topBonus
-              ? `Positive factor: ${topBonus.reason}.`
-              : "Score is based on your health profile and this product's nutrition data.";
-        adviceResult = {
-          advice: deterministicAdvice,
-          headline: scoreResult.isAllergenAlert ? "Allergen Alert" : scoreResult.label,
-          coachTip: "",
-          highlights: scoreResult.deductions.slice(0, 3).map(d => d.reason),
-          fromCache: false,
-        };
+        adviceResult = getDeterministicAdvice(
+          scoreResult.score,
+          scoreResult.label,
+          scoreResult.isAllergenAlert,
+          scoreResult.matchedAllergens,
+          scoreResult.deductions
+        );
       }
 
       try {
@@ -837,16 +828,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (product) {
               const scoreResult = await computeScore(product, user);
-              const adviceResult = await getAdvice(
-                product,
-                user,
-                scoreResult.score,
-                scoreResult.label,
-                currentClusterId,
-                scoreResult.isAllergenAlert,
-                scoreResult.matchedAllergens,
-                scoreResult.deductions
-              );
+              let adviceResult;
+              if (isFeatureEnabled("ENABLE_AI_ADVICE")) {
+                adviceResult = await getAdvice(
+                  product,
+                  user,
+                  scoreResult.score,
+                  scoreResult.label,
+                  currentClusterId,
+                  scoreResult.isAllergenAlert,
+                  scoreResult.matchedAllergens,
+                  scoreResult.deductions
+                );
+              } else {
+                adviceResult = getDeterministicAdvice(
+                  scoreResult.score,
+                  scoreResult.label,
+                  scoreResult.isAllergenAlert,
+                  scoreResult.matchedAllergens,
+                  scoreResult.deductions
+                );
+              }
 
               await db
                 .update(scanHistory)
@@ -992,7 +994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== FEATURE-FLAGGED: CHAT & IMAGE GENERATION ==========
   if (isFeatureEnabled("ENABLE_CHAT")) {
-    registerChatRoutes(app);
+    registerChatRoutes(app, requireAuth);
     console.log("[Feature Flag] Chat routes ENABLED");
   } else {
     const chatDisabled = (_req: Request, res: Response) => {

@@ -27,10 +27,16 @@ The app is undergoing a phased production hardening process. Current status:
 - Log redaction for auth response bodies (no tokens in logs)
 - SESSION_SECRET required at startup (hard-fail if missing)
 
-### Phase 3: AI Safety — PENDING
-- Current AI prompts need medical safety guardrails and injection defense
-- Extraction prompt forces guesses (unsafe for allergen-sensitive data)
-- Chat has no system prompt (disabled by feature flag for now)
+### Phase 3: AI Safety & Determinism — COMPLETE
+- Advice prompt hardened with medical safety guardrails (never diagnose, always qualify)
+- Prompt injection defense: `sanitizeForPrompt()` on all user-controlled fields
+- AI output schema validation via `validateAdviceSchema()` with automatic deterministic fallback
+- `getDeterministicAdvice()` provides rich fallback (score-tier-aware, condition-specific)
+- Extraction prompt separates `declaredAllergens` vs `inferredAllergens`
+- Extraction validation: allergen whitelist, category validation, numeric upper bounds per nutrient
+- Chat system prompt with medical safety rules and anti-jailbreak instructions
+- Chat routes require authentication when enabled
+- History re-analysis respects `ENABLE_AI_ADVICE` feature flag
 
 ### Phases 4-10: See `.local/session_plan.md` for full roadmap
 
