@@ -280,17 +280,17 @@ export default function HomeScreen() {
   });
 
   const historyQuery = useQuery({
-    queryKey: ["/api/history", String(user?.id)],
+    queryKey: ["/api/history"],
     enabled: !!user,
   });
 
   const scansQuery = useQuery({
-    queryKey: ["/api/scans/today", String(user?.id)],
+    queryKey: ["/api/scans/today"],
     enabled: !!user,
   });
 
   const statsQuery = useQuery({
-    queryKey: ["/api/stats", String(user?.id)],
+    queryKey: ["/api/stats"],
     enabled: !!user,
   });
 
@@ -314,7 +314,7 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
       pathname: "/result",
-      params: { productId: product.id, userId: user.id, accessMethod: "browse" },
+      params: { productId: product.id, accessMethod: "browse" },
     });
   }
 

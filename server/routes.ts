@@ -7,17 +7,44 @@ import {
   scanHistory,
   dailyScanTracker,
 } from "@shared/schema";
-import { eq, and, ilike, or, desc, sql, asc, ne } from "drizzle-orm";
+import { eq, and, ilike, or, desc, sql, asc, ne, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId } from "./scoring-engine";
 import { getAdvice, extractNutritionFromImages } from "./ai-advice";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
+import {
+  hashPassword,
+  verifyPassword,
+  generateAccessToken,
+  createRefreshToken,
+  rotateRefreshToken,
+  revokeAllRefreshTokens,
+  requireAuth,
+  stripSensitiveFields,
+  type AuthPayload,
+} from "./auth";
+import { z } from "zod";
 
 function paramId(req: Request, name: string = "id"): string {
   const v = req.params[name];
   return Array.isArray(v) ? v[0] : v;
 }
+
+const registerSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(128),
+  name: z.string().max(100).optional().default(""),
+});
+
+const loginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(128),
+});
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(1),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", (_req, res, next) => {
@@ -25,43 +52,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
-  // ========== USER PROFILE ==========
-  app.post("/api/users", async (req: Request, res: Response) => {
+  // ========== AUTH ROUTES ==========
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, name } = req.body;
-      const existing = await db
+      const parsed = registerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const { email, password, name } = parsed.data;
+
+      const [existing] = await db
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(eq(users.email, email.toLowerCase()))
         .limit(1);
-      if (existing.length > 0) {
-        return res.json(existing[0]);
+
+      if (existing) {
+        return res.status(409).json({ error: "Email already registered" });
       }
+
+      const passwordHash = await hashPassword(password);
       const [user] = await db
         .insert(users)
-        .values({ email, name: name || "" })
+        .values({
+          email: email.toLowerCase(),
+          passwordHash,
+          name: name || "",
+        })
         .returning();
-      res.status(201).json(user);
+
+      const payload: AuthPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role || "user",
+      };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = await createRefreshToken(user.id);
+
+      res.status(201).json({
+        user: stripSensitiveFields(user),
+        accessToken,
+        refreshToken,
+      });
     } catch (error) {
-      console.error("Error creating user:", error);
-      res.status(500).json({ error: "Failed to create user" });
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
     }
   });
 
-  app.get("/api/users/:id", async (req: Request, res: Response) => {
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const id = parseInt(paramId(req));
-      const [user] = await db.select().from(users).where(eq(users.id, id));
-      if (!user) return res.status(404).json({ error: "User not found" });
-      res.json(user);
+      const parsed = loginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const { email, password } = parsed.data;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.email, email.toLowerCase()),
+            isNull(users.deletedAt)
+          )
+        )
+        .limit(1);
+
+      if (!user || !user.passwordHash) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const valid = await verifyPassword(password, user.passwordHash);
+      if (!valid) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      const payload: AuthPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role || "user",
+      };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = await createRefreshToken(user.id);
+
+      res.json({
+        user: stripSensitiveFields(user),
+        accessToken,
+        refreshToken,
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/auth/refresh", async (req: Request, res: Response) => {
+    try {
+      const parsed = refreshSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Refresh token required" });
+      }
+
+      const { refreshToken: oldToken } = parsed.data;
+
+      const crypto = await import("crypto");
+      const oldHash = crypto
+        .createHash("sha256")
+        .update(oldToken)
+        .digest("hex");
+
+      const { refreshTokens } = await import("@shared/schema");
+      const [tokenRecord] = await db
+        .select()
+        .from(refreshTokens)
+        .where(
+          and(
+            eq(refreshTokens.tokenHash, oldHash),
+            isNull(refreshTokens.revokedAt)
+          )
+        )
+        .limit(1);
+
+      if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+        return res.status(401).json({ error: "Invalid or expired refresh token" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(eq(users.id, tokenRecord.userId), isNull(users.deletedAt))
+        )
+        .limit(1);
+
+      if (!user) {
+        return res.status(401).json({ error: "User not found" });
+      }
+
+      const newRefreshToken = await rotateRefreshToken(oldToken, user.id);
+      if (!newRefreshToken) {
+        return res.status(401).json({ error: "Token rotation failed" });
+      }
+
+      const payload: AuthPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role || "user",
+      };
+      const accessToken = generateAccessToken(payload);
+
+      res.json({
+        user: stripSensitiveFields(user),
+        accessToken,
+        refreshToken: newRefreshToken,
+      });
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      res.status(500).json({ error: "Token refresh failed" });
+    }
+  });
+
+  app.post("/api/auth/logout", requireAuth, async (req: Request, res: Response) => {
+    try {
+      await revokeAllRefreshTokens(req.auth!.userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(eq(users.id, req.auth!.userId), isNull(users.deletedAt))
+        )
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json(stripSensitiveFields(user));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
-  app.put("/api/users/:id/profile", async (req: Request, res: Response) => {
+  app.delete("/api/auth/account", requireAuth, async (req: Request, res: Response) => {
     try {
-      const id = parseInt(paramId(req));
+      const userId = req.auth!.userId;
+      await revokeAllRefreshTokens(userId);
+      await db
+        .update(users)
+        .set({
+          deletedAt: new Date(),
+          email: sql`${users.email} || '_deleted_' || ${users.id}`,
+        })
+        .where(eq(users.id, userId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Account deletion error:", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  });
+
+  app.get("/api/auth/export", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.auth!.userId;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      const history = await db
+        .select({
+          id: scanHistory.id,
+          productId: scanHistory.productId,
+          score: scanHistory.score,
+          adviceText: scanHistory.adviceText,
+          headline: scanHistory.headline,
+          highlights: scanHistory.highlights,
+          accessMethod: scanHistory.accessMethod,
+          createdAt: scanHistory.createdAt,
+          productName: products.name,
+          productBrand: products.brand,
+          productBarcode: products.barcode,
+        })
+        .from(scanHistory)
+        .innerJoin(products, eq(scanHistory.productId, products.id))
+        .where(eq(scanHistory.userId, userId))
+        .orderBy(desc(scanHistory.createdAt));
+
+      res.json({
+        profile: user ? stripSensitiveFields(user) : null,
+        scanHistory: history,
+        exportedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // ========== USER PROFILE (AUTHENTICATED) ==========
+  app.put("/api/users/profile", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.auth!.userId;
       const {
         name,
         age,
@@ -103,17 +352,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileClusterId: clusterId,
           updatedAt: new Date(),
         })
-        .where(eq(users.id, id))
+        .where(eq(users.id, userId))
         .returning();
 
-      res.json(updated);
+      res.json(stripSensitiveFields(updated));
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
 
-  // ========== PRODUCTS ==========
+  // ========== PRODUCTS (PUBLIC) ==========
   app.get("/api/products/barcode/:barcode", async (req: Request, res: Response) => {
     try {
       const [product] = await db
@@ -206,10 +455,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== SCORING & ADVICE ==========
-  app.post("/api/score", async (req: Request, res: Response) => {
+  // ========== SCORING & ADVICE (AUTHENTICATED) ==========
+  app.post("/api/score", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { userId, productId, accessMethod } = req.body;
+      const userId = req.auth!.userId;
+      const { productId, accessMethod } = req.body;
 
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user) return res.status(404).json({ error: "User not found" });
@@ -344,9 +594,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== CONTRIBUTION ==========
-  app.post("/api/products/contribute", async (req: Request, res: Response) => {
+  // ========== CONTRIBUTION (AUTHENTICATED) ==========
+  app.post("/api/products/contribute", requireAuth, async (req: Request, res: Response) => {
     try {
+      const userId = req.auth!.userId;
       const {
         barcode,
         name,
@@ -364,7 +615,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allergens,
         ingredients,
         nutritionFacts,
-        contributedBy,
       } = req.body;
 
       const [existing] = await db
@@ -396,21 +646,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           allergens: allergens || [],
           ingredients: ingredients || null,
           nutritionFacts: nutritionFacts || null,
-          contributedBy,
+          contributedBy: userId,
           moderationStatus: "pending",
         })
         .onConflictDoNothing()
         .returning();
 
       if (product) {
-        if (contributedBy) {
-          await db
-            .update(users)
-            .set({
-              contributionCount: sql`${users.contributionCount} + 1`,
-            })
-            .where(eq(users.id, contributedBy));
-        }
+        await db
+          .update(users)
+          .set({
+            contributionCount: sql`${users.contributionCount} + 1`,
+          })
+          .where(eq(users.id, userId));
         return res.status(201).json({ product, isNew: true });
       }
 
@@ -425,7 +673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products/extract", async (req: Request, res: Response) => {
+  app.post("/api/products/extract", requireAuth, async (req: Request, res: Response) => {
     try {
       const { frontImage, backImage } = req.body;
       if (!frontImage || !backImage) {
@@ -442,10 +690,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== SCAN HISTORY ==========
-  app.get("/api/history/:userId", async (req: Request, res: Response) => {
+  // ========== SCAN HISTORY (AUTHENTICATED) ==========
+  app.get("/api/history", requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(paramId(req, "userId"));
+      const userId = req.auth!.userId;
       const sort = (req.query.sort as string) || "date";
       const search = req.query.search as string;
       const limit = parseInt((req.query.limit as string) || "20");
@@ -497,9 +745,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/history/:id", async (req: Request, res: Response) => {
+  app.delete("/api/history/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(paramId(req));
+      const userId = req.auth!.userId;
+      const [entry] = await db
+        .select()
+        .from(scanHistory)
+        .where(and(eq(scanHistory.id, id), eq(scanHistory.userId, userId)))
+        .limit(1);
+
+      if (!entry) {
+        return res.status(404).json({ error: "Entry not found" });
+      }
+
       await db.delete(scanHistory).where(eq(scanHistory.id, id));
       res.status(204).send();
     } catch (error) {
@@ -507,22 +766,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete(
-    "/api/history/user/:userId/all",
-    async (req: Request, res: Response) => {
-      try {
-        const userId = parseInt(paramId(req, "userId"));
-        await db.delete(scanHistory).where(eq(scanHistory.userId, userId));
-        res.status(204).send();
-      } catch (error) {
-        res.status(500).json({ error: "Failed to clear history" });
-      }
+  app.delete("/api/history/all", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.auth!.userId;
+      await db.delete(scanHistory).where(eq(scanHistory.userId, userId));
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear history" });
     }
-  );
+  });
 
-  app.get("/api/history/entry/:id", async (req: Request, res: Response) => {
+  app.get("/api/history/entry/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(paramId(req));
+      const userId = req.auth!.userId;
+
       const [entry] = await db
         .select({
           id: scanHistory.id,
@@ -555,16 +813,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(scanHistory)
         .innerJoin(products, eq(scanHistory.productId, products.id))
-        .where(eq(scanHistory.id, id));
+        .where(and(eq(scanHistory.id, id), eq(scanHistory.userId, userId)));
 
       if (!entry) return res.status(404).json({ error: "Entry not found" });
 
       const checkProfile = req.query.checkProfile === "true";
-      if (checkProfile && entry.userId) {
+      if (checkProfile) {
         const [user] = await db
           .select()
           .from(users)
-          .where(eq(users.id, entry.userId));
+          .where(eq(users.id, userId));
 
         if (user) {
           const currentClusterId =
@@ -626,33 +884,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== DAILY SCAN COUNT ==========
-  app.get(
-    "/api/scans/today/:userId",
-    async (req: Request, res: Response) => {
-      try {
-        const userId = parseInt(paramId(req, "userId"));
-        const today = new Date().toISOString().split("T")[0];
-        const result = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(dailyScanTracker)
-          .where(
-            and(
-              eq(dailyScanTracker.userId, userId),
-              eq(dailyScanTracker.scanDate, today)
-            )
-          );
-        res.json({ count: Number(result[0]?.count || 0), limit: 10 });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to fetch scan count" });
-      }
-    }
-  );
-
-  // ========== USER STATS ==========
-  app.get("/api/stats/:userId", async (req: Request, res: Response) => {
+  // ========== DAILY SCAN COUNT (AUTHENTICATED) ==========
+  app.get("/api/scans/today", requireAuth, async (req: Request, res: Response) => {
     try {
-      const userId = parseInt(paramId(req, "userId"));
+      const userId = req.auth!.userId;
+      const today = new Date().toISOString().split("T")[0];
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(dailyScanTracker)
+        .where(
+          and(
+            eq(dailyScanTracker.userId, userId),
+            eq(dailyScanTracker.scanDate, today)
+          )
+        );
+      res.json({ count: Number(result[0]?.count || 0), limit: 10 });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch scan count" });
+    }
+  });
+
+  // ========== USER STATS (AUTHENTICATED) ==========
+  app.get("/api/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.auth!.userId;
 
       const totalScansResult = await db
         .select({ count: sql<number>`count(*)` })
@@ -718,8 +973,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ========== PRODUCT REPORT ==========
-  app.post("/api/products/:id/report", async (req: Request, res: Response) => {
+  // ========== PRODUCT REPORT (AUTHENTICATED) ==========
+  app.post("/api/products/:id/report", requireAuth, async (req: Request, res: Response) => {
     try {
       const id = parseInt(paramId(req));
       await db

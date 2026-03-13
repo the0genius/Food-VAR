@@ -219,7 +219,6 @@ export default function ContributeScreen() {
         allergens: d.allergens || [],
         ingredients: d.ingredients || null,
         nutritionFacts: d.nutritionFacts || null,
-        contributedBy: user?.id,
       });
 
       const contributeData = await contributeRes.json();
@@ -238,7 +237,6 @@ export default function ContributeScreen() {
             pathname: "/result",
             params: {
               productId: product.id,
-              userId: user.id,
               accessMethod: "contribute",
             },
           });

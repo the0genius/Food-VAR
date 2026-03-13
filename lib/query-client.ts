@@ -1,10 +1,7 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAccessToken, getRefreshToken, setTokens } from "./auth-storage";
 
-/**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
- * @returns {string} The API base URL
- */
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
@@ -24,6 +21,37 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/auth/refresh", baseUrl);
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    await setTokens(data.accessToken, data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -31,13 +59,33 @@ export async function apiRequest(
 ): Promise<Response> {
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
+  const authHeaders = await getAuthHeaders();
 
-  const res = await fetch(url.toString(), {
+  let res = await fetch(url.toString(), {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders,
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  if (res.status === 401 && authHeaders.Authorization) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      const newAuthHeaders = await getAuthHeaders();
+      res = await fetch(url.toString(), {
+        method,
+        headers: {
+          ...(data ? { "Content-Type": "application/json" } : {}),
+          ...newAuthHeaders,
+        },
+        body: data ? JSON.stringify(data) : undefined,
+        credentials: "include",
+      });
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -51,10 +99,23 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
+    const authHeaders = await getAuthHeaders();
 
-    const res = await fetch(url.toString(), {
+    let res = await fetch(url.toString(), {
       credentials: "include",
+      headers: authHeaders,
     });
+
+    if (res.status === 401 && authHeaders.Authorization) {
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        const newAuthHeaders = await getAuthHeaders();
+        res = await fetch(url.toString(), {
+          credentials: "include",
+          headers: newAuthHeaders,
+        });
+      }
+    }
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

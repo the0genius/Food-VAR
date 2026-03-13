@@ -220,7 +220,7 @@ export default function HistoryScreen() {
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   const historyQuery = useQuery({
-    queryKey: ["/api/history", String(user?.id), `?sort=${sort}${search ? `&search=${search}` : ""}`],
+    queryKey: ["/api/history", `?sort=${sort}${search ? `&search=${search}` : ""}`],
     enabled: !!user,
   });
 

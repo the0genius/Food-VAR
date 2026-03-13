@@ -18,6 +18,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
+  passwordHash: text("password_hash"),
   name: text("name").notNull().default(""),
   age: integer("age"),
   gender: text("gender"),
@@ -32,10 +33,34 @@ export const users = pgTable("users", {
   profileClusterId: text("profile_cluster_id"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
   isPro: boolean("is_pro").default(false),
+  role: text("role").default("user"),
   contributionCount: integer("contribution_count").default(0),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  consentPolicyVersion: text("consent_policy_version"),
+  consentAiVersion: text("consent_ai_version"),
+  consentAcceptedAt: timestamp("consent_accepted_at"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
+
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index("refresh_tokens_user_idx").on(table.userId),
+    index("refresh_tokens_hash_idx").on(table.tokenHash),
+  ]
+);
 
 export const products = pgTable(
   "products",
@@ -168,3 +193,4 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type ScanHistory = typeof scanHistory.$inferSelect;
 export type AdviceCache = typeof adviceCache.$inferSelect;
 export type ScoringRule = typeof scoringRules.$inferSelect;
+export type RefreshToken = typeof refreshTokens.$inferSelect;

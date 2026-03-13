@@ -1,5 +1,7 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
@@ -40,7 +42,7 @@ function setupCors(app: express.Application) {
         "Access-Control-Allow-Methods",
         "GET, POST, PUT, DELETE, OPTIONS",
       );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
+      res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
       res.header("Access-Control-Allow-Credentials", "true");
     }
 
@@ -84,7 +86,18 @@ function setupRequestLogging(app: express.Application) {
 
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const isAuthRoute = path.startsWith("/api/auth");
+        if (isAuthRoute) {
+          const safe = { ...capturedJsonResponse };
+          delete safe.accessToken;
+          delete safe.refreshToken;
+          if (safe.user && typeof safe.user === "object") {
+            safe.user = { id: (safe.user as any).id, email: (safe.user as any).email };
+          }
+          logLine += ` :: ${JSON.stringify(safe)}`;
+        } else {
+          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        }
       }
 
       if (logLine.length > 80) {
@@ -227,6 +240,32 @@ function setupErrorHandler(app: express.Application) {
 }
 
 (async () => {
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: "Too many auth attempts, try again later" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  const refreshLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.use("/api/auth/login", authLimiter);
+  app.use("/api/auth/register", authLimiter);
+  app.use("/api/auth/refresh", refreshLimiter);
+  app.use("/api/auth/logout", refreshLimiter);
+
   setupCors(app);
   setupBodyParsing(app);
   setupRequestLogging(app);

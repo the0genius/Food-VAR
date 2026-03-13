@@ -149,7 +149,7 @@ export default function ScanScreen() {
           if (user) {
             router.push({
               pathname: "/result",
-              params: { productId: product.id, userId: user.id, accessMethod: "scan" },
+              params: { productId: product.id, accessMethod: "scan" },
             });
           }
           setTimeout(() => {
@@ -205,7 +205,7 @@ export default function ScanScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({
       pathname: "/result",
-      params: { productId: product.id, userId: user.id, accessMethod: "search" },
+      params: { productId: product.id, accessMethod: "search" },
     });
   }
 

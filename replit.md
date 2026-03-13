@@ -18,10 +18,14 @@ The app is undergoing a phased production hardening process. Current status:
 - Deterministic fallback for AI advice when `ENABLE_AI_ADVICE=false`
 - Chat and image generation routes return 403 when disabled
 
-### Phase 2: Auth & Authorization — PENDING
-- Current auth is NOT production-safe (email-only, no password, raw user ID in AsyncStorage)
-- All `:userId` routes must be refactored to use auth middleware
-- Needs: real auth (JWT or sessions), SecureStore on mobile, rate limiting, helmet
+### Phase 2: Auth & Authorization — COMPLETE
+- Real auth with bcrypt password hashing, JWT access tokens (15m), refresh tokens (30d, rotated)
+- `requireAuth` middleware on all user-scoped routes; no `:userId` path params for authorization
+- Tokens stored in SecureStore (native) with AsyncStorage fallback (web)
+- Helmet security headers, rate limiting on all `/api/auth/*` routes
+- Auth endpoints: register, login, refresh, logout, me, delete, export
+- Log redaction for auth response bodies (no tokens in logs)
+- SESSION_SECRET required at startup (hard-fail if missing)
 
 ### Phase 3: AI Safety — PENDING
 - Current AI prompts need medical safety guardrails and injection defense

@@ -120,7 +120,7 @@ export default function ProfileScreen() {
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   const { data: stats, isLoading: statsLoading } = useQuery<StatsData>({
-    queryKey: ["/api/stats", String(user?.id)],
+    queryKey: ["/api/stats"],
     enabled: !!user?.id,
   });
 

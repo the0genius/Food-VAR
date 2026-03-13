@@ -459,7 +459,6 @@ export default function ResultScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     productId?: string;
-    userId?: string;
     accessMethod?: string;
     historyId?: string;
   }>();
@@ -480,10 +479,7 @@ export default function ResultScreen() {
   async function loadData() {
     try {
       if (params.historyId) {
-        const baseUrl = getApiUrl();
-        const url = new URL(`/api/history/entry/${params.historyId}`, baseUrl);
-        url.searchParams.set("checkProfile", "true");
-        const res = await fetch(url.toString());
+        const res = await apiRequest("GET", `/api/history/entry/${params.historyId}?checkProfile=true`);
         if (res.ok) {
           const entry = await res.json();
           const wasReAnalyzed = entry.reAnalyzed === true;
@@ -522,9 +518,8 @@ export default function ResultScreen() {
         } else {
           setError("Could not load this result.");
         }
-      } else if (params.productId && params.userId) {
+      } else if (params.productId) {
         const res = await apiRequest("POST", "/api/score", {
-          userId: parseInt(params.userId),
           productId: parseInt(params.productId),
           accessMethod: params.accessMethod || "browse",
         });

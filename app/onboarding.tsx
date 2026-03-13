@@ -84,10 +84,12 @@ const DIETS = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, login, updateProfile } = useUser();
+  const { user, register, login, updateProfile } = useUser();
   const [step, setStep] = useState(0);
+  const [isLoginMode, setIsLoginMode] = useState(false);
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -116,12 +118,25 @@ export default function OnboardingScreen() {
   async function handleNext() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (step === 0) {
-      if (!email.trim()) return;
+      if (!email.trim() || !password.trim()) return;
       setLoading(true);
       try {
-        await login(email.trim(), name.trim());
-      } catch (e) {
+        if (isLoginMode) {
+          await login(email.trim(), password.trim());
+          router.replace("/(tabs)");
+          setLoading(false);
+          return;
+        } else {
+          await register(email.trim(), password.trim(), name.trim());
+        }
+      } catch (e: any) {
+        const msg = e?.message || "";
+        if (msg.includes("409")) {
+          setIsLoginMode(true);
+        }
         console.error(e);
+        setLoading(false);
+        return;
       }
       setLoading(false);
     }
@@ -182,9 +197,11 @@ export default function OnboardingScreen() {
                 <UserCircle size={56} color="#fff" weight="fill" />
               </LinearGradient>
             </View>
-            <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
+            <Text style={styles.stepTitle}>{isLoginMode ? "Welcome Back" : "Welcome to FoodVAR"}</Text>
             <Text style={styles.stepSubtitle}>
-              Get personalized food scores based on your unique health profile
+              {isLoginMode
+                ? "Sign in to access your personalized food scores"
+                : "Get personalized food scores based on your unique health profile"}
             </Text>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
@@ -201,17 +218,41 @@ export default function OnboardingScreen() {
               />
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Name (optional)</Text>
+              <Text style={styles.inputLabel}>Password</Text>
               <TextInput
                 style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Your name"
+                value={password}
+                onChangeText={setPassword}
+                placeholder={isLoginMode ? "Your password" : "Create a password (8+ characters)"}
                 placeholderTextColor={C.placeholder}
-                autoCapitalize="words"
-                testID="name-input"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                testID="password-input"
               />
             </View>
+            {!isLoginMode && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Name (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor={C.placeholder}
+                  autoCapitalize="words"
+                  testID="name-input"
+                />
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={() => setIsLoginMode(!isLoginMode)}
+              style={{ alignSelf: "center", paddingVertical: 8 }}
+            >
+              <Text style={{ color: C.primary, fontSize: 14, fontWeight: "600" as const }}>
+                {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+              </Text>
+            </TouchableOpacity>
           </MotiView>
         );
       case 1:
@@ -467,7 +508,7 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           style={[styles.nextBtnWrapper, loading && styles.nextBtnDisabled]}
           onPress={handleNext}
-          disabled={loading || (step === 0 && !email.trim())}
+          disabled={loading || (step === 0 && (!email.trim() || !password.trim()))}
           activeOpacity={0.8}
           testID="next-button"
         >
@@ -480,9 +521,11 @@ export default function OnboardingScreen() {
             <Text style={styles.nextBtnText}>
               {loading
                 ? "Saving..."
-                : step === totalSteps - 1
-                  ? "Start Scanning"
-                  : "Continue"}
+                : step === 0 && isLoginMode
+                  ? "Sign In"
+                  : step === totalSteps - 1
+                    ? "Start Scanning"
+                    : "Continue"}
             </Text>
             {!loading && (
               <ArrowRight size={20} color="#fff" weight="bold" />
