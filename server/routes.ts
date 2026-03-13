@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
 import { db } from "./db";
 import {
@@ -31,6 +31,8 @@ function paramId(req: Request, name: string = "id"): string {
   return Array.isArray(v) ? v[0] : v;
 }
 
+import { logger } from "./logger";
+
 const registerSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(8).max(128),
@@ -45,6 +47,81 @@ const loginSchema = z.object({
 const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
+
+const profileSchema = z.object({
+  name: z.string().max(100).optional(),
+  age: z.number().int().min(1).max(150).nullable().optional(),
+  gender: z.string().max(50).optional(),
+  heightCm: z.number().min(30).max(300).nullable().optional(),
+  weightKg: z.number().min(10).max(500).nullable().optional(),
+  conditions: z.array(z.string().max(100)).max(50).optional(),
+  conditionsOther: z.string().max(500).nullable().optional(),
+  allergies: z.array(z.string().max(100)).max(50).optional(),
+  allergiesOther: z.string().max(500).nullable().optional(),
+  dietaryPreference: z.string().max(50).nullable().optional(),
+  goal: z.string().max(50).nullable().optional(),
+  onboardingCompleted: z.boolean().optional(),
+});
+
+const scoreSchema = z.object({
+  productId: z.number().int().positive(),
+  accessMethod: z.enum(["scan", "browse", "search"]).optional().default("scan"),
+});
+
+const contributeSchema = z.object({
+  barcode: z.string().min(1).max(50),
+  name: z.string().min(1).max(255),
+  brand: z.string().max(255).optional().default(""),
+  category: z.string().max(100).optional().default(""),
+  servingSize: z.string().max(100).nullable().optional(),
+  calories: z.number().min(0).max(99999).nullable().optional(),
+  protein: z.number().min(0).max(99999).nullable().optional(),
+  carbohydrates: z.number().min(0).max(99999).nullable().optional(),
+  sugar: z.number().min(0).max(99999).nullable().optional(),
+  fat: z.number().min(0).max(99999).nullable().optional(),
+  saturatedFat: z.number().min(0).max(99999).nullable().optional(),
+  fiber: z.number().min(0).max(99999).nullable().optional(),
+  sodium: z.number().min(0).max(99999).nullable().optional(),
+  allergens: z.array(z.string().max(100)).max(50).optional(),
+  declaredAllergens: z.array(z.string().max(100)).max(50).optional(),
+  inferredAllergens: z.array(z.string().max(100)).max(50).optional(),
+  ingredients: z.string().max(5000).nullable().optional(),
+  nutritionFacts: z.string().max(5000).nullable().optional(),
+});
+
+const extractSchema = z.object({
+  frontImage: z.string().min(1),
+  backImage: z.string().min(1),
+});
+
+const moderateSchema = z.object({
+  action: z.enum(["approve", "reject", "flag"]),
+});
+
+const paginationSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+const searchQuerySchema = z.object({
+  q: z.string().max(200).optional().default(""),
+  category: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+
+const historyQuerySchema = z.object({
+  sort: z.enum(["date", "score_high", "score_low"]).optional().default("date"),
+  search: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+function zodError(res: Response, parsed: z.SafeParseError<unknown>) {
+  return res.status(400).json({
+    error: "Validation failed",
+    details: parsed.error.flatten().fieldErrors,
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", (_req, res, next) => {
@@ -99,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refreshToken,
       });
     } catch (error) {
-      console.error("Registration error:", error);
+      logger.error("Registration failed", error, {}, req);
       res.status(500).json({ error: "Registration failed" });
     }
   });
@@ -150,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refreshToken,
       });
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error("Login failed", error, {}, req);
       res.status(500).json({ error: "Login failed" });
     }
   });
@@ -216,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         refreshToken: newRefreshToken,
       });
     } catch (error) {
-      console.error("Token refresh error:", error);
+      logger.error("Token refresh failed", error, {}, req);
       res.status(500).json({ error: "Token refresh failed" });
     }
   });
@@ -264,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true });
     } catch (error) {
-      console.error("Account deletion error:", error);
+      logger.error("Account deletion failed", error, {}, req);
       res.status(500).json({ error: "Failed to delete account" });
     }
   });
@@ -310,6 +387,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== USER PROFILE (AUTHENTICATED) ==========
   app.put("/api/users/profile", requireAuth, async (req: Request, res: Response) => {
     try {
+      const parsed = profileSchema.safeParse(req.body);
+      if (!parsed.success) return zodError(res, parsed);
+
       const userId = req.auth!.userId;
       const {
         name,
@@ -324,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dietaryPreference,
         goal,
         onboardingCompleted,
-      } = req.body;
+      } = parsed.data;
 
       const clusterId = computeClusterId({
         conditions,
@@ -357,7 +437,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(stripSensitiveFields(updated));
     } catch (error) {
-      console.error("Error updating profile:", error);
+      logger.error("Profile update failed", error, {}, req);
       res.status(500).json({ error: "Failed to update profile" });
     }
   });
@@ -378,9 +458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/search", async (req: Request, res: Response) => {
     try {
-      const query = (req.query.q as string) || "";
-      const category = req.query.category as string;
-      const limit = parseInt((req.query.limit as string) || "20");
+      const parsed = searchQuerySchema.safeParse(req.query);
+      if (!parsed.success) return zodError(res, parsed);
+      const { q: query, category, limit } = parsed.data;
 
       let conditions: any[] = [];
       if (query.length >= 2) {
@@ -458,8 +538,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== SCORING & ADVICE (AUTHENTICATED) ==========
   app.post("/api/score", requireAuth, async (req: Request, res: Response) => {
     try {
+      const parsed = scoreSchema.safeParse(req.body);
+      if (!parsed.success) return zodError(res, parsed);
+
       const userId = req.auth!.userId;
-      const { productId, accessMethod } = req.body;
+      const { productId, accessMethod } = parsed.data;
 
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user) return res.status(404).json({ error: "User not found" });
@@ -556,6 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           coachTip: adviceResult.coachTip || "",
           highlights: adviceResult.highlights,
           profileClusterId: clusterId,
+          scoringVersion: SCORING_VERSION,
           accessMethod: accessMethod || "scan",
         })
         .returning();
@@ -576,11 +660,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         highlights: adviceResult.highlights,
         adviceFromCache: adviceResult.fromCache,
         deductions: scoreResult.deductions,
+        scoringVersion: SCORING_VERSION,
         product,
         historyId: historyEntry.id,
       });
     } catch (error) {
-      console.error("Error computing score:", error);
+      logger.error("Score computation failed", error, {}, req);
       res.status(500).json({ error: "Failed to compute score" });
     }
   });
@@ -588,6 +673,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== CONTRIBUTION (AUTHENTICATED) ==========
   app.post("/api/products/contribute", requireAuth, async (req: Request, res: Response) => {
     try {
+      const parsed = contributeSchema.safeParse(req.body);
+      if (!parsed.success) return zodError(res, parsed);
+
       const userId = req.auth!.userId;
       const {
         barcode,
@@ -604,9 +692,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fiber,
         sodium,
         allergens,
+        declaredAllergens,
+        inferredAllergens,
         ingredients,
         nutritionFacts,
-      } = req.body;
+      } = parsed.data;
 
       const [existing] = await db
         .select()
@@ -634,10 +724,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           saturatedFat,
           fiber,
           sodium,
-          allergens: allergens || [],
+          allergens: allergens || declaredAllergens || [],
+          declaredAllergens: declaredAllergens || [],
+          inferredAllergens: inferredAllergens || [],
           ingredients: ingredients || null,
           nutritionFacts: nutritionFacts || null,
           contributedBy: userId,
+          source: "user",
           moderationStatus: "pending",
         })
         .onConflictDoNothing()
@@ -659,24 +752,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(products.barcode, barcode));
       return res.json({ product: existingAfterConflict, isNew: false });
     } catch (error) {
-      console.error("Error contributing product:", error);
+      logger.error("Product contribution failed", error, {}, req);
       res.status(500).json({ error: "Failed to contribute product" });
     }
   });
 
   app.post("/api/products/extract", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { frontImage, backImage } = req.body;
-      if (!frontImage || !backImage) {
-        return res
-          .status(400)
-          .json({ error: "Both front and back images are required" });
-      }
+      const parsed = extractSchema.safeParse(req.body);
+      if (!parsed.success) return zodError(res, parsed);
+      const { frontImage, backImage } = parsed.data;
 
       const result = await extractNutritionFromImages(frontImage, backImage);
       res.json(result);
     } catch (error) {
-      console.error("Error extracting nutrition:", error);
+      logger.error("Nutrition extraction failed", error, {}, req);
       res.status(500).json({ error: "Failed to extract nutrition data" });
     }
   });
@@ -684,11 +774,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== SCAN HISTORY (AUTHENTICATED) ==========
   app.get("/api/history", requireAuth, async (req: Request, res: Response) => {
     try {
+      const parsed = historyQuerySchema.safeParse(req.query);
+      if (!parsed.success) return zodError(res, parsed);
+
       const userId = req.auth!.userId;
-      const sort = (req.query.sort as string) || "date";
-      const search = req.query.search as string;
-      const limit = parseInt((req.query.limit as string) || "20");
-      const offset = parseInt((req.query.offset as string) || "0");
+      const { sort, search, limit, offset } = parsed.data;
 
       let query = db
         .select({
@@ -731,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await query;
       res.json(result);
     } catch (error) {
-      console.error("Error fetching history:", error);
+      logger.error("History fetch failed", error, {}, req);
       res.status(500).json({ error: "Failed to fetch history" });
     }
   });
@@ -859,6 +949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   coachTip: adviceResult.coachTip || "",
                   highlights: adviceResult.highlights,
                   profileClusterId: currentClusterId,
+                  scoringVersion: SCORING_VERSION,
                 })
                 .where(eq(scanHistory.id, id));
 
@@ -881,7 +972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(entry);
     } catch (error) {
-      console.error("Error fetching history entry:", error);
+      logger.error("History entry fetch failed", error, {}, req);
       res.status(500).json({ error: "Failed to fetch history entry" });
     }
   });
@@ -970,7 +1061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         worstProducts,
       });
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      logger.error("Stats fetch failed", error, {}, req);
       res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
@@ -992,10 +1083,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ADMIN / MODERATOR ROUTES ==========
+  const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.auth) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (req.auth.role !== "admin" && req.auth.role !== "moderator") {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    next();
+  };
+
+  app.get("/api/admin/products/pending", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const parsed = paginationSchema.safeParse(req.query);
+      if (!parsed.success) return zodError(res, parsed);
+      const { limit, offset } = parsed.data;
+      const pending = await db
+        .select()
+        .from(products)
+        .where(eq(products.moderationStatus, "pending"))
+        .orderBy(desc(products.createdAt))
+        .limit(limit)
+        .offset(offset);
+      res.json(pending);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending products" });
+    }
+  });
+
+  app.put("/api/admin/products/:id/moderate", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(paramId(req));
+      const parsed = moderateSchema.safeParse(req.body);
+      if (!parsed.success) return zodError(res, parsed);
+      const { action } = parsed.data;
+
+      const moderatorId = req.auth!.userId;
+      const statusMap: Record<string, string> = {
+        approve: "approved",
+        reject: "rejected",
+        flag: "flagged",
+      };
+
+      const updateData: Record<string, unknown> = {
+        moderationStatus: statusMap[action],
+        updatedAt: new Date(),
+      };
+
+      if (action === "approve") {
+        updateData.verifiedAt = new Date();
+        updateData.verifiedBy = moderatorId;
+      }
+
+      await db
+        .update(products)
+        .set(updateData)
+        .where(eq(products.id, id));
+
+      const [updated] = await db
+        .select()
+        .from(products)
+        .where(eq(products.id, id));
+
+      res.json({ product: updated, action });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to moderate product" });
+    }
+  });
+
+  app.get("/api/admin/products/flagged", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const flagged = await db
+        .select()
+        .from(products)
+        .where(eq(products.moderationStatus, "flagged"))
+        .orderBy(desc(products.reportCount))
+        .limit(50);
+      res.json(flagged);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch flagged products" });
+    }
+  });
+
   // ========== FEATURE-FLAGGED: CHAT & IMAGE GENERATION ==========
   if (isFeatureEnabled("ENABLE_CHAT")) {
     registerChatRoutes(app, requireAuth);
-    console.log("[Feature Flag] Chat routes ENABLED");
+    logger.info("Chat routes enabled");
   } else {
     const chatDisabled = (_req: Request, res: Response) => {
       res.status(403).json({ error: "Chat feature is disabled" });
@@ -1007,7 +1181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   if (isFeatureEnabled("ENABLE_IMAGE_GENERATION")) {
     registerImageRoutes(app);
-    console.log("[Feature Flag] Image generation routes ENABLED");
+    logger.info("Image generation routes enabled");
   } else {
     app.post("/api/generate-image", (_req: Request, res: Response) => {
       res.status(403).json({ error: "Image generation feature is disabled" });
@@ -1015,8 +1189,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // ========== HEALTH CHECK ==========
-  app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  app.get("/api/health", (req: Request, res: Response) => {
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      version: SCORING_VERSION,
+    });
   });
 
   const httpServer = createServer(app);

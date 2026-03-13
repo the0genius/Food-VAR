@@ -38,7 +38,28 @@ The app is undergoing a phased production hardening process. Current status:
 - Chat routes require authentication when enabled
 - History re-analysis respects `ENABLE_AI_ADVICE` feature flag
 
-### Phases 4-10: See `.local/session_plan.md` for full roadmap
+### Phase 4: Scoring Engine & Data Model — COMPLETE
+- Version tracking: `SCORING_VERSION`, `PROMPT_VERSION`, `MODEL_VERSION` constants
+- `scoringVersion` stored in scan history entries; `promptVersion`/`modelVersion` in advice cache
+- Separated `declaredAllergens` vs `inferredAllergens` on products table
+- Score 0 only from declared/verified allergens (uses `declaredAllergens` when available, falls back to `allergens`)
+- Centralized score labels via `SCORE_LABELS` constant and exported `getScoreLabel()`
+- Products table gains: `updatedAt`, `source`, `verifiedAt`, `verifiedBy`
+- Admin/moderator routes: `GET /api/admin/products/pending`, `PUT /api/admin/products/:id/moderate`, `GET /api/admin/products/flagged`
+- Contribute route stores `declaredAllergens`/`inferredAllergens` from AI extraction
+
+### Phase 5: API Hardening — COMPLETE
+- Zod validation on all endpoints: auth, profile, score, contribute, extract, search, history, admin
+- Request ID middleware (`x-request-id` header, auto-generated UUID if missing)
+- Structured JSON logging via `server/logger.ts` (replaces all console.log/error)
+- Request logs include: level, method, path, statusCode, durationMs, requestId, userId
+- Auth route response bodies redacted from logs
+- Centralized error handler returns requestId in error responses
+- Rate limiting: auth (20/15min), refresh (30/15min), AI/score/extract (20/min), general API (100/min)
+- Body size limits: JSON 10MB (down from 50MB), URL-encoded 1MB
+- Health check includes scoring version
+
+### Phases 6-10: See `.local/session_plan.md` for full roadmap
 
 ## User Preferences
 

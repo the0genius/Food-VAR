@@ -3,16 +3,26 @@ import type { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
+import { logger } from "./logger";
 import * as fs from "fs";
 import * as path from "path";
+import crypto from "crypto";
 
 const app = express();
-const log = console.log;
 
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
+}
+
+function setupRequestIds(app: express.Application) {
+  app.use((req, _res, next) => {
+    if (!req.headers["x-request-id"]) {
+      req.headers["x-request-id"] = crypto.randomUUID();
+    }
+    next();
+  });
 }
 
 function setupCors(app: express.Application) {
@@ -31,7 +41,6 @@ function setupCors(app: express.Application) {
 
     const origin = req.header("origin");
 
-    // Allow localhost origins for Expo web development (any port)
     const isLocalhost =
       origin?.startsWith("http://localhost:") ||
       origin?.startsWith("http://127.0.0.1:");
@@ -57,54 +66,30 @@ function setupCors(app: express.Application) {
 function setupBodyParsing(app: express.Application) {
   app.use(
     express.json({
-      limit: "50mb",
+      limit: "10mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       },
     }),
   );
 
-  app.use(express.urlencoded({ extended: false, limit: "50mb" }));
+  app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 }
 
 function setupRequestLogging(app: express.Application) {
   app.use((req, res, next) => {
     const start = Date.now();
-    const path = req.path;
-    let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
-
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
+    const reqPath = req.path;
 
     res.on("finish", () => {
-      if (!path.startsWith("/api")) return;
+      if (!reqPath.startsWith("/api")) return;
 
       const duration = Date.now() - start;
+      const isAuthRoute = reqPath.startsWith("/api/auth");
 
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        const isAuthRoute = path.startsWith("/api/auth");
-        if (isAuthRoute) {
-          const safe = { ...capturedJsonResponse };
-          delete safe.accessToken;
-          delete safe.refreshToken;
-          if (safe.user && typeof safe.user === "object") {
-            safe.user = { id: (safe.user as any).id, email: (safe.user as any).email };
-          }
-          logLine += ` :: ${JSON.stringify(safe)}`;
-        } else {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+      logger.request(req, res.statusCode, duration, {
+        ...(isAuthRoute ? { redacted: true } : {}),
+      });
     });
 
     next();
@@ -162,9 +147,6 @@ function serveLandingPage({
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
 
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
-
   const html = landingPageTemplate
     .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
     .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
@@ -184,7 +166,7 @@ function configureExpoAndLanding(app: express.Application) {
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
 
-  log("Serving static Expo files with dynamic manifest routing");
+  logger.info("Expo static files configured");
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
@@ -214,28 +196,34 @@ function configureExpoAndLanding(app: express.Application) {
 
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
-
-  log("Expo routing: Checking expo-platform header on / and /manifest");
 }
 
 function setupErrorHandler(app: express.Application) {
-  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
     const error = err as {
       status?: number;
       statusCode?: number;
       message?: string;
+      type?: string;
     };
 
     const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
+    const message = status === 500 ? "Internal Server Error" : (error.message || "Internal Server Error");
 
-    console.error("Internal Server Error:", err);
+    if (status >= 500) {
+      logger.error("Unhandled server error", err, { status }, req);
+    } else {
+      logger.warn("Client error", { status, message }, req);
+    }
 
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({
+      error: message,
+      requestId: req.headers["x-request-id"],
+    });
   });
 }
 
@@ -261,11 +249,31 @@ function setupErrorHandler(app: express.Application) {
     legacyHeaders: false,
   });
 
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    message: { error: "Too many requests, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const aiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: { error: "Too many AI requests, please slow down" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
   app.use("/api/auth/refresh", refreshLimiter);
   app.use("/api/auth/logout", refreshLimiter);
+  app.use("/api/score", aiLimiter);
+  app.use("/api/products/extract", aiLimiter);
+  app.use("/api", apiLimiter);
 
+  setupRequestIds(app);
   setupCors(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
@@ -284,7 +292,7 @@ function setupErrorHandler(app: express.Application) {
       reusePort: true,
     },
     () => {
-      log(`express server serving on port ${port}`);
+      logger.info("Server started", { port });
     },
   );
 })();
