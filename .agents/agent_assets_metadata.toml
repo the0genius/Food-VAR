@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "obWF2E6y1VK-SXmlpvdKy"
+uri = "file://FoodVAR_Full_Report.md"
+type = "text"
+title = "FoodVAR — Complete Application Report"
