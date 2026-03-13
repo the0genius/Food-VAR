@@ -595,7 +595,7 @@ export default function HomeScreen() {
           </>
         }
         contentContainerStyle={{
-          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 100,
+          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 80,
         }}
         showsVerticalScrollIndicator={false}
       />

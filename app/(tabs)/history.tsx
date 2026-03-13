@@ -323,7 +323,7 @@ export default function HistoryScreen() {
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 100,
+          paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 80,
         }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={

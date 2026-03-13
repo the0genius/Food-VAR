@@ -197,7 +197,7 @@ export default function ProfileScreen() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={{
-        paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 100,
+        paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 80,
       }}
     >
       <LinearGradient
