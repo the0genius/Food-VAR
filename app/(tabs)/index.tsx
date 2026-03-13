@@ -13,25 +13,19 @@ import Animated, {
   FadeInDown,
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { MotiView } from "moti";
 import {
-  House,
   Barcode,
   CaretRight,
   Lightbulb,
   ScanSmiley,
   ChartLineUp,
   Package,
-  Plant,
-  Heart,
-  Star,
-  Drop,
-  Sparkle,
   Crown,
+  Info,
 } from "phosphor-react-native";
 
 function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: number | string; height: number; borderRadius?: number; style?: any }) {
@@ -48,8 +42,9 @@ function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: num
 function SkeletonProductCard() {
   return (
     <View style={styles.popularCard}>
-      <View style={styles.popularIconBox}>
-        <SkeletonBlock width={44} height={44} borderRadius={14} />
+      <View style={styles.popularDot} />
+      <View style={styles.popularIconCircle}>
+        <SkeletonBlock width={48} height={48} borderRadius={24} />
       </View>
       <View style={{ flex: 1 }}>
         <SkeletonBlock width="65%" height={14} borderRadius={6} />
@@ -62,9 +57,11 @@ function SkeletonProductCard() {
 function SkeletonRecentCard() {
   return (
     <View style={styles.recentCard}>
-      <SkeletonBlock width={38} height={38} borderRadius={10} />
-      <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 8 }} />
-      <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
+      <View style={styles.recentCardInner}>
+        <SkeletonBlock width={32} height={32} borderRadius={16} />
+        <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 10 }} />
+        <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
+      </View>
     </View>
   );
 }
@@ -126,23 +123,27 @@ function getInsightText(avgScore: number, weeklyScans: number, totalScans: numbe
     return "Scan your first product to get personalized insights";
   }
   if (avgScore >= 75) {
-    return "Your choices are looking great! Keep making smart picks";
+    return "Your choices are looking great! Keep making smart picks.";
   }
   if (avgScore >= 55) {
-    return `Avg score: ${Math.round(avgScore)} — try swapping a few items for better picks`;
+    return `Avg score: ${Math.round(avgScore)} — try swapping a few items for better picks.`;
   }
   if (avgScore >= 35) {
-    return `Avg score: ${Math.round(avgScore)} — check out your Top Picks in Profile for ideas`;
+    return `Avg score: ${Math.round(avgScore)} — check out your Top Picks in Profile for ideas.`;
   }
-  return `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you`;
+  return `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you.`;
 }
 
-function ScoreBadgeSmall({ score }: { score: number }) {
+function ScoreBadgeCircle({ score }: { score: number }) {
   return (
-    <View style={[styles.scoreBadgeSmall, { backgroundColor: getScoreColorLight(score) }]}>
-      <Text style={[styles.scoreBadgeSmallText, { color: getScoreColor(score) }]}>{score}</Text>
+    <View style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}>
+      <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
     </View>
   );
+}
+
+function SectionAccentLine() {
+  return <View style={styles.sectionAccentLine} />;
 }
 
 function RecentScanCard({
@@ -154,7 +155,7 @@ function RecentScanCard({
   index: number;
   onPress: () => void;
 }) {
-  const scoreLabel = getScoreLabel(item.score);
+  const ribbonColor = getScoreColor(item.score);
 
   return (
     <MotiView
@@ -167,20 +168,20 @@ function RecentScanCard({
         onPress={onPress}
         activeOpacity={0.7}
       >
-        <View style={{ position: "absolute" as const, top: 10, right: 10 }}>
-          <ScoreBadgeSmall score={item.score} />
+        <View style={styles.recentCardInner}>
+          <View style={{ alignItems: "flex-end" }}>
+            <ScoreBadgeCircle score={item.score} />
+          </View>
+          <View style={{ marginTop: "auto" as any }}>
+            <Text style={styles.recentName} numberOfLines={2}>
+              {item.productName}
+            </Text>
+            <Text style={styles.recentBrand} numberOfLines={1}>
+              {item.productBrand || "Unknown"}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.recentName} numberOfLines={2}>
-          {item.productName}
-        </Text>
-        <Text style={styles.recentBrand} numberOfLines={1}>
-          {item.productBrand || "Unknown"}
-        </Text>
-        <View style={[styles.scoreLabelPill, { backgroundColor: getScoreColorLight(item.score) }]}>
-          <Text style={[styles.scoreLabelPillText, { color: getScoreColor(item.score) }]}>
-            {scoreLabel}
-          </Text>
-        </View>
+        <View style={[styles.recentRibbon, { backgroundColor: ribbonColor }]} />
       </TouchableOpacity>
     </MotiView>
   );
@@ -189,12 +190,16 @@ function RecentScanCard({
 function PopularProductCard({
   item,
   index,
+  totalCount,
   onPress,
 }: {
   item: any;
   index: number;
+  totalCount: number;
   onPress: () => void;
 }) {
+  const dotColor = getScoreColor(item.score || 50);
+
   return (
     <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
       <TouchableOpacity
@@ -202,9 +207,10 @@ function PopularProductCard({
         onPress={onPress}
         activeOpacity={0.7}
       >
+        <View style={[styles.popularDot, { backgroundColor: dotColor }]} />
         <LinearGradient
           colors={[C.tinted, "#D0EDD1"]}
-          style={styles.popularIconBox}
+          style={styles.popularIconCircle}
         >
           <Package size={20} color={C.primary} />
         </LinearGradient>
@@ -217,14 +223,18 @@ function PopularProductCard({
               {item.brand || "Unknown brand"}
             </Text>
             {item.calories ? (
-              <View style={styles.caloriesChip}>
-                <Text style={styles.caloriesChipText}>{Math.round(item.calories)} cal</Text>
-              </View>
+              <>
+                <Text style={styles.popularDotSeparator}>•</Text>
+                <Text style={styles.popularCalories}>{Math.round(item.calories)} kcal</Text>
+              </>
             ) : null}
           </View>
         </View>
-        <CaretRight size={16} color={C.placeholder} />
+        <View style={styles.popularChevronCircle}>
+          <CaretRight size={16} color={C.placeholder} />
+        </View>
       </TouchableOpacity>
+      {index < totalCount - 1 && <View style={styles.popularDivider} />}
     </Animated.View>
   );
 }
@@ -239,23 +249,21 @@ function AnimatedProgressBar({ used, total }: { used: number; total: number }) {
 
   const fillStyle = useAnimatedStyle(() => ({
     width: `${animWidth.value}%` as any,
-    height: 5,
-    borderRadius: 999,
+    height: 3,
+    borderTopRightRadius: 999,
+    borderBottomRightRadius: 999,
   }));
 
   return (
-    <View style={styles.progressRow}>
-      <Text style={styles.progressLabel}>{used} of {total} checks used today</Text>
-      <View style={styles.progressTrack}>
-        <Animated.View style={fillStyle}>
-          <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ flex: 1, borderRadius: 999 }}
-          />
-        </Animated.View>
-      </View>
+    <View style={styles.progressBarTrack}>
+      <Animated.View style={fillStyle}>
+        <LinearGradient
+          colors={["#3DD68C", "#2EC4B6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ flex: 1, borderTopRightRadius: 999, borderBottomRightRadius: 999 }}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -338,112 +346,137 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <>
-            <LinearGradient
-              colors={["#F0FAF4", "#F6F8F7"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[
-                styles.headerGradient,
-                { paddingTop: (insets.top || webTopInset) + 16 },
-              ]}
-            >
-              <View style={styles.headerRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.greetingSmall}>
-                    {getGreeting()},
-                  </Text>
-                  <Text style={styles.greetingName}>
-                    {user?.name ? user.name.split(" ")[0] : "there"}
-                  </Text>
-                </View>
-                <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
-                  style={styles.avatarCircle}
+            <View>
+              <LinearGradient
+                colors={["#F0FAF4", "#F6F8F7"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={[
+                  styles.headerGradient,
+                  { paddingTop: (insets.top || webTopInset) + 16 },
+                ]}
+              >
+                <MotiView
+                  from={{ opacity: 0, translateY: -4 }}
+                  animate={{ opacity: 1, translateY: 0 }}
+                  transition={{ type: "timing" as const, duration: 500 }}
+                  style={styles.headerRow}
                 >
-                  <Text style={styles.avatarInitial}>{userInitial}</Text>
-                </LinearGradient>
-              </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.greetingSmall}>
+                      {getGreeting()},
+                    </Text>
+                    <Text style={styles.greetingName}>
+                      {user?.name ? user.name.split(" ")[0] : "there"}
+                    </Text>
+                  </View>
+                  <View>
+                    <LinearGradient
+                      colors={["#3DD68C", "#2E7D32"]}
+                      style={styles.avatarCircle}
+                    >
+                      <Text style={styles.avatarInitial}>{userInitial}</Text>
+                    </LinearGradient>
+                    <View style={styles.avatarBadge}>
+                      <Text style={styles.avatarBadgeText}>
+                        {scansToday}/{user?.isPro ? "∞" : "10"}
+                      </Text>
+                    </View>
+                  </View>
+                </MotiView>
 
-              {!user?.isPro && (
-                <AnimatedProgressBar used={scansToday} total={10} />
-              )}
-              {user?.isPro && (
-                <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.proBadge}
-                >
-                  <Crown size={12} color="#FFD700" weight="fill" />
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </LinearGradient>
-              )}
-            </LinearGradient>
-
-            <MotiView
-              from={{ opacity: 0, translateY: -10 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: "timing" as const, duration: 500, delay: 100 }}
-              style={styles.heroBanner}
-            >
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={styles.heroLine1}>Scan Smart.</Text>
-                <Text style={styles.heroLine2}>Eat Right.</Text>
-                <Text style={styles.heroSub}>Know what's in your food instantly.</Text>
-                <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                {user?.isPro && (
                   <LinearGradient
                     colors={["#3DD68C", "#2E7D32"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.heroCTA}
+                    style={styles.proBadge}
                   >
-                    <Barcode size={13} color="white" weight="bold" />
-                    <Text style={styles.heroCTAText}>Scan Now</Text>
+                    <Crown size={12} color="#FFD700" weight="fill" />
+                    <Text style={styles.proBadgeText}>PRO</Text>
                   </LinearGradient>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.heroIconCluster}>
-                <Plant size={40} color={C.primary} style={{ position: "absolute" as const, top: 18, left: 18 }} />
-                <Heart size={19} color={C.mint} weight="fill" style={{ position: "absolute" as const, top: 0, right: 0 }} />
-                <Star size={13} color={C.primary} style={{ position: "absolute" as const, top: 0, left: 6, opacity: 0.45 }} />
-                <Drop size={13} color={C.mint} style={{ position: "absolute" as const, bottom: 0, right: 6, opacity: 0.7 }} />
-                <Sparkle size={11} color={C.primary} style={{ position: "absolute" as const, bottom: 4, left: 0, opacity: 0.5 }} />
-              </View>
-            </MotiView>
+                )}
+              </LinearGradient>
 
-            {!statsQuery.isLoading && (
-              <View style={styles.insightCard}>
-                <View style={styles.insightAccent} />
-                <LinearGradient
-                  colors={["#3DD68C22", "#2E7D3222"]}
-                  style={styles.insightIconBg}
-                >
-                  <Lightbulb size={17} color={C.primary} weight="fill" />
-                </LinearGradient>
-                <Text style={styles.insightText}>{insightText}</Text>
-              </View>
-            )}
+              {!user?.isPro && (
+                <AnimatedProgressBar used={scansToday} total={10} />
+              )}
+            </View>
+
+            <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+              <MotiView
+                from={{ opacity: 0, translateY: -10 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: "timing" as const, duration: 500, delay: 100 }}
+                style={styles.heroBanner}
+              >
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.heroLine1}>Scan Smart.</Text>
+                  <Text style={styles.heroLine2}>Eat Right.</Text>
+                  <Text style={styles.heroSub}>Discover the truth about your food in seconds.</Text>
+                  <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                    <LinearGradient
+                      colors={["#3DD68C", "#2E7D32"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.heroCTA}
+                    >
+                      <Barcode size={14} color="white" weight="bold" />
+                      <Text style={styles.heroCTAText}>Scan Product</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.heroGraphic}>
+                  <LinearGradient
+                    colors={["rgba(61,214,140,0.12)", "transparent"]}
+                    style={styles.heroGraphicCircle}
+                  />
+                  <Barcode size={40} color={C.mint} style={{ opacity: 0.9 }} />
+                </View>
+              </MotiView>
+            </View>
 
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <View style={styles.statHeader}>
-                  <ScanSmiley size={18} color={C.mint} />
-                  <Text style={styles.statLabel}>Today</Text>
+                  <LinearGradient
+                    colors={[C.tinted, "#D4EDDA"]}
+                    style={styles.statIconBg}
+                  >
+                    <ChartLineUp size={16} color={C.primary} />
+                  </LinearGradient>
+                  <Text style={styles.statLabel}>Avg Score</Text>
                 </View>
-                <Text style={styles.statNumber}>{scansToday}</Text>
-                <Text style={styles.statSub}>checks done</Text>
+                <View style={styles.statValueRow}>
+                  <Text style={[styles.statNumber, { color: stats?.avgScore != null ? getScoreColor(stats.avgScore) : C.text }]}>
+                    {stats?.avgScore != null ? Math.round(stats.avgScore) : "--"}
+                  </Text>
+                  <Text style={styles.statSuffix}>/100</Text>
+                </View>
               </View>
               <View style={styles.statCard}>
                 <View style={styles.statHeader}>
-                  <ChartLineUp size={18} color={C.primary} />
-                  <Text style={styles.statLabel}>Avg Score</Text>
+                  <LinearGradient
+                    colors={[C.tinted, "#D4EDDA"]}
+                    style={styles.statIconBg}
+                  >
+                    <ScanSmiley size={16} color={C.primary} />
+                  </LinearGradient>
+                  <Text style={styles.statLabel}>Today</Text>
                 </View>
-                <Text style={[styles.statNumber, { color: stats?.avgScore ? getScoreColor(stats.avgScore) : C.text }]}>
-                  {stats?.avgScore ? Math.round(stats.avgScore) : "--"}
-                </Text>
-                <Text style={styles.statSub}>overall</Text>
+                <View style={styles.statValueRow}>
+                  <Text style={styles.statNumber}>{scansToday}</Text>
+                  <Text style={styles.statSuffix}>items</Text>
+                </View>
               </View>
             </View>
+
+            {!statsQuery.isLoading && (
+              <View style={styles.insightCard}>
+                <Lightbulb size={16} color="#FB8C00" weight="fill" style={{ marginTop: 2 }} />
+                <Text style={styles.insightText}>{insightText}</Text>
+              </View>
+            )}
 
             {recentScans.length === 0 && !historyQuery.isLoading && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
@@ -471,6 +504,7 @@ export default function HomeScreen() {
             {historyQuery.isLoading && (
               <View style={styles.section}>
                 <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
+                <SectionAccentLine />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
                   {[0, 1, 2].map((i) => (
                     <SkeletonRecentCard key={i} />
@@ -482,7 +516,10 @@ export default function HomeScreen() {
             {!historyQuery.isLoading && recentScans.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
+                  <View>
+                    <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
+                    <SectionAccentLine />
+                  </View>
                   <TouchableOpacity onPress={() => router.push("/(tabs)/history")}>
                     <Text style={styles.seeAll}>See all</Text>
                   </TouchableOpacity>
@@ -508,22 +545,28 @@ export default function HomeScreen() {
             )}
 
             <View style={styles.section}>
-              <Text style={[styles.sectionHeaderLabel, { marginTop: 4 }]}>POPULAR</Text>
+              <Text style={styles.sectionHeaderLabel}>TRENDING HEALTH CHOICES</Text>
+              <SectionAccentLine />
               {popularQuery.isLoading && (
-                <>
+                <View style={styles.popularListCard}>
                   {[0, 1, 2].map((i) => (
                     <SkeletonProductCard key={i} />
                   ))}
-                </>
+                </View>
               )}
-              {!popularQuery.isLoading && popular.map((item: any, i: number) => (
-                <PopularProductCard
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  onPress={() => handleProductPress(item)}
-                />
-              ))}
+              {!popularQuery.isLoading && popular.length > 0 && (
+                <View style={styles.popularListCard}>
+                  {popular.map((item: any, i: number) => (
+                    <PopularProductCard
+                      key={item.id}
+                      item={item}
+                      index={i}
+                      totalCount={popular.length}
+                      onPress={() => handleProductPress(item)}
+                    />
+                  ))}
+                </View>
+              )}
               {popular.length === 0 && !popularQuery.isLoading && (
                 <Text style={styles.emptyText}>
                   No products yet. Start scanning to build the database!
@@ -538,17 +581,14 @@ export default function HomeScreen() {
                   onPress={() => router.push("/contribute")}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={[C.tinted, "#D0EDD1"]}
-                    style={styles.contributeIconWrap}
-                  >
-                    <Package size={20} color={C.primary} />
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.contributeTitle}>Know a product we don't have?</Text>
-                    <Text style={styles.contributeSubtitle}>Add it to help others</Text>
+                  <View style={styles.contributeIconWrap}>
+                    <Info size={20} color={C.primary} />
                   </View>
-                  <CaretRight size={16} color={C.placeholder} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.contributeTitle}>Missing a product?</Text>
+                    <Text style={styles.contributeSubtitle}>Help improve our database by scanning unlisted items.</Text>
+                  </View>
+                  <Text style={styles.contributeAction}>Add</Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -570,17 +610,33 @@ function getGreeting() {
   return "Good evening";
 }
 
-const CARD = {
+const TIER1 = {
   backgroundColor: C.card,
   borderRadius: 20,
-  padding: 16,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.06,
+  shadowRadius: 16,
+  elevation: 3,
+} as const;
+
+const TIER2 = {
+  backgroundColor: C.card,
+  borderRadius: 20,
   borderWidth: 0.5,
   borderColor: C.border,
   shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 8,
-  elevation: 3,
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.04,
+  shadowRadius: 4,
+  elevation: 1,
+} as const;
+
+const TIER3 = {
+  backgroundColor: C.card,
+  borderRadius: 20,
+  borderWidth: 0.5,
+  borderColor: C.border,
 } as const;
 
 const styles = StyleSheet.create({
@@ -590,7 +646,7 @@ const styles = StyleSheet.create({
   },
   headerGradient: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   headerRow: {
     flexDirection: "row",
@@ -599,44 +655,55 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   greetingSmall: {
-    fontSize: 13,
+    fontSize: 14,
     color: C.muted,
     fontWeight: "500",
+    marginBottom: 2,
   },
   greetingName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     letterSpacing: -0.5,
     color: C.text,
   },
   avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: C.border,
   },
   avatarInitial: {
     fontSize: 18,
     fontWeight: "800",
     color: "white",
   },
-  progressRow: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: C.muted,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 5,
+  avatarBadge: {
+    position: "absolute",
+    bottom: -6,
+    right: -6,
+    backgroundColor: C.card,
     borderRadius: 999,
-    backgroundColor: "#E0EDE1",
-    overflow: "hidden",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  avatarBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: C.primary,
+  },
+  progressBarTrack: {
+    height: 3,
+    backgroundColor: "rgba(0,0,0,0.04)",
   },
   proBadge: {
     flexDirection: "row",
@@ -655,74 +722,121 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   heroBanner: {
-    ...CARD,
-    backgroundColor: C.tinted,
-    borderRadius: 20,
+    ...TIER1,
+    backgroundColor: "#EDF5EE",
     padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
     overflow: "hidden",
+    marginBottom: 24,
   },
   heroLine1: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: "900",
     color: C.text,
     letterSpacing: -0.5,
+    lineHeight: 22,
   },
   heroLine2: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: "900",
-    color: C.primary,
+    color: C.text,
     letterSpacing: -0.5,
+    lineHeight: 22,
   },
   heroSub: {
     fontSize: 12,
     color: C.muted,
-    marginTop: 5,
+    marginTop: 8,
+    marginBottom: 20,
     lineHeight: 18,
+    maxWidth: 180,
   },
   heroCTA: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    gap: 6,
-    marginTop: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    shadowColor: "#2E7D32",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 2,
   },
   heroCTAText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     color: "white",
   },
-  heroIconCluster: {
-    width: 76,
-    height: 76,
-    position: "relative",
+  heroGraphic: {
+    width: 80,
+    height: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroGraphicCircle: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 40,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  statCard: {
+    ...TIER1,
+    flex: 1,
+    padding: 16,
+  },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  statIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: C.muted,
+  },
+  statValueRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 3,
+  },
+  statNumber: {
+    fontSize: 30,
+    fontWeight: "900",
+    letterSpacing: -1,
+    color: C.text,
+    lineHeight: 32,
+    ...(Platform.OS === "ios" ? { fontVariant: ["tabular-nums" as any] } : {}),
+  },
+  statSuffix: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: C.muted,
+    marginBottom: 2,
   },
   insightCard: {
-    ...CARD,
+    ...TIER3,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
     marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  insightAccent: {
-    width: 3,
-    borderRadius: 999,
-    backgroundColor: C.mint,
-    alignSelf: "stretch",
-  },
-  insightIconBg: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 24,
+    padding: 16,
   },
   insightText: {
     fontSize: 14,
@@ -730,48 +844,14 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     flex: 1,
   },
-  statsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  statCard: {
-    ...CARD,
-    flex: 1,
-  },
-  statHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.3,
-    color: C.placeholder,
-    textTransform: "uppercase",
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -1,
-    color: C.text,
-  },
-  statSub: {
-    fontSize: 11,
-    color: C.muted,
-    marginTop: 2,
-  },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   sectionHeaderLabel: {
@@ -780,7 +860,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.3,
     color: C.placeholder,
     textTransform: "uppercase",
+    marginBottom: 0,
+  },
+  sectionAccentLine: {
+    width: 24,
+    height: 2,
+    backgroundColor: C.mint,
+    opacity: 0.4,
+    marginTop: 6,
     marginBottom: 12,
+    borderRadius: 1,
   },
   seeAll: {
     fontSize: 13,
@@ -788,85 +877,106 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   recentCard: {
-    ...CARD,
-    width: 156,
-    padding: 14,
+    ...TIER2,
+    width: 140,
+    overflow: "hidden",
+    padding: 0,
+  },
+  recentCardInner: {
+    padding: 12,
+    paddingBottom: 14,
+    flex: 1,
   },
   recentName: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     color: C.text,
-    marginTop: 8,
+    marginTop: 12,
     lineHeight: 18,
   },
   recentBrand: {
-    fontSize: 11,
+    fontSize: 12,
     color: C.muted,
-    marginTop: 3,
+    marginTop: 2,
   },
-  scoreBadgeSmall: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+  scoreBadgeCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  scoreBadgeSmallText: {
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  scoreLabelPill: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    alignSelf: "flex-start",
-    marginTop: 8,
-  },
-  scoreLabelPillText: {
-    fontSize: 10,
+  scoreBadgeCircleText: {
     fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
+    fontSize: 12,
+  },
+  recentRibbon: {
+    height: 2,
+    width: "100%",
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  popularListCard: {
+    ...TIER2,
+    overflow: "hidden",
+    padding: 0,
   },
   popularCard: {
-    ...CARD,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 10,
+    padding: 16,
   },
-  popularIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+  popularDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: C.green,
+  },
+  popularIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: "rgba(0,0,0,0.04)",
   },
   popularName: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "500",
     color: C.text,
+    marginBottom: 2,
   },
   popularMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 4,
   },
   popularBrand: {
     fontSize: 12,
     color: C.muted,
   },
-  caloriesChip: {
-    backgroundColor: C.bg,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  caloriesChipText: {
-    fontSize: 11,
+  popularDotSeparator: {
+    fontSize: 12,
     color: C.muted,
-    fontWeight: "500",
+    marginHorizontal: 4,
+  },
+  popularCalories: {
+    fontSize: 12,
+    color: C.muted,
+  },
+  popularChevronCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: C.bg,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  popularDivider: {
+    height: 1,
+    backgroundColor: C.divider,
+    marginHorizontal: 16,
   },
   emptyText: {
     textAlign: "center",
@@ -876,9 +986,9 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
     padding: 28,
-    ...CARD,
+    ...TIER1,
     alignItems: "center" as const,
   },
   welcomeIconWrap: {
@@ -920,28 +1030,40 @@ const styles = StyleSheet.create({
     color: "white",
   },
   contributeCard: {
-    ...CARD,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderStyle: "dashed" as const,
+    borderColor: "rgba(61,214,140,0.4)",
+    backgroundColor: "rgba(61,214,140,0.02)",
   },
   contributeIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: C.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   contributeTitle: {
     fontSize: 14,
-    fontWeight: "700" as const,
+    fontWeight: "600" as const,
     color: C.text,
+    marginBottom: 2,
   },
   contributeSubtitle: {
     fontSize: 12,
     color: C.muted,
-    marginTop: 2,
+    lineHeight: 17,
+  },
+  contributeAction: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: C.primary,
   },
 });
