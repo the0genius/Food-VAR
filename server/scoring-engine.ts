@@ -1,6 +1,10 @@
 import { db } from "./db";
 import { scoringRules, type Product, type User } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+
+export const SCORING_VERSION = "1.0.0";
+export const PROMPT_VERSION = "1.0.0";
+export const MODEL_VERSION = "gemini-2.5-flash";
 
 export interface ScoreDeduction {
   nutrient: string;
@@ -16,6 +20,7 @@ interface ScoreResult {
   isAllergenAlert: boolean;
   matchedAllergens: string[];
   deductions: ScoreDeduction[];
+  scoringVersion: string;
 }
 
 const BAD_NUTRIENTS = new Set([
@@ -68,6 +73,15 @@ const CONDITION_LABELS: Record<string, string> = {
   goal_muscle_gain_bonus: "muscle gain goal",
 };
 
+export const SCORE_LABELS = {
+  ALLERGEN_ALERT: "Allergen Alert",
+  STRONGLY_AVOID: "Strongly Avoid",
+  HIGH_RISK: "High Risk",
+  CAUTION: "Consume with Caution",
+  GENERALLY_GOOD: "Generally Good",
+  EXCELLENT_FIT: "Excellent Fit",
+} as const;
+
 function getConditionLabel(condition: string): string {
   if (CONDITION_LABELS[condition]) return CONDITION_LABELS[condition];
   for (const [key, label] of Object.entries(CONDITION_LABELS)) {
@@ -111,13 +125,19 @@ function bonusInterpolate(
   }
 }
 
-function getScoreLabel(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return "Allergen Alert";
-  if (score <= 15) return "Strongly Avoid";
-  if (score <= 35) return "High Risk";
-  if (score <= 50) return "Consume with Caution";
-  if (score <= 74) return "Generally Good";
-  return "Excellent Fit";
+export function getScoreLabel(score: number, isAllergenAlert: boolean): string {
+  if (isAllergenAlert) return SCORE_LABELS.ALLERGEN_ALERT;
+  if (score <= 15) return SCORE_LABELS.STRONGLY_AVOID;
+  if (score <= 35) return SCORE_LABELS.HIGH_RISK;
+  if (score <= 50) return SCORE_LABELS.CAUTION;
+  if (score <= 74) return SCORE_LABELS.GENERALLY_GOOD;
+  return SCORE_LABELS.EXCELLENT_FIT;
+}
+
+function getAllergenSources(product: Product): string[] {
+  const declared = (product.declaredAllergens || []).map((a: string) => a.toLowerCase());
+  if (declared.length > 0) return declared;
+  return (product.allergens || []).map((a: string) => a.toLowerCase());
 }
 
 export async function computeScore(
@@ -141,9 +161,7 @@ export async function computeScore(
   const userAllergies = (user.allergies || []).map((a: string) =>
     a.toLowerCase()
   );
-  const productAllergens = (product.allergens || []).map((a: string) =>
-    a.toLowerCase()
-  );
+  const productAllergens = getAllergenSources(product);
 
   const matchedAllergens = userAllergies.filter((allergy: string) => {
     const relatedAllergens = ALLERGEN_GROUPS[allergy] || [allergy];
@@ -158,10 +176,11 @@ export async function computeScore(
   if (matchedAllergens.length > 0) {
     return {
       score: 0,
-      label: "Allergen Alert",
+      label: SCORE_LABELS.ALLERGEN_ALERT,
       isAllergenAlert: true,
       matchedAllergens,
       deductions: [],
+      scoringVersion: SCORING_VERSION,
     };
   }
 
@@ -301,6 +320,7 @@ export async function computeScore(
     isAllergenAlert: false,
     matchedAllergens: [],
     deductions,
+    scoringVersion: SCORING_VERSION,
   };
 }
 

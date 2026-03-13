@@ -8,7 +8,7 @@ import {
   dailyScanTracker,
 } from "@shared/schema";
 import { eq, and, ilike, or, desc, sql, asc, ne, isNull } from "drizzle-orm";
-import { computeScore, computeClusterId } from "./scoring-engine";
+import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";

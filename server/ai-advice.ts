@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
 import { adviceCache, type Product, type User } from "@shared/schema";
 import { eq, and, gt } from "drizzle-orm";
-import type { ScoreDeduction } from "./scoring-engine";
+import { type ScoreDeduction, PROMPT_VERSION, MODEL_VERSION } from "./scoring-engine";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -190,6 +190,8 @@ export async function getAdvice(
       profileClusterId,
       adviceText: validated.whyText,
       highlights: validated.highlights,
+      promptVersion: PROMPT_VERSION,
+      modelVersion: MODEL_VERSION,
       expiresAt,
     });
 
