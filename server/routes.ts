@@ -7,9 +7,12 @@ import {
   scanHistory,
   dailyScanTracker,
 } from "@shared/schema";
-import { eq, and, ilike, or, desc, sql, asc } from "drizzle-orm";
+import { eq, and, ilike, or, desc, sql, asc, ne } from "drizzle-orm";
 import { computeScore, computeClusterId } from "./scoring-engine";
 import { getAdvice, extractNutritionFromImages } from "./ai-advice";
+import { isFeatureEnabled } from "./feature-flags";
+import { registerChatRoutes } from "./replit_integrations/chat";
+import { registerImageRoutes } from "./replit_integrations/image";
 
 function paramId(req: Request, name: string = "id"): string {
   const v = req.params[name];
@@ -145,6 +148,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(ilike(products.category, category));
       }
 
+      if (!isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")) {
+        conditions.push(ne(products.moderationStatus, "pending"));
+      }
+
       const result = await db
         .select()
         .from(products)
@@ -160,9 +167,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/popular", async (req: Request, res: Response) => {
     try {
+      const where = isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")
+        ? undefined
+        : ne(products.moderationStatus, "pending");
+
       const result = await db
         .select()
         .from(products)
+        .where(where)
         .orderBy(desc(products.scanCount))
         .limit(10);
       res.json(result);
@@ -250,16 +262,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scoreResult = await computeScore(product, user);
       const clusterId = user.profileClusterId || computeClusterId(user);
 
-      const adviceResult = await getAdvice(
-        product,
-        user,
-        scoreResult.score,
-        scoreResult.label,
-        clusterId,
-        scoreResult.isAllergenAlert,
-        scoreResult.matchedAllergens,
-        scoreResult.deductions
-      );
+      let adviceResult;
+      if (isFeatureEnabled("ENABLE_AI_ADVICE")) {
+        adviceResult = await getAdvice(
+          product,
+          user,
+          scoreResult.score,
+          scoreResult.label,
+          clusterId,
+          scoreResult.isAllergenAlert,
+          scoreResult.matchedAllergens,
+          scoreResult.deductions
+        );
+      } else {
+        const topDeduction = scoreResult.deductions.find(d => d.category === "penalty");
+        const topBonus = scoreResult.deductions.find(d => d.category === "bonus");
+        const deterministicAdvice = scoreResult.isAllergenAlert
+          ? `This product contains allergens matching your profile (${scoreResult.matchedAllergens.join(", ")}). Avoid this product.`
+          : topDeduction
+            ? `Main concern: ${topDeduction.reason}.`
+            : topBonus
+              ? `Positive factor: ${topBonus.reason}.`
+              : "Score is based on your health profile and this product's nutrition data.";
+        adviceResult = {
+          advice: deterministicAdvice,
+          headline: scoreResult.isAllergenAlert ? "Allergen Alert" : scoreResult.label,
+          coachTip: "",
+          highlights: scoreResult.deductions.slice(0, 3).map(d => d.reason),
+          fromCache: false,
+        };
+      }
 
       try {
         await db
@@ -701,6 +733,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ error: "Failed to report product" });
     }
+  });
+
+  // ========== FEATURE-FLAGGED: CHAT & IMAGE GENERATION ==========
+  if (isFeatureEnabled("ENABLE_CHAT")) {
+    registerChatRoutes(app);
+    console.log("[Feature Flag] Chat routes ENABLED");
+  } else {
+    const chatDisabled = (_req: Request, res: Response) => {
+      res.status(403).json({ error: "Chat feature is disabled" });
+    };
+    app.all("/api/conversations", chatDisabled);
+    app.all("/api/conversations/:id", chatDisabled);
+    app.all("/api/conversations/:id/messages", chatDisabled);
+  }
+
+  if (isFeatureEnabled("ENABLE_IMAGE_GENERATION")) {
+    registerImageRoutes(app);
+    console.log("[Feature Flag] Image generation routes ENABLED");
+  } else {
+    app.post("/api/generate-image", (_req: Request, res: Response) => {
+      res.status(403).json({ error: "Image generation feature is disabled" });
+    });
+  }
+
+  // ========== HEALTH CHECK ==========
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   const httpServer = createServer(app);
