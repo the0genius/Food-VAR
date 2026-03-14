@@ -575,7 +575,8 @@ export default function ProfileScreen() {
             }}
             activeOpacity={0.8}
             accessibilityLabel={currentTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            accessibilityRole="button"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: currentTheme === "dark" }}
           >
             <View style={[styles.actionLeftBorder, { backgroundColor: '#7C4DFF' }]} />
             <View style={styles.actionContent}>
@@ -586,11 +587,11 @@ export default function ProfileScreen() {
                   <Moon size={16} color="#7C4DFF" weight="fill" />
                 )}
               </View>
-              <Text style={[styles.actionText, { color: theme.text }]}>
-                {currentTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              </Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Dark Mode</Text>
             </View>
-            <CaretRight size={18} color={theme.placeholder} />
+            <View style={[styles.toggleTrack, isDark && styles.toggleTrackActive]}>
+              <View style={[styles.toggleThumb, isDark && styles.toggleThumbActive]} />
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionCard, { marginTop: 10 }]} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
@@ -926,6 +927,26 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   actionText: {
     fontSize: 15,
     fontWeight: "600" as const,
+  },
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.bg === '#121212' ? '#555555' : '#D1D5DB',
+    justifyContent: "center" as const,
+    padding: 2,
+  },
+  toggleTrackActive: {
+    backgroundColor: '#7C4DFF',
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  toggleThumbActive: {
+    alignSelf: "flex-end" as const,
   },
   editFieldsWrap: {
     flex: 1,

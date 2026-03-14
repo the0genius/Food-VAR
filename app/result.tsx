@@ -441,7 +441,7 @@ export default function ResultScreen() {
         </View>
         {dailyVal && barPct > 0 && (
           <View style={styles.nutrientBarTrack}>
-            <View style={[styles.nutrientBarFill, { width: `${barPct * 100}%` as any, backgroundColor: barColor }]} />
+            <View style={[styles.nutrientBarFill, { width: `${Math.round(barPct * 100)}%`, backgroundColor: barColor }]} />
           </View>
         )}
       </View>
@@ -1109,7 +1109,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     marginBottom: 16,
   },
   limitDivider: {
-    width: "80%" as any,
+    width: "80%",
     height: 1,
     backgroundColor: theme.divider,
     marginBottom: 16,
