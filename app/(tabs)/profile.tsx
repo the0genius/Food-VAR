@@ -39,7 +39,7 @@ import {
   FileText,
   ShieldCheck,
 } from "phosphor-react-native";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -104,6 +104,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateProfile, logout } = useUser();
+  const theme = useThemeColors();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [age, setAge] = useState(user?.age ? String(user.age) : "");
@@ -206,7 +207,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.bg }]}
       contentContainerStyle={{
         paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 80,
       }}
@@ -439,7 +440,7 @@ export default function ProfileScreen() {
                   <Text style={styles.perfTitle}>Best Picks</Text>
                 </View>
                 {bestProducts.map((product, index) => (
-                  <View key={`best-${product.productId}-${index}`} style={styles.perfProductRow}>
+                  <View key={`best-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score)}`}>
                     <View
                       style={[
                         styles.perfScoreBadge,
@@ -454,6 +455,7 @@ export default function ProfileScreen() {
                       >
                         {Math.round(product.score)}
                       </Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score) }]}>{getScoreShortLabel(product.score)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>
@@ -475,7 +477,7 @@ export default function ProfileScreen() {
                   <Text style={styles.perfTitle}>Avoid</Text>
                 </View>
                 {worstProducts.map((product, index) => (
-                  <View key={`worst-${product.productId}-${index}`} style={styles.perfProductRow}>
+                  <View key={`worst-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score)}`}>
                     <View
                       style={[
                         styles.perfScoreBadge,
@@ -490,6 +492,7 @@ export default function ProfileScreen() {
                       >
                         {Math.round(product.score)}
                       </Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score) }]}>{getScoreShortLabel(product.score)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>
@@ -785,8 +788,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   perfScoreBadge: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     alignItems: "center" as const,
     justifyContent: "center" as const,
@@ -794,6 +797,14 @@ const styles = StyleSheet.create({
   perfScoreText: {
     fontSize: 11,
     fontWeight: "800" as const,
+    lineHeight: 12,
+  },
+  perfScoreTierText: {
+    fontSize: 6,
+    fontWeight: "700" as const,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.2,
+    marginTop: 1,
   },
   perfProductInfo: {
     flex: 1,

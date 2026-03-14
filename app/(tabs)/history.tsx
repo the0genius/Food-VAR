@@ -23,7 +23,7 @@ import {
   WifiSlash,
 } from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -221,6 +221,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
+  const theme = useThemeColors();
   const [sort, setSort] = useState<SortOption>("date");
   const [search, setSearch] = useState("");
 
@@ -249,16 +250,16 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View
         style={[
           styles.header,
           { paddingTop: (insets.top || webTopInset) + 12 },
         ]}
       >
-        <Text style={styles.headerTitle}>History</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>History</Text>
         <View style={styles.searchBar}>
-          <MagnifyingGlass size={18} color={C.placeholder} />
+          <MagnifyingGlass size={18} color={theme.placeholder} />
           <TextInput
             style={styles.searchInput}
             value={search}

@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
 export const C = {
   bg: '#F6F8F7',
@@ -26,6 +26,41 @@ export const C = {
   green: '#43A047',
   greenBg: '#E8F5E9',
 };
+
+const darkTokens = {
+  bg: '#121212',
+  card: '#1E1E1E',
+  tinted: '#1B3A1D',
+
+  primary: '#66BB6A',
+  mint: '#3DD68C',
+  teal: '#4DD0C8',
+
+  text: '#E8E8E8',
+  muted: '#A0A0A0',
+  placeholder: '#787878',
+
+  border: 'rgba(255,255,255,0.1)',
+  divider: '#2C2C2C',
+
+  danger: '#EF5350',
+  dangerBg: '#3D1515',
+  darkRed: '#EF5350',
+  amber: '#FFB74D',
+  amberBg: '#3D2E15',
+  tealScore: '#4DD0C8',
+  tealBg: '#153D3A',
+  green: '#66BB6A',
+  greenBg: '#1B3A1D',
+};
+
+export type ThemeColors = typeof C;
+
+export function useThemeColors(): ThemeColors {
+  const scheme = useColorScheme();
+  if (scheme === 'dark') return darkTokens;
+  return C;
+}
 
 const Colors = {
   primary: C.primary,

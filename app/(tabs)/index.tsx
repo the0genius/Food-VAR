@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -112,12 +112,14 @@ function getInsightText(avgScore: number, weeklyScans: number, totalScans: numbe
 }
 
 function ScoreBadgeCircle({ score }: { score: number }) {
+  const label = getScoreShortLabel(score);
   return (
     <View
       style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}
-      accessibilityLabel={`Score ${score}, ${getScoreShortLabel(score)}`}
+      accessibilityLabel={`Score ${score}, ${label}`}
     >
       <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
+      <Text style={[styles.scoreBadgeCircleLabel, { color: getScoreColor(score) }]}>{label}</Text>
     </View>
   );
 }
@@ -254,6 +256,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
+  const theme = useThemeColors();
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -314,7 +317,7 @@ export default function HomeScreen() {
   const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "?";
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <FlatList
         data={[]}
         renderItem={null}
@@ -322,8 +325,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={!!popularQuery.isRefetching || !!historyQuery.isRefetching || !!scansQuery.isRefetching}
             onRefresh={handleRefresh}
-            tintColor={C.primary}
-            colors={[C.primary]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
         ListHeaderComponent={
@@ -896,15 +899,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   scoreBadgeCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   scoreBadgeCircleText: {
-    fontWeight: "700",
+    fontWeight: "700" as const,
     fontSize: 12,
+    lineHeight: 13,
+  },
+  scoreBadgeCircleLabel: {
+    fontSize: 7,
+    fontWeight: "700" as const,
+    letterSpacing: 0.2,
+    textTransform: "uppercase" as const,
+    marginTop: 1,
   },
   recentRibbon: {
     height: 2,

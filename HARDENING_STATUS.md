@@ -27,6 +27,20 @@ AI advice includes medical disclaimers and prompt hardening. However:
 ### Score Labels & Accessibility (Task #5)
 - Score labels are unified via `shared/score-labels.ts` — single source of truth for both backend and frontend.
 - Full labels (e.g., "Consume with Caution") used in API responses; short labels (e.g., "Caution") used in UI badges.
-- Score badges now show text labels alongside numeric values (non-color-only meaning for accessibility).
-- Tab bar, history items, score badges, and score ring all have `accessibilityLabel` and `accessibilityRole` props.
-- 83 unit tests passing (5 new label consistency tests).
+- No local duplicate label functions — all screens consume shared module only.
+- Score badges show visible text labels alongside numeric values (non-color-only meaning) on:
+  - Home screen (ScoreBadgeCircle: score number + tier text)
+  - Profile screen (best/worst product badges: score number + tier text)
+  - History screen (score badge + tier label)
+  - Result screen (score ring with tier label)
+- Dark mode infrastructure: `useThemeColors()` hook with light + dark token sets in `constants/colors.ts`.
+  - StatusBar set to `auto` (adapts to system theme).
+  - Tab bar (`_layout.tsx`) uses theme-driven background, border, tint colors.
+  - Home, History, and Profile screens apply `theme.bg` background and `theme.text`/`theme.placeholder` for key text.
+- Accessibility labels and roles on:
+  - Tab bar items (Home, Scan, History, Profile tabs)
+  - History items (product name, score, tier, time)
+  - Profile best/worst product rows (product name, score, tier)
+  - Onboarding: back button, progress bar, step indicator, consent checkbox, privacy/terms links, next/continue button
+  - Score ring (result screen)
+- 83 unit tests passing (5 label consistency tests).

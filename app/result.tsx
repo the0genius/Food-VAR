@@ -30,7 +30,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel, getScoreLabel as getScoreLabelFull } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -491,7 +491,7 @@ export default function ResultScreen() {
           setReAnalyzed(wasReAnalyzed);
           setData({
             score: entry.score,
-            label: getLabel(entry.score),
+            label: getScoreLabelFull(entry.score, entry.isAllergenAlert ?? entry.score === 0),
             isAllergenAlert: entry.isAllergenAlert ?? entry.score === 0,
             matchedAllergens: entry.matchedAllergens || [],
             advice: entry.adviceText || "",
@@ -569,14 +569,7 @@ export default function ResultScreen() {
     }
   }
 
-  function getLabel(score: number): string {
-    if (score === 0) return "Allergen Alert";
-    if (score <= 15) return "Strongly Avoid";
-    if (score <= 35) return "High Risk";
-    if (score <= 50) return "Consume with Caution";
-    if (score <= 74) return "Generally Good";
-    return "Excellent Fit";
-  }
+
 
   if (loading) {
     return (

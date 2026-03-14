@@ -488,6 +488,8 @@ export default function OnboardingScreen() {
             <TouchableOpacity
               style={styles.consentLink}
               onPress={() => router.push("/privacy")}
+              accessibilityLabel="Read privacy policy"
+              accessibilityRole="link"
             >
               <Text style={styles.consentLinkText}>Read Privacy Policy</Text>
               <ArrowRight size={16} color={C.primary} />
@@ -496,6 +498,8 @@ export default function OnboardingScreen() {
             <TouchableOpacity
               style={styles.consentLink}
               onPress={() => router.push("/terms")}
+              accessibilityLabel="Read terms of service"
+              accessibilityRole="link"
             >
               <Text style={styles.consentLinkText}>Read Terms of Service</Text>
               <ArrowRight size={16} color={C.primary} />
@@ -508,6 +512,8 @@ export default function OnboardingScreen() {
                 setConsentChecked(!consentChecked);
               }}
               testID="consent-checkbox"
+              accessibilityLabel={consentChecked ? "Consent accepted. Tap to uncheck" : "Accept privacy policy and terms of service"}
+              accessibilityRole="checkbox"
             >
               <View style={[styles.checkbox, consentChecked && styles.checkboxChecked]}>
                 {consentChecked && <CheckCircle size={20} color="#fff" weight="fill" />}
@@ -538,11 +544,13 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             onPress={handleBack}
             style={styles.backBtn}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <ArrowLeft size={24} color={C.text} />
           </TouchableOpacity>
         )}
-        <View style={styles.progressBar}>
+        <View style={styles.progressBar} accessibilityLabel={`Step ${step + 1} of ${totalSteps}`} accessibilityRole="progressbar">
           <Animated.View style={[styles.progressFillContainer, progressAnimStyle]}>
             <LinearGradient
               colors={["#3DD68C", "#2E7D32"]}
@@ -552,7 +560,7 @@ export default function OnboardingScreen() {
             />
           </Animated.View>
         </View>
-        <Text style={styles.stepIndicator}>
+        <Text style={styles.stepIndicator} accessibilityLabel={`Step ${step + 1} of ${totalSteps}`}>
           {step + 1}/{totalSteps}
         </Text>
       </View>
@@ -577,6 +585,8 @@ export default function OnboardingScreen() {
           disabled={loading || (step === 0 && (!email.trim() || !password.trim())) || (step === 5 && !consentChecked)}
           activeOpacity={0.8}
           testID="next-button"
+          accessibilityLabel={loading ? "Saving" : step === 0 && isLoginMode ? "Sign in" : step === totalSteps - 1 ? "Start scanning" : "Continue to next step"}
+          accessibilityRole="button"
         >
           <LinearGradient
             colors={["#3DD68C", "#2E7D32"]}

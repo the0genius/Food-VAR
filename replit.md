@@ -42,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **File-based Routing**: Simplifies navigation and project structure.
 - **Modal Presentation**: Enhances user experience for results and contributions.
 - **Feature Flags**: Manages risk and enables phased rollout of capabilities like chat and image generation.
+- **Dark Mode Support**: `useThemeColors()` hook in `constants/colors.ts` provides light/dark token sets; priority screens (Home, History, Profile, tab bar) apply theme-driven backgrounds and text colors. StatusBar auto-adapts.
 
 ## External Dependencies
 

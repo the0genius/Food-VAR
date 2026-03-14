@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { UserProvider } from "@/contexts/UserContext";
 import { StatusBar } from "expo-status-bar";
+import { useColorScheme } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -66,7 +67,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <UserProvider>
-              <StatusBar style="dark" />
+              <StatusBar style="auto" />
               <RootLayoutNav />
             </UserProvider>
           </KeyboardProvider>
