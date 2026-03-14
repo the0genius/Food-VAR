@@ -773,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           extractionConfidence: extractionConfidence || null,
           contributedBy: userId,
           source: "user",
-          moderationStatus: isLowConfidence ? "pending" : "pending",
+          moderationStatus: "pending",
         })
         .onConflictDoNothing()
         .returning();
