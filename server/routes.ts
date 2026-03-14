@@ -398,11 +398,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/auth/password-reset/request", async (req: Request, res: Response) => {
+    const genericSuccess = { success: true, message: "If an account exists with that email, a reset link has been sent" };
     try {
-      const schema = z.object({ email: z.string().email() });
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Valid email is required" });
+      const email = req.body?.email;
+      if (typeof email !== "string" || !email.includes("@")) {
+        return res.json(genericSuccess);
       }
 
       const [user] = await db
@@ -410,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .where(
           and(
-            eq(users.email, parsed.data.email.toLowerCase()),
+            eq(users.email, email.toLowerCase()),
             isNull(users.deletedAt)
           )
         )
@@ -420,10 +420,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await createPasswordResetToken(user.id);
       }
 
-      res.json({ success: true, message: "If an account exists with that email, a reset link has been sent" });
+      res.json(genericSuccess);
     } catch (error) {
       logger.error("Password reset request failed", error, {}, req);
-      res.json({ success: true, message: "If an account exists with that email, a reset link has been sent" });
+      res.json(genericSuccess);
     }
   });
 
