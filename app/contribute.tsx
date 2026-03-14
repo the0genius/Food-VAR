@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -32,7 +32,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -40,31 +40,32 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type FlowStep = "front_photo" | "back_photo" | "analyzing" | "success" | "error";
 
-function PulsingDot({ delay }: { delay: number }) {
-  const opacity = useSharedValue(0.3);
-
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-  }, []);
-
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return <Animated.View style={[styles.pulsingDot, dotStyle, { marginLeft: delay > 0 ? 6 : 0 }]} />;
-}
-
 export default function ContributeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function PulsingDot({ delay }: { delay: number }) {
+    const opacity = useSharedValue(0.3);
+
+    useEffect(() => {
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    }, []);
+
+    const dotStyle = useAnimatedStyle(() => ({
+      opacity: opacity.value,
+    }));
+
+    return <Animated.View style={[styles.pulsingDot, dotStyle, { marginLeft: delay > 0 ? 6 : 0 }]} />;
+  }
   const { user } = useUser();
   const params = useLocalSearchParams<{ barcode?: string }>();
 
@@ -302,7 +303,7 @@ export default function ContributeScreen() {
               </View>
             ) : (
               <>
-                <Camera size={40} color={C.placeholder} />
+                <Camera size={40} color={theme.placeholder} />
                 <Text style={styles.dashedSlotText}>Front of Package</Text>
               </>
             )}
@@ -313,7 +314,7 @@ export default function ContributeScreen() {
             Take a photo of the front of the product so we can identify it
           </Text>
           {!frontImage && (
-            <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchFrontCamera}>
+            <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchFrontCamera} accessibilityLabel="Take photo of front label" accessibilityRole="button">
               <LinearGradient
                 colors={["#3DD68C", "#2E7D32"]}
                 start={{ x: 0, y: 0 }}
@@ -354,7 +355,7 @@ export default function ContributeScreen() {
           </View>
 
           <View style={styles.dashedSlot}>
-            <Camera size={40} color={C.placeholder} />
+            <Camera size={40} color={theme.placeholder} />
             <Text style={styles.dashedSlotText}>Nutrition Label</Text>
           </View>
 
@@ -362,7 +363,7 @@ export default function ContributeScreen() {
           <Text style={styles.captureSubtitle}>
             Now take a photo of the nutrition facts on the back
           </Text>
-          <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchBackCamera}>
+          <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchBackCamera} accessibilityLabel="Take photo of nutrition facts" accessibilityRole="button">
             <LinearGradient
               colors={["#3DD68C", "#2E7D32"]}
               start={{ x: 0, y: 0 }}
@@ -429,7 +430,7 @@ export default function ContributeScreen() {
               />
             ))}
           </View>
-          <Confetti size={64} color={C.mint} weight="fill" />
+          <Confetti size={64} color={theme.mint} weight="fill" />
           <Text style={styles.successTitle}>You're a legend!</Text>
           <Text style={styles.successSubtitle}>
             Thanks for contributing! Your product has been added to our database and will help others make healthier choices.
@@ -444,10 +445,10 @@ export default function ContributeScreen() {
           transition={{ type: "timing", duration: 400 }}
           style={styles.errorState}
         >
-          <WarningCircle size={56} color={C.amber} weight="fill" />
+          <WarningCircle size={56} color={theme.amber} weight="fill" />
           <Text style={styles.errorTitle}>Couldn't Read Package</Text>
           <Text style={styles.errorText}>{errorMsg}</Text>
-          <TouchableOpacity style={styles.retryBtnWrapper} onPress={handleRetry}>
+          <TouchableOpacity style={styles.retryBtnWrapper} onPress={handleRetry} accessibilityLabel="Try again" accessibilityRole="button">
             <LinearGradient
               colors={["#3DD68C", "#2E7D32"]}
               start={{ x: 0, y: 0 }}
@@ -461,6 +462,8 @@ export default function ContributeScreen() {
           <TouchableOpacity
             style={styles.cancelBtn}
             onPress={() => router.back()}
+            accessibilityLabel="Cancel and go back"
+            accessibilityRole="button"
           >
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
@@ -470,10 +473,10 @@ export default function ContributeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     flexDirection: "row",
@@ -498,16 +501,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: C.text,
+    color: theme.text,
   },
   captureState: {
     flex: 1,
@@ -520,13 +523,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
     marginBottom: 8,
   },
   stepBadgeText: {
     fontSize: 13,
     fontWeight: "600",
-    color: C.primary,
+    color: theme.primary,
   },
   dashedSlot: {
     width: 140,
@@ -534,7 +537,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: C.placeholder,
+    borderColor: theme.placeholder,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -542,7 +545,7 @@ const styles = StyleSheet.create({
   },
   dashedSlotText: {
     fontSize: 12,
-    color: C.placeholder,
+    color: theme.placeholder,
     fontWeight: "500",
   },
   filledSlot: {
@@ -565,19 +568,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: C.bg,
+    borderColor: theme.bg,
   },
   captureTitle: {
     fontSize: 24,
     fontWeight: "700",
-    color: C.text,
+    color: theme.text,
     textAlign: "center",
     letterSpacing: -0.3,
     marginTop: 4,
   },
   captureSubtitle: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 22,
     maxWidth: 280,
@@ -612,7 +615,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: C.mint,
+    borderColor: theme.mint,
   },
   thumbCheck: {
     position: "absolute",
@@ -640,7 +643,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: C.tinted,
+    borderColor: theme.tinted,
   },
   analyzingContent: {
     alignItems: "center",
@@ -654,17 +657,17 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: C.mint,
+    backgroundColor: theme.mint,
   },
   analyzingText: {
     fontSize: 18,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
     textAlign: "center",
   },
   analyzingHint: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 280,
@@ -693,13 +696,13 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 26,
     fontWeight: "900",
-    color: C.text,
+    color: theme.text,
     textAlign: "center",
     marginTop: 12,
   },
   successSubtitle: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 22,
     maxWidth: 300,
@@ -714,12 +717,12 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: C.text,
+    color: theme.text,
     marginTop: 4,
   },
   errorText: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 22,
   },
@@ -746,7 +749,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     fontWeight: "500",
   },
 });

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ import Animated, {
 import { MotiView } from "moti";
 import { MagnifyingGlass, Package, CaretRight, Camera, Barcode, XCircle, PlusCircle } from "phosphor-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -36,41 +36,42 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SCAN_COOLDOWN_MS = 2500;
 const SCAN_FRAME_SIZE = 260;
 
-function ScanLineOverlay() {
-  const translateY = useSharedValue(0);
-
-  useState(() => {
-    translateY.value = withRepeat(
-      withSequence(
-        withTiming(SCAN_FRAME_SIZE, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2800, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-  });
-
-  const lineStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <View style={styles.scanOverlay}>
-      <View style={styles.scanFrame}>
-        <View style={[styles.scanCorner, styles.scanCornerTL]} />
-        <View style={[styles.scanCorner, styles.scanCornerTR]} />
-        <View style={[styles.scanCorner, styles.scanCornerBL]} />
-        <View style={[styles.scanCorner, styles.scanCornerBR]} />
-        <Animated.View style={[styles.scanLine, lineStyle]} />
-      </View>
-    </View>
-  );
-}
-
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function ScanLineOverlay() {
+    const translateY = useSharedValue(0);
+
+    useState(() => {
+      translateY.value = withRepeat(
+        withSequence(
+          withTiming(SCAN_FRAME_SIZE, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 2800, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    });
+
+    const lineStyle = useAnimatedStyle(() => ({
+      transform: [{ translateY: translateY.value }],
+    }));
+
+    return (
+      <View style={styles.scanOverlay}>
+        <View style={styles.scanFrame}>
+          <View style={[styles.scanCorner, styles.scanCornerTL]} />
+          <View style={[styles.scanCorner, styles.scanCornerTR]} />
+          <View style={[styles.scanCorner, styles.scanCornerBL]} />
+          <View style={[styles.scanCorner, styles.scanCornerBR]} />
+          <Animated.View style={[styles.scanLine, lineStyle]} />
+        </View>
+      </View>
+    );
+  }
   const { user } = useUser();
   const [mode, setMode] = useState<"search" | "scanner">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -211,10 +212,10 @@ export default function ScanScreen() {
   }
 
   function getStatusDotColor() {
-    if (scanStatus === "found") return C.green;
-    if (scanStatus === "not_found") return C.amber;
-    if (processing) return C.amber;
-    return C.mint;
+    if (scanStatus === "found") return theme.green;
+    if (scanStatus === "not_found") return theme.amber;
+    if (processing) return theme.amber;
+    return theme.mint;
   }
 
   function getStatusText() {
@@ -240,13 +241,13 @@ export default function ScanScreen() {
     return (
       <View style={styles.manualEntryWrap}>
         <View style={styles.manualEntryRow}>
-          <Barcode size={18} color={C.placeholder} />
+          <Barcode size={18} color={theme.placeholder} />
           <TextInput
             style={styles.manualEntryInput}
             value={manualBarcode}
             onChangeText={setManualBarcode}
             placeholder="Enter barcode number..."
-            placeholderTextColor={C.placeholder}
+            placeholderTextColor={theme.placeholder}
             keyboardType="number-pad"
             returnKeyType="go"
             onSubmitEditing={handleManualBarcodeLookup}
@@ -312,7 +313,7 @@ export default function ScanScreen() {
               <Text style={styles.permissionHint}>
                 Please enable camera access in your device settings
               </Text>
-              <Text style={[styles.permissionHint, { marginTop: 16, color: C.muted }]}>
+              <Text style={[styles.permissionHint, { marginTop: 16, color: theme.muted }]}>
                 Or enter a barcode manually:
               </Text>
               {renderManualBarcodeEntry()}
@@ -321,8 +322,10 @@ export default function ScanScreen() {
             <TouchableOpacity
               style={styles.permissionBtn}
               onPress={requestPermission}
+              accessibilityLabel="Allow camera access for scanning"
+              accessibilityRole="button"
             >
-              <Camera size={20} color={C.card} weight="fill" />
+              <Camera size={20} color={theme.card} weight="fill" />
               <Text style={styles.permissionBtnText}>Allow Camera</Text>
             </TouchableOpacity>
           )}
@@ -405,7 +408,7 @@ export default function ScanScreen() {
           >
             <MagnifyingGlass
               size={16}
-              color={mode === "search" ? C.text : C.placeholder}
+              color={mode === "search" ? theme.text : theme.placeholder}
               weight={mode === "search" ? "bold" : "regular"}
             />
             <Text
@@ -429,7 +432,7 @@ export default function ScanScreen() {
           >
             <Barcode
               size={16}
-              color={mode === "scanner" ? C.text : C.placeholder}
+              color={mode === "scanner" ? theme.text : theme.placeholder}
               weight={mode === "scanner" ? "bold" : "regular"}
             />
             <Text
@@ -496,6 +499,8 @@ export default function ScanScreen() {
                   style={styles.searchResultCard}
                   onPress={() => handleProductSelect(item)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`${item.name}${item.brand ? `, ${item.brand}` : ""}${item.category ? `, ${item.category}` : ""}`}
+                  accessibilityRole="button"
                 >
                   <View style={styles.resultIcon}>
                     <Package size={22} color="#CCCCCC" />
@@ -515,7 +520,7 @@ export default function ScanScreen() {
                       ) : null}
                     </View>
                   </View>
-                  <CaretRight size={16} color={C.placeholder} />
+                  <CaretRight size={16} color={theme.placeholder} />
                 </TouchableOpacity>
               </MotiView>
             )}
@@ -538,8 +543,10 @@ export default function ScanScreen() {
                   <TouchableOpacity
                     style={styles.contributeBtn}
                     onPress={() => router.push("/contribute")}
+                    accessibilityLabel="Add a new product"
+                    accessibilityRole="button"
                   >
-                    <PlusCircle size={18} color={C.primary} />
+                    <PlusCircle size={18} color={theme.primary} />
                     <Text style={styles.contributeBtnText}>Add a product</Text>
                   </TouchableOpacity>
                 </View>
@@ -564,15 +571,15 @@ export default function ScanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -582,13 +589,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.5,
     marginBottom: 16,
   },
   modeToggle: {
     flexDirection: "row",
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     borderRadius: 16,
     padding: 4,
   },
@@ -602,7 +609,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
   },
   modeBtnActive: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -615,10 +622,10 @@ const styles = StyleSheet.create({
   modeBtnText: {
     fontSize: 14,
     fontWeight: "500" as const,
-    color: C.placeholder,
+    color: theme.placeholder,
   },
   modeBtnTextActive: {
-    color: C.text,
+    color: theme.text,
     fontWeight: "700" as const,
   },
   searchArea: {
@@ -631,10 +638,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     gap: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -648,18 +655,18 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: C.text,
+    color: theme.text,
   },
   searchResultCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     marginBottom: 10,
     gap: 12,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -673,28 +680,28 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     alignItems: "center",
     justifyContent: "center",
   },
   resultName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
   },
   resultBrand: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
   },
   categoryChip: {
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   categoryChipText: {
     fontSize: 11,
-    color: C.muted,
+    color: theme.muted,
     fontWeight: "500" as const,
   },
   emptyState: {
@@ -705,13 +712,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 4,
     letterSpacing: -0.3,
   },
   emptyText: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     maxWidth: 260,
   },
@@ -722,16 +729,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     marginTop: 8,
     ...cardShadow("subtle"),
   },
   contributeBtnText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: C.primary,
+    color: theme.primary,
   },
   cameraContainer: {
     flex: 1,
@@ -752,7 +759,7 @@ const styles = StyleSheet.create({
     width: SCAN_FRAME_SIZE,
     height: SCAN_FRAME_SIZE,
     position: "relative",
-    shadowColor: C.mint,
+    shadowColor: theme.mint,
     shadowOpacity: 0.3,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 0 },
@@ -761,7 +768,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 28,
     height: 28,
-    borderColor: C.mint,
+    borderColor: theme.mint,
   },
   scanCornerTL: {
     top: 0,
@@ -796,7 +803,7 @@ const styles = StyleSheet.create({
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: C.mint,
+    backgroundColor: theme.mint,
     opacity: 0.85,
     borderRadius: 1,
   },
@@ -846,7 +853,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
@@ -861,18 +868,18 @@ const styles = StyleSheet.create({
   permissionTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 8,
   },
   permissionText: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 22,
   },
   permissionHint: {
     fontSize: 13,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     marginTop: 8,
   },
@@ -890,7 +897,7 @@ const styles = StyleSheet.create({
   permissionBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: C.card,
+    color: theme.card,
   },
   webFallback: {
     flex: 1,
@@ -902,12 +909,12 @@ const styles = StyleSheet.create({
   webFallbackTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 8,
   },
   webFallbackText: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     lineHeight: 22,
   },
@@ -919,10 +926,10 @@ const styles = StyleSheet.create({
   manualEntryRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 10,
@@ -931,10 +938,10 @@ const styles = StyleSheet.create({
   manualEntryInput: {
     flex: 1,
     fontSize: 15,
-    color: C.text,
+    color: theme.text,
   },
   manualEntryGoBtn: {
-    backgroundColor: C.mint,
+    backgroundColor: theme.mint,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -942,7 +949,7 @@ const styles = StyleSheet.create({
   manualEntryGoBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: C.card,
+    color: theme.card,
   },
   manualOverlay: {
     position: "absolute",

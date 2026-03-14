@@ -2,43 +2,42 @@ import { Tabs } from "expo-router";
 import { Platform, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { House, Barcode, ClockCounterClockwise, User } from "phosphor-react-native";
-import { C, useThemeColors } from "@/constants/colors";
+import { useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-function TabIcon({
-  icon: Icon,
-  label,
-  focused,
-  theme,
-}: {
-  icon: typeof House;
-  label: string;
-  focused: boolean;
-  theme: ReturnType<typeof useThemeColors>;
-}) {
-  return (
-    <View style={styles.tabIconWrap}>
-      <Icon
-        size={22}
-        color={focused ? theme.primary : theme.placeholder}
-        weight={focused ? "fill" : "regular"}
-      />
-      {focused && (
-        <Text style={[styles.tabLabel, { color: theme.primary }]}>{label}</Text>
-      )}
-    </View>
-  );
-}
 
 export default function TabLayout() {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function TabIcon({
+    icon: Icon,
+    label,
+    focused,
+  }: {
+    icon: typeof House;
+    label: string;
+    focused: boolean;
+  }) {
+    return (
+      <View style={styles.tabIconWrap}>
+        <Icon
+          size={22}
+          color={focused ? theme.primary : theme.placeholder}
+          weight={focused ? "fill" : "regular"}
+        />
+        {focused && (
+          <Text style={styles.tabLabel}>{label}</Text>
+        )}
+      </View>
+    );
+  }
 
   useEffect(() => {
     if (!isLoading && (!user || !user.onboardingCompleted)) {
@@ -92,7 +91,7 @@ export default function TabLayout() {
           title: "Home",
           tabBarAccessibilityLabel: "Home tab",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon={House} label="Home" focused={focused} theme={theme} />
+            <TabIcon icon={House} label="Home" focused={focused} />
           ),
         }}
       />
@@ -131,7 +130,7 @@ export default function TabLayout() {
           title: "History",
           tabBarAccessibilityLabel: "Scan history tab",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon={ClockCounterClockwise} label="History" focused={focused} theme={theme} />
+            <TabIcon icon={ClockCounterClockwise} label="History" focused={focused} />
           ),
         }}
       />
@@ -141,7 +140,7 @@ export default function TabLayout() {
           title: "Profile",
           tabBarAccessibilityLabel: "Your profile tab",
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon={User} label="Profile" focused={focused} theme={theme} />
+            <TabIcon icon={User} label="Profile" focused={focused} />
           ),
         }}
       />
@@ -149,7 +148,7 @@ export default function TabLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   tabIconWrap: {
     alignItems: "center",
     justifyContent: "center",
@@ -157,7 +156,7 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontWeight: "600",
-    color: C.primary,
+    color: theme.primary,
     marginTop: 3,
   },
   scanPill: {
@@ -170,7 +169,7 @@ const styles = StyleSheet.create({
     gap: 6,
     ...Platform.select({
       ios: {
-        shadowColor: C.primary,
+        shadowColor: theme.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -179,7 +178,7 @@ const styles = StyleSheet.create({
         elevation: 4,
       },
       web: {
-        shadowColor: C.primary,
+        shadowColor: theme.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel, getScoreLabel as getScoreLabelFull, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel, getScoreLabel as getScoreLabelFull, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -52,13 +52,13 @@ const GLOW_STROKE_WIDTH = 32;
 const RADIUS = (GAUGE_SIZE - GLOW_STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function getScoreColor(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return C.danger;
-  if (score <= 15) return C.darkRed;
-  if (score <= 35) return C.danger;
-  if (score <= 50) return C.amber;
-  if (score <= 74) return C.tealScore;
-  return C.green;
+function getScoreColor(score: number, isAllergenAlert: boolean, t: ThemeColors = C): string {
+  if (isAllergenAlert) return t.danger;
+  if (score <= 15) return t.darkRed;
+  if (score <= 35) return t.danger;
+  if (score <= 50) return t.amber;
+  if (score <= 74) return t.tealScore;
+  return t.green;
 }
 
 function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
@@ -113,12 +113,12 @@ const CAUTION_WORDS = [
   "tricky", "sneaky", "loaded", "packed", "high",
 ];
 
-function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string): string {
-  if (isAllergenAlert) return C.danger;
-  if (score <= 35) return C.danger;
+function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string, t: ThemeColors = C): string {
+  if (isAllergenAlert) return t.danger;
+  if (score <= 35) return t.danger;
   const headlineLower = (headline || "").toLowerCase();
   const isCautionaryHeadline = CAUTION_WORDS.some(w => headlineLower.includes(w));
-  if (isCautionaryHeadline) return C.amber;
+  if (isCautionaryHeadline) return t.amber;
 
   if (adviceText && score <= 70) {
     const adviceLower = adviceText.toLowerCase();
@@ -129,10 +129,10 @@ function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: str
       "could affect", "could impact",
     ];
     const hasConcern = conditionConcerns.some(w => adviceLower.includes(w));
-    if (hasConcern) return C.amber;
+    if (hasConcern) return t.amber;
   }
 
-  return C.text;
+  return t.text;
 }
 
 function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" {
@@ -167,9 +167,9 @@ function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" 
   return "neutral";
 }
 
-function getHighlightDotColor(severity: "warning" | "neutral" | "positive", tierColor: string): string {
-  if (severity === "warning") return C.amber;
-  if (severity === "positive") return C.green;
+function getHighlightDotColor(severity: "warning" | "neutral" | "positive", tierColor: string, t: ThemeColors = C): string {
+  if (severity === "warning") return t.amber;
+  if (severity === "positive") return t.green;
   return tierColor;
 }
 
@@ -228,13 +228,13 @@ function getNutrientUnit(key: string): string {
   return "";
 }
 
-function getNutrientBarColor(key: string, value: number): string {
+function getNutrientBarColor(key: string, value: number, t: ThemeColors = C): string {
   const dailyVal = DAILY_VALUES[key];
-  if (!dailyVal) return C.green;
+  if (!dailyVal) return t.green;
   const pct = value / dailyVal;
-  if (pct > 0.4) return C.danger;
-  if (pct > 0.2) return C.amber;
-  return C.green;
+  if (pct > 0.4) return t.danger;
+  if (pct > 0.2) return t.amber;
+  return t.green;
 }
 
 function ScoreRing({
@@ -386,82 +386,84 @@ const ringStyles = StyleSheet.create({
   },
 });
 
-function NutrientRow({
-  label,
-  value,
-  unit,
-  index,
-  isIndented,
-  nutrientKey,
-}: {
-  label: string;
-  value: number | null;
-  unit: string;
-  index: number;
-  isIndented?: boolean;
-  nutrientKey?: string;
-}) {
-  if (value === null || value === undefined) return null;
-
-  const barColor = nutrientKey ? getNutrientBarColor(nutrientKey, value) : C.green;
-  const dailyVal = nutrientKey ? DAILY_VALUES[nutrientKey] : undefined;
-  const barPct = dailyVal ? Math.min(value / dailyVal, 1) : 0;
-
-  return (
-    <View style={styles.nutrientRow}>
-      <View style={styles.nutrientRowTop}>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: isIndented ? ("400" as const) : ("600" as const),
-            color: C.text,
-            paddingLeft: isIndented ? 24 : 0,
-            flex: 1,
-          }}
-        >
-          {label}
-        </Text>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "700" as const,
-            color: C.text,
-          }}
-        >
-          {formatNutrientValue(value)}
-          <Text style={{ fontSize: 12, fontWeight: "400" as const, color: C.muted }}>{unit ? ` ${unit}` : ""}</Text>
-        </Text>
-      </View>
-      {dailyVal && barPct > 0 && (
-        <View style={styles.nutrientBarTrack}>
-          <View style={[styles.nutrientBarFill, { width: `${barPct * 100}%` as any, backgroundColor: barColor }]} />
-        </View>
-      )}
-    </View>
-  );
-}
-
-function HighlightItem({ text, index, tierColor }: { text: string; index: number; tierColor: string }) {
-  const severity = getHighlightSeverity(text);
-  const dotColor = getHighlightDotColor(severity, tierColor);
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(400 + index * 80).duration(300)}
-      style={styles.highlightItem}
-    >
-      <View style={[styles.highlightDot, { backgroundColor: dotColor }]} />
-      <Text style={styles.highlightText} numberOfLines={3}>
-        {text}
-      </Text>
-    </Animated.View>
-  );
-}
-
 export default function ResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function NutrientRow({
+    label,
+    value,
+    unit,
+    index,
+    isIndented,
+    nutrientKey,
+  }: {
+    label: string;
+    value: number | null;
+    unit: string;
+    index: number;
+    isIndented?: boolean;
+    nutrientKey?: string;
+  }) {
+    if (value === null || value === undefined) return null;
+
+    const barColor = nutrientKey ? getNutrientBarColor(nutrientKey, value, theme) : theme.green;
+    const dailyVal = nutrientKey ? DAILY_VALUES[nutrientKey] : undefined;
+    const barPct = dailyVal ? Math.min(value / dailyVal, 1) : 0;
+
+    return (
+      <View style={styles.nutrientRow}>
+        <View style={styles.nutrientRowTop}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: isIndented ? ("400" as const) : ("600" as const),
+              color: theme.text,
+              paddingLeft: isIndented ? 24 : 0,
+              flex: 1,
+            }}
+          >
+            {label}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: "700" as const,
+              color: theme.text,
+            }}
+          >
+            {formatNutrientValue(value)}
+            <Text style={{ fontSize: 12, fontWeight: "400" as const, color: theme.muted }}>{unit ? ` ${unit}` : ""}</Text>
+          </Text>
+        </View>
+        {dailyVal && barPct > 0 && (
+          <View style={styles.nutrientBarTrack}>
+            <View style={[styles.nutrientBarFill, { width: `${barPct * 100}%` as any, backgroundColor: barColor }]} />
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  function HighlightItem({ text, index, tierColor }: { text: string; index: number; tierColor: string }) {
+    const severity = getHighlightSeverity(text);
+    const dotColor = getHighlightDotColor(severity, tierColor, theme);
+
+    return (
+      <Animated.View
+        entering={FadeInDown.delay(400 + index * 80).duration(300)}
+        style={styles.highlightItem}
+      >
+        <View style={[styles.highlightDot, { backgroundColor: dotColor }]} />
+        <Text style={styles.highlightText} numberOfLines={3}>
+          {text}
+        </Text>
+      </Animated.View>
+    );
+  }
+
   const params = useLocalSearchParams<{
     productId?: string;
     accessMethod?: string;
@@ -602,13 +604,13 @@ export default function ResultScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={24} color={C.text} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Go back" accessibilityRole="button">
+            <X size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.limitCard}>
           <View style={styles.limitIconWrap}>
-            <Lock size={36} color={C.primary} />
+            <Lock size={36} color={theme.primary} />
           </View>
           <Text style={styles.limitTitle}>Daily limit reached</Text>
           <Text style={styles.limitSubtitle}>
@@ -621,6 +623,8 @@ export default function ResultScreen() {
           <TouchableOpacity
             style={styles.limitBtn}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <ArrowLeft size={18} color="white" />
             <Text style={styles.limitBtnText}>Go Back</Text>
@@ -634,16 +638,18 @@ export default function ResultScreen() {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={24} color={C.text} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Go back" accessibilityRole="button">
+            <X size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.errorState}>
-          <WarningCircle size={48} color={C.amber} />
+          <WarningCircle size={48} color={theme.amber} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
             onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Text style={styles.retryBtnText}>Go Back</Text>
           </TouchableOpacity>
@@ -655,9 +661,9 @@ export default function ResultScreen() {
   if (!data) return null;
 
   const product = data.product;
-  const scoreColor = getScoreColor(data.score, data.isAllergenAlert);
+  const scoreColor = getScoreColor(data.score, data.isAllergenAlert, theme);
   const headlineText = getPersonalizedHeadline(data.score, data.label, data.headline, data.isAllergenAlert, data.advice);
-  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText, data.advice);
+  const headlineColor = getHeadlineColor(data.score, data.isAllergenAlert, headlineText, data.advice, theme);
 
   const hasAdditionalNutrition = product.nutritionFacts && Object.keys(product.nutritionFacts).filter(
     (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
@@ -665,13 +671,13 @@ export default function ResultScreen() {
 
   if (data.isAllergenAlert) {
     return (
-      <View style={[styles.container, { backgroundColor: C.dangerBg }]}>
+      <View style={[styles.container, { backgroundColor: theme.dangerBg }]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-            <X size={24} color={C.text} />
+          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close result" accessibilityRole="button">
+            <X size={24} color={theme.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-            <ShareNetwork size={22} color={C.text} />
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share result" accessibilityRole="button">
+            <ShareNetwork size={22} color={theme.text} />
           </TouchableOpacity>
         </View>
 
@@ -697,7 +703,7 @@ export default function ResultScreen() {
               animate={{ scale: 1 }}
               transition={{ type: "spring" as const, damping: 10, delay: 200 }}
             >
-              <ShieldWarning size={64} color={C.danger} weight="fill" />
+              <ShieldWarning size={64} color={theme.danger} weight="fill" />
             </MotiView>
 
             <Text style={styles.allergenAlertLabel}>ALLERGEN ALERT</Text>
@@ -729,10 +735,10 @@ export default function ResultScreen() {
             <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.adviceCard}>
               <View style={styles.adviceHeader}>
                 <LinearGradient
-                  colors={[C.tinted, "#D4EDDA"]}
+                  colors={[theme.tinted, "#D4EDDA"]}
                   style={styles.adviceIconBox}
                 >
-                  <Robot size={16} color={C.primary} weight="fill" />
+                  <Robot size={16} color={theme.primary} weight="fill" />
                 </LinearGradient>
                 <Text style={styles.adviceLabel}>FOODVAR VERDICT</Text>
               </View>
@@ -756,6 +762,8 @@ export default function ResultScreen() {
                 router.replace("/(tabs)/scan");
               }}
               activeOpacity={0.85}
+              accessibilityLabel="Scan another product"
+              accessibilityRole="button"
             >
               <Barcode size={20} color="white" weight="bold" />
               <Text style={styles.scanAnotherText}>Scan Another</Text>
@@ -775,7 +783,7 @@ export default function ResultScreen() {
           <X size={24} color={theme.text} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share result" accessibilityRole="button">
-          <ShareNetwork size={22} color={C.text} />
+          <ShareNetwork size={22} color={theme.text} />
         </TouchableOpacity>
       </View>
 
@@ -790,7 +798,7 @@ export default function ResultScreen() {
             entering={FadeIn.duration(400)}
             style={styles.reAnalyzedBanner}
           >
-            <ArrowsClockwise size={18} color={C.primary} />
+            <ArrowsClockwise size={18} color={theme.primary} />
             <View style={{ flex: 1 }}>
               <Text style={styles.reAnalyzedText}>
                 Updated for your current profile
@@ -936,6 +944,8 @@ export default function ResultScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setShowFullNutrition(!showFullNutrition);
                   }}
+                  accessibilityLabel={showFullNutrition ? "Hide nutrition details" : "View full nutrition label"}
+                  accessibilityRole="button"
                 >
                   <Text style={styles.viewFullBtnText}>
                     {showFullNutrition ? "HIDE DETAILS" : "VIEW FULL LABEL"}
@@ -952,7 +962,7 @@ export default function ResultScreen() {
             style={styles.allergensSection}
           >
             <View style={styles.allergensSectionHeader}>
-              <Warning size={16} color={C.danger} weight="fill" />
+              <Warning size={16} color={theme.danger} weight="fill" />
               <Text style={styles.allergensSectionTitle}>Allergens</Text>
             </View>
             <View style={styles.allergenChips}>
@@ -989,6 +999,8 @@ export default function ResultScreen() {
                 router.replace("/(tabs)/scan");
               }}
               activeOpacity={0.85}
+              accessibilityLabel="Scan another product"
+              accessibilityRole="button"
             >
               <Barcode size={20} color="white" weight="bold" />
               <Text style={styles.scanAnotherText}>Scan Another</Text>
@@ -1000,10 +1012,10 @@ export default function ResultScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   centerContent: {
     justifyContent: "center",
@@ -1031,7 +1043,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 16,
     fontWeight: "500" as const,
   },
@@ -1044,7 +1056,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: C.text,
+    color: theme.text,
     textAlign: "center",
     lineHeight: 24,
     fontWeight: "500" as const,
@@ -1053,7 +1065,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: C.primary,
+    backgroundColor: theme.primary,
     marginTop: 8,
   },
   retryBtnText: {
@@ -1062,7 +1074,7 @@ const styles = StyleSheet.create({
     color: "white",
   },
   limitCard: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 24,
     paddingVertical: 36,
     paddingHorizontal: 28,
@@ -1074,7 +1086,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 20,
@@ -1082,13 +1094,13 @@ const styles = StyleSheet.create({
   limitTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   limitSubtitle: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center" as const,
     lineHeight: 22,
     marginBottom: 16,
@@ -1096,12 +1108,12 @@ const styles = StyleSheet.create({
   limitDivider: {
     width: "80%" as any,
     height: 1,
-    backgroundColor: C.divider,
+    backgroundColor: theme.divider,
     marginBottom: 16,
   },
   limitHint: {
     fontSize: 14,
-    color: C.primary,
+    color: theme.primary,
     textAlign: "center" as const,
     lineHeight: 20,
     fontWeight: "500" as const,
@@ -1112,7 +1124,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: C.primary,
+    backgroundColor: theme.primary,
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
@@ -1131,16 +1143,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
   },
   reAnalyzedText: {
     fontSize: 13,
     fontWeight: "500" as const,
-    color: C.primary,
+    color: theme.primary,
   },
   reAnalyzedSubtext: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   disclaimerWrap: {
@@ -1150,13 +1162,13 @@ const styles = StyleSheet.create({
   },
   disclaimerText: {
     fontSize: 11,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center" as const,
     lineHeight: 16,
     fontStyle: "italic" as const,
   },
   scoreRingContainer: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 28,
     padding: 16,
     marginHorizontal: 20,
@@ -1164,7 +1176,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: "center" as const,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -1175,21 +1187,21 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 24,
     padding: 16,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("subtle"),
   },
   productName: {
     fontSize: 22,
     fontWeight: "800" as const,
     letterSpacing: -0.5,
-    color: C.text,
+    color: theme.text,
   },
   productBrand: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 4,
   },
   chipRow: {
@@ -1201,10 +1213,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
   },
   chipText: {
-    color: C.primary,
+    color: theme.primary,
     fontSize: 12,
     fontWeight: "600" as const,
   },
@@ -1224,9 +1236,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 18,
     borderRadius: 20,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("medium"),
   },
   adviceHeader: {
@@ -1246,12 +1258,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700" as const,
     letterSpacing: 1.2,
-    color: C.primary,
+    color: theme.primary,
     textTransform: "uppercase" as const,
   },
   adviceDivider: {
     height: 0.5,
-    backgroundColor: C.divider,
+    backgroundColor: theme.divider,
     marginBottom: 12,
   },
   adviceHeadline: {
@@ -1261,7 +1273,7 @@ const styles = StyleSheet.create({
   },
   adviceText: {
     fontSize: 14,
-    color: C.text,
+    color: theme.text,
     lineHeight: 23,
   },
   coachTipRow: {
@@ -1271,18 +1283,18 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: C.divider,
+    borderTopColor: theme.divider,
   },
   coachTipDot: {
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: C.amber,
+    backgroundColor: theme.amber,
     marginTop: 5,
   },
   coachTipText: {
     fontSize: 13,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 20,
     flex: 1,
     fontStyle: "italic" as const,
@@ -1306,14 +1318,14 @@ const styles = StyleSheet.create({
   highlightText: {
     fontSize: 14,
     fontWeight: "500" as const,
-    color: C.text,
+    color: theme.text,
     lineHeight: 20,
     flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.3,
     marginBottom: 16,
   },
@@ -1325,8 +1337,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden" as const,
     borderWidth: 0.5,
-    borderColor: C.border,
-    backgroundColor: C.card,
+    borderColor: theme.border,
+    backgroundColor: theme.card,
   },
   nutritionHeader: {
     paddingVertical: 16,
@@ -1336,12 +1348,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800" as const,
     letterSpacing: 1.5,
-    color: C.placeholder,
+    color: theme.placeholder,
     textTransform: "uppercase" as const,
   },
   servingLabel: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   nutritionTable: {
@@ -1350,7 +1362,7 @@ const styles = StyleSheet.create({
   nutrientRow: {
     paddingVertical: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: C.divider,
+    borderBottomColor: theme.divider,
   },
   nutrientRowTop: {
     flexDirection: "row" as const,
@@ -1372,12 +1384,12 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingVertical: 14,
     borderTopWidth: 0.5,
-    borderTopColor: C.divider,
+    borderTopColor: theme.divider,
   },
   viewFullBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: C.tealScore,
+    color: theme.tealScore,
     letterSpacing: 0.5,
   },
   allergensSection: {
@@ -1393,7 +1405,7 @@ const styles = StyleSheet.create({
   allergensSectionTitle: {
     fontSize: 12,
     fontWeight: "800" as const,
-    color: C.danger,
+    color: theme.danger,
     textTransform: "uppercase" as const,
     letterSpacing: 1.5,
   },
@@ -1406,12 +1418,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: C.dangerBg,
+    backgroundColor: theme.dangerBg,
   },
   allergenChipText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: C.danger,
+    color: theme.danger,
     textTransform: "capitalize" as const,
   },
   ingredientsSection: {
@@ -1420,7 +1432,7 @@ const styles = StyleSheet.create({
   },
   ingredientsText: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 22,
   },
   scanAnotherWrap: {
@@ -1459,10 +1471,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   allergenAlertCard: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     padding: 24,
     marginHorizontal: 20,
     marginTop: 16,
@@ -1472,22 +1484,22 @@ const styles = StyleSheet.create({
   allergenAlertLabel: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: C.danger,
+    color: theme.danger,
     letterSpacing: 1.5,
     marginTop: 16,
   },
   allergenContainsText: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 8,
     textAlign: "center" as const,
   },
   allergenProductInfo: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     padding: 16,
     marginHorizontal: 20,
     marginBottom: 24,
@@ -1499,6 +1511,6 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 15,
     borderRadius: 999,
-    backgroundColor: C.text,
+    backgroundColor: theme.text,
   },
 });

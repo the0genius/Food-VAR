@@ -1,8 +1,9 @@
+import { useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "phosphor-react-native";
-import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 
 const TERMS_VERSION = "1.0";
 const EFFECTIVE_DATE = "March 13, 2026";
@@ -11,6 +12,7 @@ export default function TermsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   return (
@@ -103,10 +105,10 @@ export default function TermsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     flexDirection: "row" as const,
@@ -114,9 +116,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between" as const,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomColor: theme.border,
   },
   backBtn: {
     padding: 4,
@@ -124,7 +126,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -132,20 +134,20 @@ const styles = StyleSheet.create({
   },
   version: {
     fontSize: 12,
-    color: C.placeholder,
+    color: theme.placeholder,
     fontWeight: "500" as const,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 20,
     marginBottom: 8,
   },
   body: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 22,
   },
   warningBox: {

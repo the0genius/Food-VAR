@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import {
   WifiSlash,
 } from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -49,179 +49,182 @@ function getDateGroup(dateStr: string): string {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-function SkeletonHistoryCard() {
-  return (
-    <View style={styles.historyCard}>
-      <MotiView
-        from={{ opacity: 0.4 }}
-        animate={{ opacity: 0.9 }}
-        transition={{ loop: true, type: "timing" as const, duration: 850 }}
-        style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: "#EBEBEB" }}
-      />
-      <View style={{ flex: 1 }}>
-        <MotiView
-          from={{ opacity: 0.4 }}
-          animate={{ opacity: 0.9 }}
-          transition={{ loop: true, type: "timing" as const, duration: 850 }}
-          style={{ width: "70%", height: 14, borderRadius: 6, backgroundColor: "#EBEBEB" }}
-        />
-        <MotiView
-          from={{ opacity: 0.4 }}
-          animate={{ opacity: 0.9 }}
-          transition={{ loop: true, type: "timing" as const, duration: 850 }}
-          style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: "#EBEBEB", marginTop: 6 }}
-        />
-        <MotiView
-          from={{ opacity: 0.4 }}
-          animate={{ opacity: 0.9 }}
-          transition={{ loop: true, type: "timing" as const, duration: 850 }}
-          style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: "#EBEBEB", marginTop: 6 }}
-        />
-      </View>
-    </View>
-  );
-}
-
-function ScoreBadge({ score }: { score: number }) {
-  const color = getScoreColor(score);
-  const bgColor = getScoreBgColor(score);
-  const label = getScoreShortLabel(score);
-  return (
-    <View
-      style={[
-        styles.scoreBadge,
-        {
-          backgroundColor: bgColor,
-          borderWidth: 1,
-          borderColor: color + "33",
-        },
-      ]}
-      accessibilityLabel={`Score ${score}, ${label}`}
-    >
-      <Text style={[styles.scoreBadgeText, { color }]}>{score}</Text>
-      <Text style={[styles.scoreBadgeLabelText, { color }]}>{label}</Text>
-    </View>
-  );
-}
-
-function HistoryItem({
-  item,
-  index,
-  onPress,
-  onDelete,
-  showSectionHeader,
-  sectionTitle,
-}: {
-  item: any;
-  index: number;
-  onPress: () => void;
-  onDelete: () => void;
-  showSectionHeader: boolean;
-  sectionTitle: string;
-}) {
-  const date = new Date(item.createdAt);
-  const timeStr = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  const isScanned = item.accessMethod === "scanned" || item.barcode;
-
-  return (
-    <MotiView
-      from={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: index * 40, type: "timing" as const }}
-    >
-      {showSectionHeader && (
-        <Text style={styles.sectionDate}>{sectionTitle}</Text>
-      )}
-      <TouchableOpacity
-        style={styles.historyCard}
-        onPress={onPress}
-        onLongPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          Alert.alert("Delete Entry", "Remove this from your history?", [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Delete",
-              style: "destructive",
-              onPress: onDelete,
-            },
-          ]);
-        }}
-        activeOpacity={0.7}
-        accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}, ${timeStr}`}
-        accessibilityRole="button"
-        accessibilityHint="Tap to view details, long press to delete"
-      >
-        <ScoreBadge score={item.score} />
-        <View style={styles.accessIconBox}>
-          {isScanned ? (
-            <Barcode size={15} color={C.placeholder} />
-          ) : (
-            <MagnifyingGlass size={15} color={C.placeholder} />
-          )}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.historyName} numberOfLines={1}>
-            {item.productName}
-          </Text>
-          <View style={styles.historyMetaRow}>
-            <Text style={styles.historyBrand} numberOfLines={1}>
-              {item.productBrand || ""}
-              {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
-            </Text>
-          </View>
-          <Text style={styles.historyDate}>
-            {timeStr}
-          </Text>
-        </View>
-        <CaretRight size={15} color={C.placeholder} />
-      </TouchableOpacity>
-    </MotiView>
-  );
-}
-
-function SortChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  if (active) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        <LinearGradient
-          colors={["#3DD68C", "#2E7D32"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.sortChipGradient}
-        >
-          <Text style={styles.sortChipTextActive}>{label}</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  }
-  return (
-    <TouchableOpacity
-      style={styles.sortChipInactive}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.sortChipTextInactive}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 export default function HistoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function SkeletonHistoryCard() {
+    return (
+      <View style={styles.historyCard}>
+        <MotiView
+          from={{ opacity: 0.4 }}
+          animate={{ opacity: 0.9 }}
+          transition={{ loop: true, type: "timing" as const, duration: 850 }}
+          style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: "#EBEBEB" }}
+        />
+        <View style={{ flex: 1 }}>
+          <MotiView
+            from={{ opacity: 0.4 }}
+            animate={{ opacity: 0.9 }}
+            transition={{ loop: true, type: "timing" as const, duration: 850 }}
+            style={{ width: "70%", height: 14, borderRadius: 6, backgroundColor: "#EBEBEB" }}
+          />
+          <MotiView
+            from={{ opacity: 0.4 }}
+            animate={{ opacity: 0.9 }}
+            transition={{ loop: true, type: "timing" as const, duration: 850 }}
+            style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: "#EBEBEB", marginTop: 6 }}
+          />
+          <MotiView
+            from={{ opacity: 0.4 }}
+            animate={{ opacity: 0.9 }}
+            transition={{ loop: true, type: "timing" as const, duration: 850 }}
+            style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: "#EBEBEB", marginTop: 6 }}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  function ScoreBadge({ score }: { score: number }) {
+    const color = getScoreColor(score);
+    const bgColor = getScoreBgColor(score);
+    const label = getScoreShortLabel(score);
+    return (
+      <View
+        style={[
+          styles.scoreBadge,
+          {
+            backgroundColor: bgColor,
+            borderWidth: 1,
+            borderColor: color + "33",
+          },
+        ]}
+        accessibilityLabel={`Score ${score}, ${label}`}
+      >
+        <Text style={[styles.scoreBadgeText, { color }]}>{score}</Text>
+        <Text style={[styles.scoreBadgeLabelText, { color }]}>{label}</Text>
+      </View>
+    );
+  }
+
+  function HistoryItem({
+    item,
+    index,
+    onPress,
+    onDelete,
+    showSectionHeader,
+    sectionTitle,
+  }: {
+    item: any;
+    index: number;
+    onPress: () => void;
+    onDelete: () => void;
+    showSectionHeader: boolean;
+    sectionTitle: string;
+  }) {
+    const date = new Date(item.createdAt);
+    const timeStr = date.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const isScanned = item.accessMethod === "scanned" || item.barcode;
+
+    return (
+      <MotiView
+        from={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: index * 40, type: "timing" as const }}
+      >
+        {showSectionHeader && (
+          <Text style={styles.sectionDate}>{sectionTitle}</Text>
+        )}
+        <TouchableOpacity
+          style={styles.historyCard}
+          onPress={onPress}
+          onLongPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            Alert.alert("Delete Entry", "Remove this from your history?", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: onDelete,
+              },
+            ]);
+          }}
+          activeOpacity={0.7}
+          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}, ${timeStr}`}
+          accessibilityRole="button"
+          accessibilityHint="Tap to view details, long press to delete"
+        >
+          <ScoreBadge score={item.score} />
+          <View style={styles.accessIconBox}>
+            {isScanned ? (
+              <Barcode size={15} color={theme.placeholder} />
+            ) : (
+              <MagnifyingGlass size={15} color={theme.placeholder} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.historyName} numberOfLines={1}>
+              {item.productName}
+            </Text>
+            <View style={styles.historyMetaRow}>
+              <Text style={styles.historyBrand} numberOfLines={1}>
+                {item.productBrand || ""}
+                {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
+              </Text>
+            </View>
+            <Text style={styles.historyDate}>
+              {timeStr}
+            </Text>
+          </View>
+          <CaretRight size={15} color={theme.placeholder} />
+        </TouchableOpacity>
+      </MotiView>
+    );
+  }
+
+  function SortChip({
+    label,
+    active,
+    onPress,
+  }: {
+    label: string;
+    active: boolean;
+    onPress: () => void;
+  }) {
+    if (active) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} accessibilityLabel={`Sort by ${label}, selected`} accessibilityRole="radio">
+          <LinearGradient
+            colors={["#3DD68C", "#2E7D32"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.sortChipGradient}
+          >
+            <Text style={styles.sortChipTextActive}>{label}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+    return (
+      <TouchableOpacity
+        style={styles.sortChipInactive}
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityLabel={`Sort by ${label}`}
+        accessibilityRole="radio"
+      >
+        <Text style={styles.sortChipTextInactive}>{label}</Text>
+      </TouchableOpacity>
+    );
+  }
   const [sort, setSort] = useState<SortOption>("date");
   const [search, setSearch] = useState("");
 
@@ -265,7 +268,7 @@ export default function HistoryScreen() {
             value={search}
             onChangeText={setSearch}
             placeholder="Search history..."
-            placeholderTextColor={C.placeholder}
+            placeholderTextColor={theme.placeholder}
             accessibilityLabel="Search history"
             testID="history-search-input"
           />
@@ -295,8 +298,8 @@ export default function HistoryScreen() {
           <RefreshControl
             refreshing={!!historyQuery.isRefetching}
             onRefresh={() => historyQuery.refetch()}
-            tintColor={C.primary}
-            colors={[C.primary]}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
         ListHeaderComponent={
@@ -379,6 +382,8 @@ export default function HistoryScreen() {
                   router.push("/(tabs)/scan");
                 }}
                 style={{ marginTop: 24 }}
+                accessibilityLabel="Scan a product"
+                accessibilityRole="button"
               >
                 <LinearGradient
                   colors={["#3DD68C", "#2E7D32"]}
@@ -397,15 +402,15 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -415,17 +420,17 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "900" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.5,
     marginBottom: 12,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 8,
@@ -438,7 +443,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: C.text,
+    color: theme.text,
   },
   sortRow: {
     flexDirection: "row",
@@ -451,12 +456,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   sortChipInactive: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
   },
   sortChipTextActive: {
     fontSize: 13,
@@ -466,13 +471,13 @@ const styles = StyleSheet.create({
   sortChipTextInactive: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: C.muted,
+    color: theme.muted,
   },
   sectionDate: {
     fontSize: 11,
     fontWeight: "700" as const,
     letterSpacing: 1.3,
-    color: C.placeholder,
+    color: theme.placeholder,
     textTransform: "uppercase",
     marginTop: 24,
     marginBottom: 10,
@@ -481,19 +486,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     marginBottom: 10,
     gap: 12,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("medium"),
   },
   accessIconBox: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -519,7 +524,7 @@ const styles = StyleSheet.create({
   historyName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
   },
   historyMetaRow: {
     flexDirection: "row",
@@ -528,12 +533,12 @@ const styles = StyleSheet.create({
   },
   historyBrand: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   historyDate: {
     fontSize: 11,
-    color: C.placeholder,
+    color: theme.placeholder,
     marginTop: 2,
     fontWeight: "500" as const,
   },
@@ -547,7 +552,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -555,12 +560,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginTop: 4,
   },
   emptyText: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center",
     maxWidth: 260,
     marginTop: 6,

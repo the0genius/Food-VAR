@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const CONDITIONS = [
@@ -74,6 +74,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { user, updateProfile } = useUser();
 
   const [conditions, setConditions] = useState<string[]>(user?.conditions || []);
@@ -119,7 +120,7 @@ export default function EditProfileScreen() {
           <X size={22} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Edit Health Profile</Text>
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtnWrapper} disabled={saving}>
+        <TouchableOpacity onPress={handleSave} style={styles.saveBtnWrapper} disabled={saving} accessibilityLabel="Save health profile" accessibilityRole="button">
           <LinearGradient
             colors={["#3DD68C", "#2E7D32"]}
             style={styles.saveBtn}
@@ -173,7 +174,7 @@ export default function EditProfileScreen() {
                   {isActive ? (
                     <CheckCircle size={18} color="#fff" weight="fill" />
                   ) : (
-                    <IconComp size={18} color={C.primary} />
+                    <IconComp size={18} color={theme.primary} />
                   )}
                   <Text
                     style={[
@@ -258,7 +259,7 @@ export default function EditProfileScreen() {
                   {isActive ? (
                     <CheckCircle size={24} color="#fff" weight="fill" />
                   ) : (
-                    <IconComp size={24} color={C.primary} />
+                    <IconComp size={24} color={theme.primary} />
                   )}
                   <Text
                     style={[
@@ -307,7 +308,7 @@ export default function EditProfileScreen() {
                     {d.label}
                   </Text>
                   {isActive && (
-                    <CheckCircle size={20} color={C.primary} weight="fill" />
+                    <CheckCircle size={20} color={theme.primary} weight="fill" />
                   )}
                 </TouchableOpacity>
               );
@@ -320,6 +321,8 @@ export default function EditProfileScreen() {
           onPress={handleSave}
           disabled={saving}
           activeOpacity={0.8}
+          accessibilityLabel={saving ? "Saving changes" : "Save changes"}
+          accessibilityRole="button"
         >
           <LinearGradient
             colors={["#3DD68C", "#2E7D32"]}
@@ -337,10 +340,10 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     flexDirection: "row",
@@ -348,14 +351,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderBottomWidth: 0.5,
-    borderBottomColor: C.border,
+    borderBottomColor: theme.border,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.3,
   },
   closeBtn: {
@@ -364,7 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   saveBtnWrapper: {
     borderRadius: 18,
@@ -389,13 +392,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: C.text,
+    color: theme.text,
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     marginBottom: 16,
   },
   chipGrid: {
@@ -410,15 +413,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("subtle"),
   },
   conditionChipActive: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-    shadowColor: C.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOpacity: 0.25,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -430,18 +433,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
   },
   allergyChipActive: {
-    backgroundColor: C.danger,
-    borderColor: C.danger,
+    backgroundColor: theme.danger,
+    borderColor: theme.danger,
   },
   chipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
   },
   chipTextActive: {
     color: "#fff",
@@ -456,16 +459,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 18,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     gap: 8,
     ...cardShadow("subtle"),
   },
   goalCardActive: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-    shadowColor: C.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -473,7 +476,7 @@ const styles = StyleSheet.create({
   goalText: {
     fontSize: 13,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
   },
   goalTextActive: {
     color: "#fff",
@@ -488,24 +491,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("subtle"),
   },
   dietRowActive: {
-    borderColor: C.primary,
-    backgroundColor: C.tinted,
+    borderColor: theme.primary,
+    backgroundColor: theme.tinted,
     borderWidth: 1.5,
   },
   dietText: {
     fontSize: 15,
     fontWeight: "500",
-    color: C.text,
+    color: theme.text,
   },
   dietTextActive: {
     fontWeight: "600" as const,
-    color: C.primary,
+    color: theme.primary,
   },
   gradientSaveWrapper: {
     marginTop: 28,

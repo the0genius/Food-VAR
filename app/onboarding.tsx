@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -38,7 +38,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -86,6 +86,7 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { user, register, login, updateProfile } = useUser();
   const [step, setStep] = useState(0);
   const [isLoginMode, setIsLoginMode] = useState(false);
@@ -216,7 +217,7 @@ export default function OnboardingScreen() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="your@email.com"
-                placeholderTextColor={C.placeholder}
+                placeholderTextColor={theme.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -230,7 +231,7 @@ export default function OnboardingScreen() {
                 value={password}
                 onChangeText={setPassword}
                 placeholder={isLoginMode ? "Your password" : "Create a password (8+ characters)"}
-                placeholderTextColor={C.placeholder}
+                placeholderTextColor={theme.placeholder}
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -245,7 +246,7 @@ export default function OnboardingScreen() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Your name"
-                  placeholderTextColor={C.placeholder}
+                  placeholderTextColor={theme.placeholder}
                   autoCapitalize="words"
                   testID="name-input"
                 />
@@ -254,8 +255,10 @@ export default function OnboardingScreen() {
             <TouchableOpacity
               onPress={() => setIsLoginMode(!isLoginMode)}
               style={{ alignSelf: "center", paddingVertical: 8 }}
+              accessibilityLabel={isLoginMode ? "Switch to sign up" : "Switch to sign in"}
+              accessibilityRole="button"
             >
-              <Text style={{ color: C.primary, fontSize: 14, fontWeight: "600" as const }}>
+              <Text style={{ color: theme.primary, fontSize: 14, fontWeight: "600" as const }}>
                 {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </Text>
             </TouchableOpacity>
@@ -293,7 +296,7 @@ export default function OnboardingScreen() {
                     {isActive ? (
                       <CheckCircle size={20} color="#fff" weight="fill" />
                     ) : (
-                      <IconComp size={20} color={C.primary} />
+                      <IconComp size={20} color={theme.primary} />
                     )}
                     <Text
                       style={[
@@ -391,7 +394,7 @@ export default function OnboardingScreen() {
                     {isActive ? (
                       <CheckCircle size={28} color="#fff" weight="fill" />
                     ) : (
-                      <IconComp size={28} color={C.primary} />
+                      <IconComp size={28} color={theme.primary} />
                     )}
                     <Text
                       style={[
@@ -447,7 +450,7 @@ export default function OnboardingScreen() {
                       {d.label}
                     </Text>
                     {isActive && (
-                      <CheckCircle size={22} color={C.primary} weight="fill" />
+                      <CheckCircle size={22} color={theme.primary} weight="fill" />
                     )}
                   </TouchableOpacity>
                 );
@@ -460,7 +463,7 @@ export default function OnboardingScreen() {
                 value={age}
                 onChangeText={setAge}
                 placeholder="e.g., 35"
-                placeholderTextColor={C.placeholder}
+                placeholderTextColor={theme.placeholder}
                 keyboardType="numeric"
               />
             </View>
@@ -501,7 +504,7 @@ export default function OnboardingScreen() {
               accessibilityRole="link"
             >
               <Text style={styles.consentLinkText}>Read Privacy Policy</Text>
-              <ArrowRight size={16} color={C.primary} />
+              <ArrowRight size={16} color={theme.primary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -511,7 +514,7 @@ export default function OnboardingScreen() {
               accessibilityRole="link"
             >
               <Text style={styles.consentLinkText}>Read Terms of Service</Text>
-              <ArrowRight size={16} color={C.primary} />
+              <ArrowRight size={16} color={theme.primary} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -556,7 +559,7 @@ export default function OnboardingScreen() {
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ArrowLeft size={24} color={C.text} />
+            <ArrowLeft size={24} color={theme.text} />
           </TouchableOpacity>
         )}
         <View style={styles.progressBar} accessibilityLabel={`Step ${step + 1} of ${totalSteps}`} accessibilityRole="progressbar">
@@ -621,6 +624,8 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             onPress={handleSkip}
             style={styles.skipBtn}
+            accessibilityLabel="Skip this step"
+            accessibilityRole="button"
           >
             <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
@@ -630,10 +635,10 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   header: {
     flexDirection: "row",
@@ -663,7 +668,7 @@ const styles = StyleSheet.create({
   },
   stepIndicator: {
     fontSize: 13,
-    color: C.placeholder,
+    color: theme.placeholder,
     fontWeight: "600",
   },
   scrollContent: {
@@ -689,13 +694,13 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: C.text,
+    color: theme.text,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   stepSubtitle: {
     fontSize: 15,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 22,
     marginBottom: 28,
   },
@@ -705,18 +710,18 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
     marginBottom: 8,
   },
   input: {
     height: 52,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     borderRadius: 16,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: C.text,
-    backgroundColor: C.card,
+    color: theme.text,
+    backgroundColor: theme.card,
     ...cardShadow("subtle"),
   },
   chipGrid: {
@@ -732,14 +737,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 14,
     borderWidth: 0.5,
-    borderColor: C.border,
-    backgroundColor: C.card,
+    borderColor: theme.border,
+    backgroundColor: theme.card,
     ...cardShadow("subtle"),
   },
   conditionChipActive: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-    shadowColor: C.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -747,7 +752,7 @@ const styles = StyleSheet.create({
   conditionChipText: {
     fontSize: 14,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
   },
   conditionChipTextActive: {
     color: "#fff",
@@ -760,13 +765,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 0.5,
-    borderColor: C.border,
-    backgroundColor: C.card,
+    borderColor: theme.border,
+    backgroundColor: theme.card,
   },
   allergyChipActive: {
-    backgroundColor: C.danger,
-    borderColor: C.danger,
-    shadowColor: C.danger,
+    backgroundColor: theme.danger,
+    borderColor: theme.danger,
+    shadowColor: theme.danger,
     shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
@@ -774,7 +779,7 @@ const styles = StyleSheet.create({
   allergyChipText: {
     fontSize: 14,
     fontWeight: "500",
-    color: C.text,
+    color: theme.text,
   },
   allergyChipTextActive: {
     color: "#fff",
@@ -790,14 +795,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: C.border,
-    backgroundColor: C.card,
+    borderColor: theme.border,
+    backgroundColor: theme.card,
     ...cardShadow("subtle"),
   },
   goalCardActive: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
-    shadowColor: C.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
+    shadowColor: theme.primary,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -805,7 +810,7 @@ const styles = StyleSheet.create({
   goalCardText: {
     fontSize: 15,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
   },
   goalCardTextActive: {
     color: "#fff",
@@ -821,35 +826,35 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("subtle"),
   },
   dietRowActive: {
-    borderColor: C.primary,
-    backgroundColor: C.tinted,
+    borderColor: theme.primary,
+    backgroundColor: theme.tinted,
     borderWidth: 1.5,
   },
   dietRowText: {
     fontSize: 15,
     fontWeight: "500",
-    color: C.text,
+    color: theme.text,
   },
   dietRowTextActive: {
-    color: C.primary,
+    color: theme.primary,
     fontWeight: "600" as const,
   },
   skipHint: {
     textAlign: "center",
     fontSize: 13,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 20,
   },
   footer: {
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     alignItems: "center",
     gap: 8,
     shadowColor: "#000",
@@ -883,7 +888,7 @@ const styles = StyleSheet.create({
   },
   skipBtnText: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     fontWeight: "500",
   },
   consentWarningBox: {
@@ -906,16 +911,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderRadius: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     marginBottom: 10,
     ...cardShadow("subtle"),
   },
   consentLinkText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: C.primary,
+    color: theme.primary,
   },
   consentCheckRow: {
     flexDirection: "row" as const,
@@ -930,20 +935,20 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: C.border,
+    borderColor: theme.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: C.primary,
-    borderColor: C.primary,
+    backgroundColor: theme.primary,
+    borderColor: theme.primary,
   },
   consentCheckText: {
     flex: 1,
     fontSize: 13,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 20,
   },
 });

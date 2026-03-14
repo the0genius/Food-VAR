@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -39,32 +39,6 @@ function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: num
   );
 }
 
-function SkeletonProductCard() {
-  return (
-    <View style={styles.popularCard}>
-      <View style={styles.popularDot} />
-      <View style={styles.popularIconCircle}>
-        <SkeletonBlock width={48} height={48} borderRadius={24} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <SkeletonBlock width="65%" height={14} borderRadius={6} />
-        <SkeletonBlock width="45%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
-      </View>
-    </View>
-  );
-}
-
-function SkeletonRecentCard() {
-  return (
-    <View style={styles.recentCard}>
-      <View style={styles.recentCardInner}>
-        <SkeletonBlock width={32} height={32} borderRadius={16} />
-        <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 10 }} />
-        <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
-      </View>
-    </View>
-  );
-}
 
 function getScoreColorLight(score: number): string {
   return getScoreBgColor(score);
@@ -111,152 +85,182 @@ function getInsightText(avgScore: number, weeklyScans: number, totalScans: numbe
   return `Avg score: ${Math.round(avgScore)} — every scan helps you learn what works for you.`;
 }
 
-function ScoreBadgeCircle({ score }: { score: number }) {
-  const label = getScoreShortLabel(score);
-  return (
-    <View
-      style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}
-      accessibilityLabel={`Score ${score}, ${label}`}
-    >
-      <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
-      <Text style={[styles.scoreBadgeCircleLabel, { color: getScoreColor(score) }]}>{label}</Text>
-    </View>
-  );
-}
-
-function SectionAccentLine() {
-  return <View style={styles.sectionAccentLine} />;
-}
-
-function RecentScanCard({
-  item,
-  index,
-  onPress,
-}: {
-  item: any;
-  index: number;
-  onPress: () => void;
-}) {
-  const ribbonColor = getScoreColor(item.score);
-
-  return (
-    <MotiView
-      from={{ opacity: 0, translateX: 20 }}
-      animate={{ opacity: 1, translateX: 0 }}
-      transition={{ delay: index * 70, type: "timing" as const }}
-    >
-      <TouchableOpacity
-        style={styles.recentCard}
-        onPress={onPress}
-        activeOpacity={0.7}
-        accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}`}
-        accessibilityRole="button"
-      >
-        <View style={styles.recentCardInner}>
-          <View style={{ alignItems: "flex-end" }}>
-            <ScoreBadgeCircle score={item.score} />
-          </View>
-          <View style={{ marginTop: "auto" as any }}>
-            <Text style={styles.recentName} numberOfLines={2}>
-              {item.productName}
-            </Text>
-            <Text style={styles.recentBrand} numberOfLines={1}>
-              {item.productBrand || "Unknown"}
-            </Text>
-          </View>
-        </View>
-        <View style={[styles.recentRibbon, { backgroundColor: ribbonColor }]} />
-      </TouchableOpacity>
-    </MotiView>
-  );
-}
-
-function PopularProductCard({
-  item,
-  index,
-  totalCount,
-  onPress,
-}: {
-  item: any;
-  index: number;
-  totalCount: number;
-  onPress: () => void;
-}) {
-  const dotColor = getScoreColor(item.score || 50);
-
-  return (
-    <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
-      <TouchableOpacity
-        style={styles.popularCard}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.popularDot, { backgroundColor: dotColor }]} />
-        <LinearGradient
-          colors={[C.tinted, "#D0EDD1"]}
-          style={styles.popularIconCircle}
-        >
-          <Package size={20} color={C.primary} />
-        </LinearGradient>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.popularName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <View style={styles.popularMetaRow}>
-            <Text style={styles.popularBrand} numberOfLines={1}>
-              {item.brand || "Unknown brand"}
-            </Text>
-            {item.calories ? (
-              <>
-                <Text style={styles.popularDotSeparator}>•</Text>
-                <Text style={styles.popularCalories}>{Math.round(item.calories)} kcal</Text>
-              </>
-            ) : null}
-          </View>
-        </View>
-        <View style={styles.popularChevronCircle}>
-          <CaretRight size={16} color={C.placeholder} />
-        </View>
-      </TouchableOpacity>
-      {index < totalCount - 1 && <View style={styles.popularDivider} />}
-    </Animated.View>
-  );
-}
-
-function AnimatedProgressBar({ used, total }: { used: number; total: number }) {
-  const ratio = Math.min(used / total, 1);
-  const animWidth = useSharedValue(0);
-
-  useEffect(() => {
-    animWidth.value = withTiming(ratio * 100, { duration: 800 });
-  }, [ratio]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${animWidth.value}%` as any,
-    height: 3,
-    borderTopRightRadius: 999,
-    borderBottomRightRadius: 999,
-  }));
-
-  return (
-    <View style={styles.progressBarTrack}>
-      <Animated.View style={fillStyle}>
-        <LinearGradient
-          colors={["#3DD68C", "#2EC4B6"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ flex: 1, borderTopRightRadius: 999, borderBottomRightRadius: 999 }}
-        />
-      </Animated.View>
-    </View>
-  );
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  function ScoreBadgeCircle({ score }: { score: number }) {
+    const label = getScoreShortLabel(score);
+    return (
+      <View
+        style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}
+        accessibilityLabel={`Score ${score}, ${label}`}
+      >
+        <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
+        <Text style={[styles.scoreBadgeCircleLabel, { color: getScoreColor(score) }]}>{label}</Text>
+      </View>
+    );
+  }
+
+  function SectionAccentLine() {
+    return <View style={styles.sectionAccentLine} />;
+  }
+
+  function RecentScanCard({
+    item,
+    index,
+    onPress,
+  }: {
+    item: any;
+    index: number;
+    onPress: () => void;
+  }) {
+    const ribbonColor = getScoreColor(item.score);
+
+    return (
+      <MotiView
+        from={{ opacity: 0, translateX: 20 }}
+        animate={{ opacity: 1, translateX: 0 }}
+        transition={{ delay: index * 70, type: "timing" as const }}
+      >
+        <TouchableOpacity
+          style={styles.recentCard}
+          onPress={onPress}
+          activeOpacity={0.7}
+          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}`}
+          accessibilityRole="button"
+        >
+          <View style={styles.recentCardInner}>
+            <View style={{ alignItems: "flex-end" }}>
+              <ScoreBadgeCircle score={item.score} />
+            </View>
+            <View style={{ marginTop: "auto" as any }}>
+              <Text style={styles.recentName} numberOfLines={2}>
+                {item.productName}
+              </Text>
+              <Text style={styles.recentBrand} numberOfLines={1}>
+                {item.productBrand || "Unknown"}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.recentRibbon, { backgroundColor: ribbonColor }]} />
+        </TouchableOpacity>
+      </MotiView>
+    );
+  }
+
+  function PopularProductCard({
+    item,
+    index,
+    totalCount,
+    onPress,
+  }: {
+    item: any;
+    index: number;
+    totalCount: number;
+    onPress: () => void;
+  }) {
+    const dotColor = getScoreColor(item.score || 50);
+
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
+        <TouchableOpacity
+          style={styles.popularCard}
+          onPress={onPress}
+          activeOpacity={0.7}
+          accessibilityLabel={`${item.name}, ${item.brand || "Unknown brand"}`}
+          accessibilityRole="button"
+        >
+          <View style={[styles.popularDot, { backgroundColor: dotColor }]} />
+          <LinearGradient
+            colors={[theme.tinted, "#D0EDD1"]}
+            style={styles.popularIconCircle}
+          >
+            <Package size={20} color={theme.primary} />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.popularName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <View style={styles.popularMetaRow}>
+              <Text style={styles.popularBrand} numberOfLines={1}>
+                {item.brand || "Unknown brand"}
+              </Text>
+              {item.calories ? (
+                <>
+                  <Text style={styles.popularDotSeparator}>•</Text>
+                  <Text style={styles.popularCalories}>{Math.round(item.calories)} kcal</Text>
+                </>
+              ) : null}
+            </View>
+          </View>
+          <View style={styles.popularChevronCircle}>
+            <CaretRight size={16} color={theme.placeholder} />
+          </View>
+        </TouchableOpacity>
+        {index < totalCount - 1 && <View style={styles.popularDivider} />}
+      </Animated.View>
+    );
+  }
+
+  function AnimatedProgressBar({ used, total }: { used: number; total: number }) {
+    const ratio = Math.min(used / total, 1);
+    const animWidth = useSharedValue(0);
+
+    useEffect(() => {
+      animWidth.value = withTiming(ratio * 100, { duration: 800 });
+    }, [ratio]);
+
+    const fillStyle = useAnimatedStyle(() => ({
+      width: `${animWidth.value}%` as any,
+      height: 3,
+      borderTopRightRadius: 999,
+      borderBottomRightRadius: 999,
+    }));
+
+    return (
+      <View style={styles.progressBarTrack}>
+        <Animated.View style={fillStyle}>
+          <LinearGradient
+            colors={["#3DD68C", "#2EC4B6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1, borderTopRightRadius: 999, borderBottomRightRadius: 999 }}
+          />
+        </Animated.View>
+      </View>
+    );
+  }
+
+  function SkeletonProductCard() {
+    return (
+      <View style={styles.popularCard}>
+        <View style={styles.popularDot} />
+        <View style={styles.popularIconCircle}>
+          <SkeletonBlock width={48} height={48} borderRadius={24} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <SkeletonBlock width="65%" height={14} borderRadius={6} />
+          <SkeletonBlock width="45%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
+        </View>
+      </View>
+    );
+  }
+
+  function SkeletonRecentCard() {
+    return (
+      <View style={styles.recentCard}>
+        <View style={styles.recentCardInner}>
+          <SkeletonBlock width={32} height={32} borderRadius={16} />
+          <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 10 }} />
+          <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
+        </View>
+      </View>
+    );
+  }
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -425,7 +429,7 @@ export default function HomeScreen() {
                     colors={["rgba(61,214,140,0.12)", "transparent"]}
                     style={styles.heroGraphicCircle}
                   />
-                  <Barcode size={40} color={C.mint} style={{ opacity: 0.9 }} />
+                  <Barcode size={40} color={theme.mint} style={{ opacity: 0.9 }} />
                 </View>
               </MotiView>
             </View>
@@ -434,15 +438,15 @@ export default function HomeScreen() {
               <View style={styles.statCard}>
                 <View style={styles.statHeader}>
                   <LinearGradient
-                    colors={[C.tinted, "#D4EDDA"]}
+                    colors={[theme.tinted, "#D4EDDA"]}
                     style={styles.statIconBg}
                   >
-                    <ChartLineUp size={16} color={C.primary} />
+                    <ChartLineUp size={16} color={theme.primary} />
                   </LinearGradient>
                   <Text style={styles.statLabel}>Avg Score</Text>
                 </View>
                 <View style={styles.statValueRow}>
-                  <Text style={[styles.statNumber, { color: stats?.avgScore != null ? getScoreColor(stats.avgScore) : C.text }]}>
+                  <Text style={[styles.statNumber, { color: stats?.avgScore != null ? getScoreColor(stats.avgScore) : theme.text }]}>
                     {stats?.avgScore != null ? Math.round(stats.avgScore) : "--"}
                   </Text>
                   <Text style={styles.statSuffix}>/100</Text>
@@ -451,10 +455,10 @@ export default function HomeScreen() {
               <View style={styles.statCard}>
                 <View style={styles.statHeader}>
                   <LinearGradient
-                    colors={[C.tinted, "#D4EDDA"]}
+                    colors={[theme.tinted, "#D4EDDA"]}
                     style={styles.statIconBg}
                   >
-                    <ScanSmiley size={16} color={C.primary} />
+                    <ScanSmiley size={16} color={theme.primary} />
                   </LinearGradient>
                   <Text style={styles.statLabel}>Today</Text>
                 </View>
@@ -475,13 +479,13 @@ export default function HomeScreen() {
             {recentScans.length === 0 && !historyQuery.isLoading && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
                 <View style={styles.welcomeIconWrap}>
-                  <Barcode size={36} color={C.primary} />
+                  <Barcode size={36} color={theme.primary} />
                 </View>
                 <Text style={styles.welcomeTitle}>Welcome to FoodVAR</Text>
                 <Text style={styles.welcomeSubtitle}>
                   Scan your first product to get a personalized health score based on your profile.
                 </Text>
-                <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8}>
+                <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8} accessibilityLabel="Scan a product" accessibilityRole="button">
                   <LinearGradient
                     colors={["#3DD68C", "#2E7D32"]}
                     start={{ x: 0, y: 0 }}
@@ -514,7 +518,7 @@ export default function HomeScreen() {
                     <Text style={styles.sectionHeaderLabel}>RECENT SCANS</Text>
                     <SectionAccentLine />
                   </View>
-                  <TouchableOpacity onPress={() => router.push("/(tabs)/history")}>
+                  <TouchableOpacity onPress={() => router.push("/(tabs)/history")} accessibilityLabel="See all scan history" accessibilityRole="link">
                     <Text style={styles.seeAll}>See all</Text>
                   </TouchableOpacity>
                 </View>
@@ -579,9 +583,11 @@ export default function HomeScreen() {
                   style={styles.contributeCard}
                   onPress={() => router.push("/contribute")}
                   activeOpacity={0.7}
+                  accessibilityLabel="Add a missing product to the database"
+                  accessibilityRole="button"
                 >
                   <View style={styles.contributeIconWrap}>
-                    <Info size={20} color={C.primary} />
+                    <Info size={20} color={theme.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.contributeTitle}>Missing a product?</Text>
@@ -609,39 +615,40 @@ function getGreeting() {
   return "Good evening";
 }
 
-const TIER1 = {
-  backgroundColor: C.card,
-  borderRadius: 20,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.06,
-  shadowRadius: 16,
-  elevation: 3,
-} as const;
+const createStyles = (theme: ThemeColors) => {
+  const TIER1 = {
+    backgroundColor: theme.card,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  } as const;
 
-const TIER2 = {
-  backgroundColor: C.card,
-  borderRadius: 20,
-  borderWidth: 0.5,
-  borderColor: C.border,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.04,
-  shadowRadius: 4,
-  elevation: 1,
-} as const;
+  const TIER2 = {
+    backgroundColor: theme.card,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: theme.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  } as const;
 
-const TIER3 = {
-  backgroundColor: C.card,
-  borderRadius: 20,
-  borderWidth: 0.5,
-  borderColor: C.border,
-} as const;
+  const TIER3 = {
+    backgroundColor: theme.card,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: theme.border,
+  } as const;
 
-const styles = StyleSheet.create({
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   headerGradient: {
     paddingHorizontal: 20,
@@ -655,7 +662,7 @@ const styles = StyleSheet.create({
   },
   greetingSmall: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     fontWeight: "500",
     marginBottom: 2,
   },
@@ -663,7 +670,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "800",
     letterSpacing: -0.5,
-    color: C.text,
+    color: theme.text,
   },
   avatarCircle: {
     width: 48,
@@ -672,7 +679,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
   },
   avatarInitial: {
     fontSize: 18,
@@ -683,12 +690,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: -6,
     right: -6,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 999,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 0.5,
-    borderColor: C.border,
+    borderColor: theme.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -698,7 +705,7 @@ const styles = StyleSheet.create({
   avatarBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: C.primary,
+    color: theme.primary,
   },
   progressBarTrack: {
     height: 3,
@@ -732,20 +739,20 @@ const styles = StyleSheet.create({
   heroLine1: {
     fontSize: 20,
     fontWeight: "900",
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.5,
     lineHeight: 22,
   },
   heroLine2: {
     fontSize: 20,
     fontWeight: "900",
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.5,
     lineHeight: 22,
   },
   heroSub: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 8,
     marginBottom: 20,
     lineHeight: 18,
@@ -807,7 +814,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     fontWeight: "500",
-    color: C.muted,
+    color: theme.muted,
   },
   statValueRow: {
     flexDirection: "row",
@@ -818,14 +825,14 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: "900",
     letterSpacing: -1,
-    color: C.text,
+    color: theme.text,
     lineHeight: 32,
     ...(Platform.OS === "ios" ? { fontVariant: ["tabular-nums" as any] } : {}),
   },
   statSuffix: {
     fontSize: 12,
     fontWeight: "500",
-    color: C.muted,
+    color: theme.muted,
     marginBottom: 2,
   },
   insightCard: {
@@ -839,7 +846,7 @@ const styles = StyleSheet.create({
   },
   insightText: {
     fontSize: 14,
-    color: C.text,
+    color: theme.text,
     lineHeight: 21,
     flex: 1,
   },
@@ -857,14 +864,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.3,
-    color: C.placeholder,
+    color: theme.placeholder,
     textTransform: "uppercase",
     marginBottom: 0,
   },
   sectionAccentLine: {
     width: 24,
     height: 2,
-    backgroundColor: C.mint,
+    backgroundColor: theme.mint,
     opacity: 0.4,
     marginTop: 6,
     marginBottom: 12,
@@ -872,7 +879,7 @@ const styles = StyleSheet.create({
   },
   seeAll: {
     fontSize: 13,
-    color: C.primary,
+    color: theme.primary,
     fontWeight: "600",
   },
   recentCard: {
@@ -889,13 +896,13 @@ const styles = StyleSheet.create({
   recentName: {
     fontSize: 14,
     fontWeight: "600",
-    color: C.text,
+    color: theme.text,
     marginTop: 12,
     lineHeight: 18,
   },
   recentBrand: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   scoreBadgeCircle: {
@@ -938,7 +945,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: C.green,
+    backgroundColor: theme.green,
   },
   popularIconCircle: {
     width: 48,
@@ -952,7 +959,7 @@ const styles = StyleSheet.create({
   popularName: {
     fontSize: 14,
     fontWeight: "500",
-    color: C.text,
+    color: theme.text,
     marginBottom: 2,
   },
   popularMetaRow: {
@@ -961,33 +968,33 @@ const styles = StyleSheet.create({
   },
   popularBrand: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
   },
   popularDotSeparator: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     marginHorizontal: 4,
   },
   popularCalories: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
   },
   popularChevronCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     alignItems: "center",
     justifyContent: "center",
   },
   popularDivider: {
     height: 1,
-    backgroundColor: C.divider,
+    backgroundColor: theme.divider,
     marginHorizontal: 16,
   },
   emptyText: {
     textAlign: "center",
-    color: C.muted,
+    color: theme.muted,
     fontSize: 14,
     paddingVertical: 24,
   },
@@ -1002,7 +1009,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -1010,13 +1017,13 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   welcomeSubtitle: {
     fontSize: 14,
-    color: C.muted,
+    color: theme.muted,
     textAlign: "center" as const,
     lineHeight: 20,
     marginBottom: 20,
@@ -1053,24 +1060,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: C.tinted,
+    backgroundColor: theme.tinted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   contributeTitle: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: C.text,
+    color: theme.text,
     marginBottom: 2,
   },
   contributeSubtitle: {
     fontSize: 12,
-    color: C.muted,
+    color: theme.muted,
     lineHeight: 17,
   },
   contributeAction: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: C.primary,
+    color: theme.primary,
   },
 });
+};

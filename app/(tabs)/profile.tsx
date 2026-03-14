@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -39,7 +39,7 @@ import {
   FileText,
   ShieldCheck,
 } from "phosphor-react-native";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -105,6 +105,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, updateProfile, logout } = useUser();
   const theme = useThemeColors();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [age, setAge] = useState(user?.age ? String(user.age) : "");
@@ -214,7 +215,7 @@ export default function ProfileScreen() {
     >
       {/* 1. Minimal Top Bar */}
       <LinearGradient
-        colors={["#F0FAF4", C.bg]}
+        colors={["#F0FAF4", theme.bg]}
         style={[styles.topBar, { paddingTop: (insets.top || webTopInset) + 12 }]}
       >
         <Animated.Text
@@ -230,7 +231,7 @@ export default function ProfileScreen() {
           accessibilityLabel="Edit health profile"
           accessibilityRole="button"
         >
-          <GearSix size={20} color={C.muted} />
+          <GearSix size={20} color={theme.muted} />
         </TouchableOpacity>
       </LinearGradient>
 
@@ -253,7 +254,7 @@ export default function ProfileScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Your name"
-                placeholderTextColor={C.placeholder}
+                placeholderTextColor={theme.placeholder}
                 autoFocus
               />
               <TextInput
@@ -261,7 +262,7 @@ export default function ProfileScreen() {
                 value={age}
                 onChangeText={setAge}
                 placeholder="Age"
-                placeholderTextColor={C.placeholder}
+                placeholderTextColor={theme.placeholder}
                 keyboardType="number-pad"
                 maxLength={3}
               />
@@ -273,10 +274,12 @@ export default function ProfileScreen() {
                     setName(user?.name || "");
                     setAge(user?.age ? String(user.age) : "");
                   }}
+                  accessibilityLabel="Cancel editing"
+                  accessibilityRole="button"
                 >
-                  <X size={18} color={C.danger} />
+                  <X size={18} color={theme.danger} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave}>
+                <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave} accessibilityLabel="Save profile changes" accessibilityRole="button">
                   <Check size={18} color={Colors.white} />
                 </TouchableOpacity>
               </View>
@@ -291,6 +294,8 @@ export default function ProfileScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setEditing(true);
               }}
+              accessibilityLabel="Edit your name and age"
+              accessibilityRole="button"
             >
               <LinearGradient
                 colors={["#3DD68C", "#2E7D32"]}
@@ -327,7 +332,7 @@ export default function ProfileScreen() {
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.statRow}>
             <View style={styles.statWidget}>
               <View style={styles.statWidgetIconWrap}>
-                <Scan size={14} color={C.green} />
+                <Scan size={14} color={theme.green} />
               </View>
               <View style={styles.statWidgetBottom}>
                 <Text style={styles.statWidgetValue}>{stats?.totalScans ?? 0}</Text>
@@ -339,7 +344,7 @@ export default function ProfileScreen() {
               <View style={styles.statWidgetIconWrap}>
                 <Speedometer
                   size={14}
-                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore) : C.text}
+                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore) : theme.text}
                 />
               </View>
               <View style={styles.statWidgetBottom}>
@@ -349,7 +354,7 @@ export default function ProfileScreen() {
                     {
                       color: stats?.avgScore != null
                         ? getScoreColor(stats.avgScore)
-                        : C.text,
+                        : theme.text,
                     },
                   ]}
                 >
@@ -361,7 +366,7 @@ export default function ProfileScreen() {
 
             <View style={styles.statWidget}>
               <View style={styles.statWidgetIconWrap}>
-                <CalendarBlank size={14} color={C.tealScore} />
+                <CalendarBlank size={14} color={theme.tealScore} />
               </View>
               <View style={styles.statWidgetBottom}>
                 <Text style={styles.statWidgetValue}>{stats?.weeklyScans ?? 0}</Text>
@@ -374,14 +379,14 @@ export default function ProfileScreen() {
         {/* 4. Health Passport Card */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.passportCard}>
           <View style={styles.passportHeader}>
-            <Shield size={18} color={C.primary} weight="fill" />
+            <Shield size={18} color={theme.primary} weight="fill" />
             <Text style={styles.passportTitle}>Health Passport</Text>
             <View style={styles.accentDot} />
           </View>
 
           <View style={styles.passportRow}>
             <LinearGradient colors={["#FFEBEE", "#FFCDD2"]} style={styles.passportIcon}>
-              <Heartbeat size={16} color={C.danger} weight="fill" />
+              <Heartbeat size={16} color={theme.danger} weight="fill" />
             </LinearGradient>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>CONDITIONS</Text>
@@ -392,7 +397,7 @@ export default function ProfileScreen() {
 
           <View style={styles.passportRow}>
             <LinearGradient colors={["#FFF3E0", "#FFE0B2"]} style={styles.passportIcon}>
-              <WarningCircle size={16} color={C.amber} weight="fill" />
+              <WarningCircle size={16} color={theme.amber} weight="fill" />
             </LinearGradient>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>ALLERGIES</Text>
@@ -403,7 +408,7 @@ export default function ProfileScreen() {
 
           <View style={styles.passportRow}>
             <LinearGradient colors={["#E8F5E9", "#C8E6C9"]} style={styles.passportIcon}>
-              <Flag size={16} color={C.green} weight="fill" />
+              <Flag size={16} color={theme.green} weight="fill" />
             </LinearGradient>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>GOAL</Text>
@@ -416,7 +421,7 @@ export default function ProfileScreen() {
               <View style={styles.passportDivider} />
               <View style={styles.passportRow}>
                 <LinearGradient colors={["#E0F7FA", "#B2EBF2"]} style={styles.passportIcon}>
-                  <Leaf size={16} color={C.tealScore} weight="fill" />
+                  <Leaf size={16} color={theme.tealScore} weight="fill" />
                 </LinearGradient>
                 <View style={styles.passportTextWrap}>
                   <Text style={styles.passportLabel}>DIET</Text>
@@ -436,7 +441,7 @@ export default function ProfileScreen() {
             {bestProducts.length > 0 && (
               <View style={styles.perfCard}>
                 <View style={styles.perfHeader}>
-                  <Trophy size={14} color={C.green} weight="fill" />
+                  <Trophy size={14} color={theme.green} weight="fill" />
                   <Text style={styles.perfTitle}>Best Picks</Text>
                 </View>
                 {bestProducts.map((product, index) => (
@@ -473,7 +478,7 @@ export default function ProfileScreen() {
             {worstProducts.length > 0 && (
               <View style={styles.perfCard}>
                 <View style={styles.perfHeader}>
-                  <Fire size={14} color={C.danger} weight="fill" />
+                  <Fire size={14} color={theme.danger} weight="fill" />
                   <Text style={styles.perfTitle}>Avoid</Text>
                 </View>
                 {worstProducts.map((product, index) => (
@@ -512,36 +517,36 @@ export default function ProfileScreen() {
         {/* 6. Quick Actions */}
         <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.actionsWrap}>
           <TouchableOpacity style={styles.actionCard} onPress={handleEditProfile} activeOpacity={0.8} accessibilityLabel="Edit health profile" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: C.mint }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.mint }]} />
             <View style={styles.actionContent}>
               <View style={[styles.actionIconCircle, { backgroundColor: "#F0FAF4" }]}>
-                <Flag size={16} color={C.primary} weight="fill" />
+                <Flag size={16} color={theme.primary} weight="fill" />
               </View>
-              <Text style={[styles.actionText, { color: C.text }]}>Edit Health Profile</Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Edit Health Profile</Text>
             </View>
-            <CaretRight size={18} color={C.placeholder} />
+            <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/privacy")} activeOpacity={0.8} accessibilityLabel="Privacy policy" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: C.tealScore }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.tealScore }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: C.tealBg }]}>
-                <ShieldCheck size={16} color={C.tealScore} weight="fill" />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.tealBg }]}>
+                <ShieldCheck size={16} color={theme.tealScore} weight="fill" />
               </View>
-              <Text style={[styles.actionText, { color: C.text }]}>Privacy Policy</Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Privacy Policy</Text>
             </View>
-            <CaretRight size={18} color={C.placeholder} />
+            <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/terms")} activeOpacity={0.8} accessibilityLabel="Terms of service" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: C.tealScore }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.tealScore }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: C.tealBg }]}>
-                <FileText size={16} color={C.tealScore} weight="fill" />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.tealBg }]}>
+                <FileText size={16} color={theme.tealScore} weight="fill" />
               </View>
-              <Text style={[styles.actionText, { color: C.text }]}>Terms of Service</Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Terms of Service</Text>
             </View>
-            <CaretRight size={18} color={C.placeholder} />
+            <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={handleExportData} activeOpacity={0.8} accessibilityLabel="Export your data" accessibilityRole="button">
@@ -550,28 +555,28 @@ export default function ProfileScreen() {
               <View style={[styles.actionIconCircle, { backgroundColor: "#EBF4FF" }]}>
                 <Export size={16} color="#1976D2" weight="fill" />
               </View>
-              <Text style={[styles.actionText, { color: C.text }]}>Export My Data</Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Export My Data</Text>
             </View>
-            <CaretRight size={18} color={C.placeholder} />
+            <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: C.amber }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.amber }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: C.amberBg }]}>
-                <SignOut size={16} color={C.amber} />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.amberBg }]}>
+                <SignOut size={16} color={theme.amber} />
               </View>
-              <Text style={[styles.actionText, { color: C.text }]}>Log Out</Text>
+              <Text style={[styles.actionText, { color: theme.text }]}>Log Out</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={handleDeleteAccount} activeOpacity={0.8} accessibilityLabel="Delete account" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: C.danger }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.danger }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: C.dangerBg }]}>
-                <Trash size={16} color={C.danger} />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.dangerBg }]}>
+                <Trash size={16} color={theme.danger} />
               </View>
-              <Text style={[styles.actionText, { color: C.danger }]}>Delete Account</Text>
+              <Text style={[styles.actionText, { color: theme.danger }]}>Delete Account</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -580,10 +585,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
   },
   topBar: {
     paddingBottom: 12,
@@ -595,7 +600,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.5,
   },
   settingsBtn: {
@@ -613,11 +618,11 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("medium"),
   },
   avatarCircle: {
@@ -644,22 +649,22 @@ const styles = StyleSheet.create({
   identityName: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
     flex: 1,
   },
   editLink: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: C.primary,
+    color: theme.primary,
   },
   identityEmail: {
     fontSize: 13,
-    color: C.muted,
+    color: theme.muted,
   },
   identityAge: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: C.placeholder,
+    color: theme.placeholder,
     marginTop: 2,
   },
   statRow: {
@@ -669,11 +674,11 @@ const styles = StyleSheet.create({
   statWidget: {
     flex: 1,
     aspectRatio: 1,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     justifyContent: "space-between" as const,
     ...cardShadow("medium"),
   },
@@ -686,21 +691,21 @@ const styles = StyleSheet.create({
   statWidgetValue: {
     fontSize: 24,
     fontWeight: "900" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -1,
   },
   statWidgetLabel: {
     fontSize: 11,
     fontWeight: "500" as const,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   passportCard: {
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("medium"),
   },
   passportHeader: {
@@ -712,14 +717,14 @@ const styles = StyleSheet.create({
   passportTitle: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: C.text,
+    color: theme.text,
     letterSpacing: -0.3,
   },
   accentDot: {
     width: 4,
     height: 14,
     borderRadius: 2,
-    backgroundColor: C.mint,
+    backgroundColor: theme.mint,
     opacity: 0.7,
     marginLeft: 2,
   },
@@ -742,7 +747,7 @@ const styles = StyleSheet.create({
   passportLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: C.placeholder,
+    color: theme.placeholder,
     textTransform: "uppercase" as const,
     letterSpacing: 1,
     marginBottom: 2,
@@ -750,12 +755,12 @@ const styles = StyleSheet.create({
   passportValue: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: C.text,
+    color: theme.text,
     lineHeight: 20,
   },
   passportDivider: {
     height: 1,
-    backgroundColor: C.divider,
+    backgroundColor: theme.divider,
   },
   perfRow: {
     flexDirection: "row" as const,
@@ -763,11 +768,11 @@ const styles = StyleSheet.create({
   },
   perfCard: {
     flex: 1,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 14,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     ...cardShadow("medium"),
   },
   perfHeader: {
@@ -779,7 +784,7 @@ const styles = StyleSheet.create({
   perfTitle: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: C.text,
+    color: theme.text,
   },
   perfProductRow: {
     flexDirection: "row" as const,
@@ -813,11 +818,11 @@ const styles = StyleSheet.create({
   perfProductName: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: C.text,
+    color: theme.text,
   },
   perfProductBrand: {
     fontSize: 10,
-    color: C.muted,
+    color: theme.muted,
     marginTop: 2,
   },
   actionsWrap: {
@@ -827,11 +832,11 @@ const styles = StyleSheet.create({
   actionCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: C.card,
+    backgroundColor: theme.card,
     borderRadius: 20,
     padding: 14,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
     overflow: "hidden" as const,
     position: "relative" as const,
     ...cardShadow("subtle"),
@@ -868,13 +873,13 @@ const styles = StyleSheet.create({
   editInput: {
     height: 42,
     borderRadius: 12,
-    backgroundColor: C.bg,
+    backgroundColor: theme.bg,
     paddingHorizontal: 14,
     fontSize: 15,
-    color: C.text,
+    color: theme.text,
     fontWeight: "500" as const,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: theme.border,
   },
   editActions: {
     flexDirection: "row" as const,
@@ -886,7 +891,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: C.dangerBg,
+    backgroundColor: theme.dangerBg,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -894,7 +899,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: C.primary,
+    backgroundColor: theme.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
