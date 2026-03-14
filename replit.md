@@ -90,9 +90,9 @@ Preferred communication style: Simple, everyday language.
 6. Query production defaults, focusManager/onlineManager, accessibility, error states
 7. Privacy policy, terms of service, consent capture, data export, account deletion
 8. 50-product seed catalog with real nutritional data
-9. 34 unit tests (vitest): scoring, AI advice, feature flags, schema ownership
+9. 42 unit tests (vitest): scoring, AI advice, feature flags, schema ownership
 10. Deployment configured (autoscale), health check endpoint
 
 ## Testing
-- Unit tests: `npx vitest run` (34 tests across 4 files)
+- Unit tests: `npx vitest run` (42 tests across 4 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

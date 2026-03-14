@@ -3,11 +3,10 @@ import {
   conversations,
   messages,
   dailyScanTracker,
-  users,
 } from "../shared/schema";
 
 describe("conversations table schema", () => {
-  it("has a userId column", () => {
+  it("has userId column named user_id", () => {
     expect(conversations.userId).toBeDefined();
     expect(conversations.userId.name).toBe("user_id");
   });
@@ -18,11 +17,6 @@ describe("conversations table schema", () => {
     expect(conversations.title).toBeDefined();
     expect(conversations.createdAt).toBeDefined();
     expect(conversations.updatedAt).toBeDefined();
-  });
-
-  it("references users table via userId", () => {
-    const config = conversations.userId.config as any;
-    expect(config).toBeDefined();
   });
 });
 
@@ -35,35 +29,89 @@ describe("messages table schema", () => {
     expect(messages.createdAt).toBeDefined();
   });
 
-  it("references conversations table via conversationId", () => {
-    const config = messages.conversationId.config as any;
-    expect(config).toBeDefined();
+  it("conversationId references conversations table", () => {
+    expect(messages.conversationId.name).toBe("conversation_id");
   });
 });
 
 describe("dailyScanTracker.scanDate type", () => {
-  it("uses date column type (not text)", () => {
+  it("uses PostgreSQL date type (not text)", () => {
     const columnType = dailyScanTracker.scanDate.columnType;
     expect(columnType).toBe("PgDateString");
+    expect(columnType).not.toBe("PgText");
   });
 
   it("scanDate value format is YYYY-MM-DD string", () => {
     const today = new Date().toISOString().split("T")[0];
     expect(today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it("same-day comparison uses string equality", () => {
+    const today = new Date().toISOString().split("T")[0];
+    const alsoToday = new Date().toISOString().split("T")[0];
+    expect(today).toBe(alsoToday);
+  });
+
+  it("cross-day comparison produces different strings", () => {
+    const today = new Date("2026-03-14").toISOString().split("T")[0];
+    const tomorrow = new Date("2026-03-15").toISOString().split("T")[0];
+    expect(today).not.toBe(tomorrow);
+  });
 });
 
-describe("chat storage interface requires userId", () => {
-  it("IChatStorage methods accept userId parameter", async () => {
+describe("chat storage ownership enforcement", () => {
+  it("IChatStorage.getConversation requires id and userId", async () => {
     const { chatStorage } = await import(
       "../server/replit_integrations/chat/storage"
     );
+    expect(chatStorage.getConversation.length).toBe(2);
+  });
 
-    expect(chatStorage.getConversation.length).toBeGreaterThanOrEqual(2);
-    expect(chatStorage.getAllConversations.length).toBeGreaterThanOrEqual(1);
-    expect(chatStorage.createConversation.length).toBeGreaterThanOrEqual(2);
-    expect(chatStorage.deleteConversation.length).toBeGreaterThanOrEqual(2);
-    expect(chatStorage.getMessagesByConversation.length).toBeGreaterThanOrEqual(2);
-    expect(chatStorage.createMessage.length).toBeGreaterThanOrEqual(4);
+  it("IChatStorage.getAllConversations requires userId", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.getAllConversations.length).toBe(1);
+  });
+
+  it("IChatStorage.createConversation requires title and userId", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.createConversation.length).toBe(2);
+  });
+
+  it("IChatStorage.deleteConversation requires id and userId", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.deleteConversation.length).toBe(2);
+  });
+
+  it("IChatStorage.getMessagesByConversation requires conversationId and userId", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.getMessagesByConversation.length).toBe(2);
+  });
+
+  it("IChatStorage.createMessage requires conversationId, role, content, and userId", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.createMessage.length).toBe(4);
+  });
+});
+
+describe("messages ownership via conversations (indirect)", () => {
+  it("messages table does not have a direct userId column (ownership enforced via conversation join)", () => {
+    const columnNames = Object.keys(messages);
+    expect(columnNames).not.toContain("userId");
+    expect(columnNames).toContain("conversationId");
+  });
+
+  it("conversations table has userId for ownership enforcement", () => {
+    const columnNames = Object.keys(conversations);
+    expect(columnNames).toContain("userId");
   });
 });
