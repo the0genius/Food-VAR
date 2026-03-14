@@ -33,14 +33,19 @@ AI advice includes medical disclaimers and prompt hardening. However:
   - Profile screen (best/worst product badges: score number + tier text)
   - History screen (score badge + tier label)
   - Result screen (score ring with tier label)
-- Dark mode infrastructure: `useThemeColors()` hook with light + dark token sets in `constants/colors.ts`.
+- Dark mode: `useThemeColors()` hook in `constants/colors.ts` with light + dark token sets.
   - StatusBar set to `auto` (adapts to system theme).
-  - Tab bar (`_layout.tsx`) uses theme-driven background, border, tint colors.
-  - Home, History, and Profile screens apply `theme.bg` background and `theme.text`/`theme.placeholder` for key text.
-- Accessibility labels and roles on:
+  - All screens call `useThemeColors()` and apply `theme.bg` to containers, `theme.text`/`theme.muted`/`theme.placeholder` to key text and icons, `theme.card` to card backgrounds, `theme.border`/`theme.divider` to separators.
+  - Migrated screens: tab bar, Home, History, Profile, Result, Scan, Onboarding, Contribute, Edit Profile, Privacy, Terms.
+  - Gradients and accent colors remain fixed (brand identity); structural elements (backgrounds, text, cards, borders) adapt to dark mode.
+- Accessibility labels and roles on all core interactive elements:
   - Tab bar items (Home, Scan, History, Profile tabs)
   - History items (product name, score, tier, time)
-  - Profile best/worst product rows (product name, score, tier)
-  - Onboarding: back button, progress bar, step indicator, consent checkbox, privacy/terms links, next/continue button
-  - Score ring (result screen)
+  - Profile best/worst product rows (product name, score, tier), edit profile button, privacy/terms/export/delete actions
+  - Onboarding: back button, progress bar, step indicator, consent checkbox, privacy/terms links, next/continue button, condition/allergy/goal/diet selection chips
+  - Scan: mode toggles (search/scanner), search input, clear search button
+  - Result: close button, share button, score ring
+  - Edit Profile: close button, condition/allergy checkboxes, goal/diet radio selectors
+  - Contribute: close button
+  - Privacy/Terms: back buttons
 - 83 unit tests passing (5 label consistency tests).

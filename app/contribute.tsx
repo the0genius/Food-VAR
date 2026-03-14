@@ -32,7 +32,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -64,6 +64,7 @@ function PulsingDot({ delay }: { delay: number }) {
 export default function ContributeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const { user } = useUser();
   const params = useLocalSearchParams<{ barcode?: string }>();
 
@@ -260,10 +261,10 @@ export default function ContributeScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: (insets.top || webTopInset) + 8 }]}>
+    <View style={[styles.container, { paddingTop: (insets.top || webTopInset) + 8, backgroundColor: theme.bg }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={22} color={C.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close" accessibilityRole="button">
+          <X size={22} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <LinearGradient
@@ -272,7 +273,7 @@ export default function ContributeScreen() {
           >
             <Package size={16} color="#fff" weight="fill" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>Add Product</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Add Product</Text>
         </View>
         <View style={{ width: 36 }} />
       </View>

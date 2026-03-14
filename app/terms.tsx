@@ -2,7 +2,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Platform } from "
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft } from "phosphor-react-native";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
 
 const TERMS_VERSION = "1.0";
 const EFFECTIVE_DATE = "March 13, 2026";
@@ -10,15 +10,16 @@ const EFFECTIVE_DATE = "March 13, 2026";
 export default function TermsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft size={24} color={C.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+          <ArrowLeft size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Terms of Service</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Terms of Service</Text>
         <View style={{ width: 32 }} />
       </View>
       <ScrollView

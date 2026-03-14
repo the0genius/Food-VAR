@@ -38,7 +38,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -85,6 +85,7 @@ const DIETS = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const { user, register, login, updateProfile } = useUser();
   const [step, setStep] = useState(0);
   const [isLoginMode, setIsLoginMode] = useState(false);
@@ -286,6 +287,8 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => toggleItem(conditions, setConditions, c.id)}
                     testID={`condition-${c.id}`}
+                    accessibilityLabel={`${c.label}, ${isActive ? "selected" : "not selected"}`}
+                    accessibilityRole="checkbox"
                   >
                     {isActive ? (
                       <CheckCircle size={20} color="#fff" weight="fill" />
@@ -332,6 +335,8 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => toggleItem(allergies, setAllergies, a.id)}
                     testID={`allergy-${a.id}`}
+                    accessibilityLabel={`${a.label}, ${isActive ? "selected" : "not selected"}`}
+                    accessibilityRole="checkbox"
                   >
                     <Text
                       style={[
@@ -380,6 +385,8 @@ export default function OnboardingScreen() {
                       setGoal(g.id);
                     }}
                     testID={`goal-${g.id}`}
+                    accessibilityLabel={`${g.label}, ${isActive ? "selected" : "not selected"}`}
+                    accessibilityRole="radio"
                   >
                     {isActive ? (
                       <CheckCircle size={28} color="#fff" weight="fill" />
@@ -427,6 +434,8 @@ export default function OnboardingScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setDiet(d.id);
                     }}
+                    accessibilityLabel={`${d.label}, ${isActive ? "selected" : "not selected"}`}
+                    accessibilityRole="radio"
                     testID={`diet-${d.id}`}
                   >
                     <Text
@@ -531,7 +540,7 @@ export default function OnboardingScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.bg }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View

@@ -27,7 +27,7 @@ import Animated, {
 import { MotiView } from "moti";
 import { MagnifyingGlass, Package, CaretRight, Camera, Barcode, XCircle, PlusCircle } from "phosphor-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -70,6 +70,7 @@ function ScanLineOverlay() {
 export default function ScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const { user } = useUser();
   const [mode, setMode] = useState<"search" | "scanner">("search");
   const [searchQuery, setSearchQuery] = useState("");
@@ -381,7 +382,7 @@ export default function ScanScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.bg }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View
@@ -390,7 +391,7 @@ export default function ScanScreen() {
           { paddingTop: (insets.top || webTopInset) + 12 },
         ]}
       >
-        <Text style={styles.headerTitle}>Check a Product</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Check a Product</Text>
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeBtn, mode === "search" && styles.modeBtnActive]}
@@ -445,21 +446,22 @@ export default function ScanScreen() {
 
       {mode === "search" && (
         <View style={styles.searchArea}>
-          <View style={styles.searchInputWrap}>
-            <MagnifyingGlass size={18} color={C.placeholder} />
+          <View style={[styles.searchInputWrap, { borderColor: theme.border }]}>
+            <MagnifyingGlass size={18} color={theme.placeholder} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               value={searchQuery}
               onChangeText={handleSearch}
               placeholder="Search by name, brand, or category..."
-              placeholderTextColor={C.placeholder}
+              placeholderTextColor={theme.placeholder}
               autoCapitalize="none"
               autoCorrect={false}
               testID="search-input"
+              accessibilityLabel="Search products"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => handleSearch("")}>
-                <XCircle size={18} color={C.placeholder} weight="fill" />
+              <TouchableOpacity onPress={() => handleSearch("")} accessibilityLabel="Clear search" accessibilityRole="button">
+                <XCircle size={18} color={theme.placeholder} weight="fill" />
               </TouchableOpacity>
             )}
           </View>

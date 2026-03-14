@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { MotiView } from "moti";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, useThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
 const CONDITIONS = [
@@ -73,6 +73,7 @@ const DIETS = [
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const { user, updateProfile } = useUser();
 
   const [conditions, setConditions] = useState<string[]>(user?.conditions || []);
@@ -112,12 +113,12 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={22} color={C.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close" accessibilityRole="button">
+          <X size={22} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Health Profile</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Edit Health Profile</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveBtnWrapper} disabled={saving}>
           <LinearGradient
             colors={["#3DD68C", "#2E7D32"]}
@@ -150,7 +151,7 @@ export default function EditProfileScreen() {
           transition={{ type: "timing", duration: 400 }}
           style={styles.section}
         >
-          <Text style={styles.sectionTitle}>Health Conditions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Health Conditions</Text>
           <Text style={styles.sectionSubtitle}>
             Select any conditions you manage
           </Text>
@@ -166,6 +167,8 @@ export default function EditProfileScreen() {
                     isActive && styles.conditionChipActive,
                   ]}
                   onPress={() => toggleItem(conditions, setConditions, c.id)}
+                  accessibilityLabel={`${c.label}, ${isActive ? "selected" : "not selected"}`}
+                  accessibilityRole="checkbox"
                 >
                   {isActive ? (
                     <CheckCircle size={18} color="#fff" weight="fill" />
@@ -207,6 +210,8 @@ export default function EditProfileScreen() {
                     isActive && styles.allergyChipActive,
                   ]}
                   onPress={() => toggleItem(allergies, setAllergies, a.id)}
+                  accessibilityLabel={`${a.label}, ${isActive ? "selected" : "not selected"}`}
+                  accessibilityRole="checkbox"
                 >
                   <Text
                     style={[
@@ -247,6 +252,8 @@ export default function EditProfileScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setGoal(g.id);
                   }}
+                  accessibilityLabel={`${g.label}, ${isActive ? "selected" : "not selected"}`}
+                  accessibilityRole="radio"
                 >
                   {isActive ? (
                     <CheckCircle size={24} color="#fff" weight="fill" />
@@ -288,6 +295,8 @@ export default function EditProfileScreen() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setDiet(d.id);
                   }}
+                  accessibilityLabel={`${d.label}, ${isActive ? "selected" : "not selected"}`}
+                  accessibilityRole="radio"
                 >
                   <Text
                     style={[

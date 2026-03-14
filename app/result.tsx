@@ -30,7 +30,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel, getScoreLabel as getScoreLabelFull } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel, getScoreLabel as getScoreLabelFull, useThemeColors } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -461,6 +461,7 @@ function HighlightItem({ text, index, tierColor }: { text: string; index: number
 export default function ResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
   const params = useLocalSearchParams<{
     productId?: string;
     accessMethod?: string;
@@ -766,14 +767,14 @@ export default function ResultScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View
         style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <X size={24} color={C.text} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close result" accessibilityRole="button">
+          <X size={24} color={theme.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+        <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share result" accessibilityRole="button">
           <ShareNetwork size={22} color={C.text} />
         </TouchableOpacity>
       </View>
@@ -813,8 +814,8 @@ export default function ResultScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.productInfoSection}>
-          <Text style={styles.productName}>{product.name}</Text>
-          {product.brand ? <Text style={styles.productBrand}>{product.brand}</Text> : null}
+          <Text style={[styles.productName, { color: theme.text }]}>{product.name}</Text>
+          {product.brand ? <Text style={[styles.productBrand, { color: theme.muted }]}>{product.brand}</Text> : null}
           <View style={styles.chipRow}>
             {product.category ? (
               <View style={styles.chip}>
@@ -834,20 +835,20 @@ export default function ResultScreen() {
         {data.advice ? (
           <Animated.View
             entering={FadeInDown.delay(250).duration(400)}
-            style={styles.adviceCard}
+            style={[styles.adviceCard, { backgroundColor: theme.card }]}
           >
             <View style={styles.adviceHeader}>
               <LinearGradient
-                colors={[C.tinted, "#D4EDDA"]}
+                colors={[theme.tinted, "#D4EDDA"]}
                 style={styles.adviceIconBox}
               >
-                <Robot size={16} color={C.primary} weight="fill" />
+                <Robot size={16} color={theme.primary} weight="fill" />
               </LinearGradient>
-              <Text style={styles.adviceLabel}>FOODVAR VERDICT</Text>
+              <Text style={[styles.adviceLabel, { color: theme.muted }]}>FOODVAR VERDICT</Text>
             </View>
-            <View style={styles.adviceDivider} />
+            <View style={[styles.adviceDivider, { backgroundColor: theme.divider }]} />
             <Text style={[styles.adviceHeadline, { color: headlineColor }]}>{headlineText}</Text>
-            <Text style={styles.adviceText}>{data.advice}</Text>
+            <Text style={[styles.adviceText, { color: theme.text }]}>{data.advice}</Text>
 
             {data.coachTip ? (
               <View style={styles.coachTipRow}>
@@ -893,9 +894,9 @@ export default function ResultScreen() {
           entering={FadeInDown.delay(450).duration(400)}
           style={styles.nutritionSection}
         >
-          <View style={styles.nutritionCard}>
+          <View style={[styles.nutritionCard, { backgroundColor: theme.card }]}>
             <View style={styles.nutritionHeader}>
-              <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
+              <Text style={[styles.nutritionTitle, { color: theme.text }]}>Nutrition Facts</Text>
               {product.servingSize ? (
                 <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
               ) : null}
