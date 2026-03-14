@@ -619,7 +619,7 @@ function getGreeting() {
 const createStyles = (theme: ThemeColors) => {
   const TIER1 = {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -629,7 +629,7 @@ const createStyles = (theme: ThemeColors) => {
 
   const TIER2 = {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 0.5,
     borderColor: theme.border,
     shadowColor: "#000",
@@ -641,7 +641,7 @@ const createStyles = (theme: ThemeColors) => {
 
   const TIER3 = {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 0.5,
     borderColor: theme.border,
   } as const;
@@ -885,7 +885,7 @@ const createStyles = (theme: ThemeColors) => {
   },
   recentCard: {
     ...TIER2,
-    width: 140,
+    width: 150,
     overflow: "hidden",
     padding: 0,
   },
@@ -1050,7 +1050,7 @@ const createStyles = (theme: ThemeColors) => {
     gap: 12,
     marginHorizontal: 20,
     marginBottom: 24,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     borderWidth: 1,
     borderStyle: "dashed" as const,

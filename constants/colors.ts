@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export const C = {
-  bg: '#F6F8F7',
+  bg: '#F5F5F7',
   card: '#FFFFFF',
   tinted: '#E8F5E9',
 

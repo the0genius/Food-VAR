@@ -331,9 +331,9 @@ export default function ProfileScreen() {
         {/* 3. Stat Widgets Row */}
         {statsLoading ? (
           <View style={styles.statRow}>
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 24 }} color={theme.skeleton} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 24 }} color={theme.skeleton} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 24 }} color={theme.skeleton} />
           </View>
         ) : (
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.statRow}>
@@ -661,6 +661,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.5)",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -673,7 +674,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     alignItems: "center" as const,
     gap: 14,
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     borderWidth: 1,
     borderColor: theme.border,
@@ -729,7 +730,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 12,
     borderWidth: 1,
     borderColor: theme.border,
@@ -756,7 +757,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   passportCard: {
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     borderColor: theme.border,
@@ -823,7 +824,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   perfCard: {
     flex: 1,
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 14,
     borderWidth: 1,
     borderColor: theme.border,
@@ -887,7 +888,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     backgroundColor: theme.card,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 14,
     borderWidth: 1,
     borderColor: theme.border,
