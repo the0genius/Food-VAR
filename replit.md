@@ -75,7 +75,7 @@ Preferred communication style: Simple, everyday language.
 - See `.env.example` for feature flags
 
 ## Database & Migrations
-- **Migration strategy**: Drizzle Kit generates migration files in `./migrations/`. Use `npm run db:migrate` for production deployments. `npm run db:push` is for development only.
+- **Migration strategy**: Drizzle Kit generates migration files in `./migrations/`. Use `npm run db:migrate` for production deployments. `npm run db:push` is for development only. Migration 0000 is a full baseline for fresh DBs; migrations 0001/0002 are incremental for existing environments (idempotent with IF NOT EXISTS/type guards). For pre-existing databases, baseline the drizzle journal before running incremental migrations.
 - **Schema tables**: users, refresh_tokens, products, scan_history, advice_cache, scoring_rules, daily_scan_tracker, conversations, messages
 - **Chat ownership**: Conversations and messages tables have `userId` foreign key with cascade delete. All chat storage functions and routes enforce user ownership — no user can access another user's data.
 - **scanDate**: Uses PostgreSQL `date` type (not text), with `mode: "string"` for YYYY-MM-DD string comparisons in application code.
