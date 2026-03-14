@@ -28,6 +28,7 @@ CREATE TABLE "daily_scan_tracker" (
 CREATE TABLE "messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"conversation_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
 	"role" text NOT NULL,
 	"content" text NOT NULL,
 	"created_at" timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -138,6 +139,7 @@ ALTER TABLE "conversations" ADD CONSTRAINT "conversations_user_id_users_id_fk" F
 ALTER TABLE "daily_scan_tracker" ADD CONSTRAINT "daily_scan_tracker_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "daily_scan_tracker" ADD CONSTRAINT "daily_scan_tracker_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "scan_history" ADD CONSTRAINT "scan_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "scan_history" ADD CONSTRAINT "scan_history_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -146,6 +148,7 @@ CREATE INDEX "conversations_user_idx" ON "conversations" USING btree ("user_id")
 CREATE INDEX "daily_scan_tracker_user_date_idx" ON "daily_scan_tracker" USING btree ("user_id","scan_date");--> statement-breakpoint
 CREATE UNIQUE INDEX "daily_scan_unique_idx" ON "daily_scan_tracker" USING btree ("user_id","product_id","scan_date");--> statement-breakpoint
 CREATE INDEX "messages_conversation_idx" ON "messages" USING btree ("conversation_id");--> statement-breakpoint
+CREATE INDEX "messages_user_idx" ON "messages" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "products_name_idx" ON "products" USING btree ("name");--> statement-breakpoint
 CREATE INDEX "products_brand_idx" ON "products" USING btree ("brand");--> statement-breakpoint
 CREATE INDEX "products_category_idx" ON "products" USING btree ("category");--> statement-breakpoint

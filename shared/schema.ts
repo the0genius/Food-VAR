@@ -208,12 +208,16 @@ export const messages = pgTable(
     conversationId: integer("conversation_id")
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     content: text("content").notNull(),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   },
   (table) => [
     index("messages_conversation_idx").on(table.conversationId),
+    index("messages_user_idx").on(table.userId),
   ]
 );
 

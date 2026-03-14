@@ -73,7 +73,7 @@ export const chatStorage: IChatStorage = {
 
     const [message] = await db
       .insert(messages)
-      .values({ conversationId, role, content })
+      .values({ conversationId, role, content, userId })
       .returning();
     return message;
   },

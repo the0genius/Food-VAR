@@ -103,15 +103,56 @@ describe("chat storage ownership enforcement", () => {
   });
 });
 
-describe("messages ownership via conversations (indirect)", () => {
-  it("messages table does not have a direct userId column (ownership enforced via conversation join)", () => {
+describe("messages and conversations ownership", () => {
+  it("messages table has direct userId column for ownership", () => {
     const columnNames = Object.keys(messages);
-    expect(columnNames).not.toContain("userId");
+    expect(columnNames).toContain("userId");
+    expect(messages.userId.name).toBe("user_id");
+  });
+
+  it("messages table has conversationId for relationship", () => {
+    const columnNames = Object.keys(messages);
     expect(columnNames).toContain("conversationId");
+    expect(messages.conversationId.name).toBe("conversation_id");
   });
 
   it("conversations table has userId for ownership enforcement", () => {
     const columnNames = Object.keys(conversations);
     expect(columnNames).toContain("userId");
+    expect(conversations.userId.name).toBe("user_id");
+  });
+});
+
+describe("cross-user access denial (storage interface)", () => {
+  it("getConversation rejects when called without userId (arity check)", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    expect(chatStorage.getConversation.length).toBe(2);
+  });
+
+  it("deleteConversation returns boolean (false when not found/not owned)", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    const result = await chatStorage.deleteConversation(999999, 999999);
+    expect(result).toBe(false);
+  });
+
+  it("getMessagesByConversation returns empty array for non-existent conversation", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    const result = await chatStorage.getMessagesByConversation(999999, 999999);
+    expect(result).toEqual([]);
+  });
+
+  it("createMessage throws for non-existent/unowned conversation", async () => {
+    const { chatStorage } = await import(
+      "../server/replit_integrations/chat/storage"
+    );
+    await expect(
+      chatStorage.createMessage(999999, "user", "test", 999999)
+    ).rejects.toThrow("Conversation not found or access denied");
   });
 });
