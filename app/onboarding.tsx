@@ -154,15 +154,30 @@ export default function OnboardingScreen() {
           progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Google login failed:", e);
-      Alert.alert("Sign In Failed", "Could not sign in with Google. Please try again.");
+      const errorMsg = e instanceof Error && e.message?.includes("linked to a different")
+        ? "This email is already linked to a different sign-in method. Please use the original provider."
+        : "Could not sign in with Google. Please try again.";
+      Alert.alert("Sign In Failed", errorMsg);
     }
     setLoading(false);
   }
 
   async function handleAppleLogin() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (Platform.OS !== "ios") {
+      Alert.alert("Not Available", "Apple Sign In is only available on iOS devices.");
+      return;
+    }
+
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    if (!isAvailable) {
+      Alert.alert("Not Available", "Apple Sign In is not available on this device.");
+      return;
+    }
+
     setLoading(true);
     try {
       const credential = await AppleAuthentication.signInAsync({
@@ -184,10 +199,14 @@ export default function OnboardingScreen() {
           progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
         }
       }
-    } catch (e: any) {
-      if (e?.code !== "ERR_REQUEST_CANCELED") {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      if (err?.code !== "ERR_REQUEST_CANCELED") {
         console.error("Apple login failed:", e);
-        Alert.alert("Sign In Failed", "Could not sign in with Apple. Please try again.");
+        const errorMsg = err?.message?.includes("linked to a different")
+          ? "This email is already linked to a different sign-in method. Please use the original provider."
+          : "Could not sign in with Apple. Please try again.";
+        Alert.alert("Sign In Failed", errorMsg);
       }
     }
     setLoading(false);
