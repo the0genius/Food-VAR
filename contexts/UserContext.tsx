@@ -44,6 +44,7 @@ interface UserContextValue {
   isLoading: boolean;
   register: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  devLogin: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -122,6 +123,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }
 
+  async function devLogin() {
+    const res = await apiRequest("POST", "/api/auth/dev-login", {});
+    const data = await res.json();
+    await setTokens(data.accessToken, data.refreshToken);
+    setUser(data.user);
+  }
+
   async function updateProfile(data: Partial<UserProfile>) {
     if (!user) return;
     const res = await apiRequest("PUT", "/api/users/profile", data);
@@ -162,6 +170,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isLoading,
       register,
       login,
+      devLogin,
       updateProfile,
       refreshUser,
       logout,

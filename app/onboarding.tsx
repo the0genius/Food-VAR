@@ -87,7 +87,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { user, register, login, updateProfile } = useUser();
+  const { user, register, login, devLogin, updateProfile } = useUser();
   const [step, setStep] = useState(0);
   const [isLoginMode, setIsLoginMode] = useState(false);
 
@@ -633,6 +633,28 @@ export default function OnboardingScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.skipBtnText}>Skip</Text>
+          </TouchableOpacity>
+        )}
+        {__DEV__ && step === 0 && (
+          <TouchableOpacity
+            onPress={async () => {
+              setLoading(true);
+              try {
+                await devLogin();
+                router.replace("/(tabs)");
+              } catch (e) {
+                console.error("Dev login failed:", e);
+              }
+              setLoading(false);
+            }}
+            style={[styles.skipBtn, { marginTop: 8 }]}
+            disabled={loading}
+            accessibilityLabel="Skip sign up (dev only)"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.skipBtnText, { color: "#FF9800" }]}>
+              Skip Sign Up (Dev Only)
+            </Text>
           </TouchableOpacity>
         )}
       </View>

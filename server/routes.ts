@@ -149,6 +149,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // ========== DEV-ONLY ROUTES ==========
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/auth/dev-login", async (req: Request, res: Response) => {
+      try {
+        const devEmail = "dev-tester@foodvar.local";
+        let [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, devEmail))
+          .limit(1);
+
+        if (!user) {
+          const passwordHash = await hashPassword("DevTest1!");
+          [user] = await db
+            .insert(users)
+            .values({
+              email: devEmail,
+              passwordHash,
+              name: "Dev Tester",
+              age: 30,
+              conditions: ["diabetes_type2"],
+              allergies: ["gluten"],
+              goal: "general_wellness",
+              onboardingCompleted: true,
+              consentPolicyVersion: "1.0",
+              consentAiVersion: "1.0",
+              consentAcceptedAt: new Date(),
+            })
+            .returning();
+        }
+
+        const payload: AuthPayload = {
+          userId: user.id,
+          email: user.email,
+          role: user.role || "user",
+        };
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = await createRefreshToken(user.id);
+
+        res.json({
+          user: stripSensitiveFields(user),
+          accessToken,
+          refreshToken,
+        });
+      } catch (error) {
+        logger.error("Dev login failed", error, {}, req);
+        res.status(500).json({ error: "Dev login failed" });
+      }
+    });
+  }
+
   // ========== AUTH ROUTES ==========
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
