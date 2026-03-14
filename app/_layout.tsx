@@ -1,6 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import * as Sentry from "@sentry/react-native";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -9,6 +10,13 @@ import { queryClient } from "@/lib/query-client";
 import { UserProvider } from "@/contexts/UserContext";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !__DEV__,
+  tracesSampleRate: 0.2,
+  sendDefaultPii: false,
+});
 
 SplashScreen.preventAutoHideAsync();
 

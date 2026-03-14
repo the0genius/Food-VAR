@@ -44,6 +44,13 @@
         {
           "cameraPermission": "FoodVAR needs camera access to scan product barcodes"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "foodvar",
+          "project": "react-native"
+        }
       ]
     ],
     "experiments": {

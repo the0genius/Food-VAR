@@ -77,3 +77,8 @@ task = "shell.exec"
 args = "npm run expo:dev"
 waitForPort = 8081
 ensurePreviewReachable = "/status"
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_SENTRY_DSN = "https://6f8e2657a59d3d83c23e6f8452ea14b7@o4511040455901184.ingest.de.sentry.io/4511040463241296"

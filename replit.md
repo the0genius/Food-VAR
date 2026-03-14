@@ -66,12 +66,22 @@ Preferred communication style: Simple, everyday language.
 - `phosphor-react-native`: Icon library.
 - `expo-camera`, `expo-image-picker`: Mobile device capabilities.
 - `@react-native-async-storage/async-storage`: Local storage.
+- `@sentry/react-native`: Error monitoring and crash reporting.
+
+### Error Monitoring
+- **Sentry** (org: `foodvar`, project: `react-native`): Captures unhandled JS errors, native crashes, and React component errors.
+- Initialized in `app/_layout.tsx` with `Sentry.init()`, disabled in dev (`enabled: !__DEV__`).
+- `ErrorBoundary` (`components/ErrorBoundary.tsx`) reports component-level errors to Sentry via `Sentry.captureException()`.
+- DSN stored in `EXPO_PUBLIC_SENTRY_DSN` env var.
+- Expo plugin configured in `app.json` for source maps and debug symbols upload.
+- Performance tracing at 20% sample rate, PII sending disabled.
 
 ### Environment Variables
 - `DATABASE_URL`
 - `AI_INTEGRATIONS_GEMINI_API_KEY`
 - `AI_INTEGRATIONS_GEMINI_BASE_URL`
 - `EXPO_PUBLIC_DOMAIN`
+- `EXPO_PUBLIC_SENTRY_DSN`
 - `SESSION_SECRET`
 - See `.env.example` for feature flags
 
