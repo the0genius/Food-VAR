@@ -479,7 +479,20 @@ export default function ResultScreen() {
   const [originalScore, setOriginalScore] = useState<number | null>(null);
   const [showFullNutrition, setShowFullNutrition] = useState(false);
 
+  const isDark = theme.bg === '#121212';
   const webTopInset = Platform.OS === "web" ? 67 : 0;
+
+  const filteredHighlights = useMemo(() => {
+    if (!data?.highlights || data.highlights.length === 0) return [];
+    const vaguePatterns = [
+      /^contains\s/i, /^critical\s?allergen/i, /^not\s?suitable/i,
+      /^check\s?allergen/i, /^allergen/i, /^avoid/i, /^warning/i,
+      /^caution/i, /^unsafe/i, /^dangerous/i,
+    ];
+    return data.highlights.filter((h: string) =>
+      !vaguePatterns.some(p => p.test(h.trim()))
+    );
+  }, [data?.highlights]);
 
   useEffect(() => {
     loadData();
@@ -670,8 +683,6 @@ export default function ResultScreen() {
     (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
   ).length > 0;
 
-  const isDark = theme.bg === '#121212';
-
   if (data.isAllergenAlert) {
     return (
       <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -767,17 +778,6 @@ export default function ResultScreen() {
     );
   }
 
-  const filteredHighlights = useMemo(() => {
-    if (!data.highlights || data.highlights.length === 0) return [];
-    const vaguePatterns = [
-      /^contains\s/i, /^critical\s?allergen/i, /^not\s?suitable/i,
-      /^check\s?allergen/i, /^allergen/i, /^avoid/i, /^warning/i,
-      /^caution/i, /^unsafe/i, /^dangerous/i,
-    ];
-    return data.highlights.filter((h: string) =>
-      !vaguePatterns.some(p => p.test(h.trim()))
-    );
-  }, [data.highlights]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
