@@ -27,7 +27,7 @@ import Animated, {
 import { MotiView } from "moti";
 import { MagnifyingGlass, Package, CaretRight, Camera, Barcode, XCircle, PlusCircle } from "phosphor-react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
-import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
+import Colors, { cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -394,7 +394,7 @@ export default function ScanScreen() {
           { paddingTop: (insets.top || webTopInset) + 12 },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Check a Product</Text>
+        <Text style={styles.headerTitle}>Check a Product</Text>
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeBtn, mode === "search" && styles.modeBtnActive]}
@@ -407,7 +407,7 @@ export default function ScanScreen() {
             accessibilityState={{ selected: mode === "search" }}
           >
             <MagnifyingGlass
-              size={16}
+              size={18}
               color={mode === "search" ? theme.text : theme.placeholder}
               weight={mode === "search" ? "bold" : "regular"}
             />
@@ -431,7 +431,7 @@ export default function ScanScreen() {
             accessibilityState={{ selected: mode === "scanner" }}
           >
             <Barcode
-              size={16}
+              size={18}
               color={mode === "scanner" ? theme.text : theme.placeholder}
               weight={mode === "scanner" ? "bold" : "regular"}
             />
@@ -449,8 +449,8 @@ export default function ScanScreen() {
 
       {mode === "search" && (
         <View style={styles.searchArea}>
-          <View style={[styles.searchInputWrap, { borderColor: theme.border }]}>
-            <MagnifyingGlass size={18} color={theme.placeholder} />
+          <View style={styles.searchInputWrap}>
+            <MagnifyingGlass size={20} color={theme.placeholder} />
             <TextInput
               style={[styles.searchInput, { color: theme.text }]}
               value={searchQuery}
@@ -503,30 +503,33 @@ export default function ScanScreen() {
                   accessibilityRole="button"
                 >
                   <View style={styles.resultIcon}>
-                    <Package size={22} color={theme.mutedIcon} />
+                    <Package size={24} color={theme.muted} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.resultName} numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 }}>
+                    <View style={styles.resultMetaRow}>
                       <Text style={styles.resultBrand} numberOfLines={1}>
                         {item.brand || ""}
                       </Text>
                       {item.category ? (
-                        <View style={styles.categoryChip}>
-                          <Text style={styles.categoryChipText}>{item.category}</Text>
-                        </View>
+                        <>
+                          <View style={styles.resultDotSeparator} />
+                          <View style={styles.categoryChip}>
+                            <Text style={styles.categoryChipText}>{item.category}</Text>
+                          </View>
+                        </>
                       ) : null}
                     </View>
                   </View>
-                  <CaretRight size={16} color={theme.placeholder} />
+                  <CaretRight size={20} color={theme.placeholder} />
                 </TouchableOpacity>
               </MotiView>
             )}
             contentContainerStyle={{
               paddingHorizontal: 20,
-              paddingTop: 8,
+              paddingTop: 12,
               paddingBottom: 120,
             }}
             showsVerticalScrollIndicator={false}
@@ -552,8 +555,8 @@ export default function ScanScreen() {
                 </View>
               ) : searchQuery.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <View style={styles.iconCircle}>
-                    <Package size={32} color={theme.mutedIcon} weight="thin" />
+                  <View style={styles.emptyIconBox}>
+                    <Package size={32} color={theme.placeholder} />
                   </View>
                   <Text style={styles.emptyTitle}>Find Any Product</Text>
                   <Text style={styles.emptyText}>
@@ -571,394 +574,408 @@ export default function ScanScreen() {
   );
 }
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.bg,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: theme.card,
-    zIndex: 10,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "800" as const,
-    color: theme.text,
-    letterSpacing: -0.5,
-    marginBottom: 16,
-  },
-  modeToggle: {
-    flexDirection: "row",
-    backgroundColor: theme.bg,
-    borderRadius: 16,
-    padding: 4,
-  },
-  modeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 13,
-  },
-  modeBtnActive: {
-    backgroundColor: theme.card,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    ...Platform.select({
-      android: { elevation: 2 } as any,
-      default: {},
-    }),
-  },
-  modeBtnText: {
-    fontSize: 14,
-    fontWeight: "500" as const,
-    color: theme.placeholder,
-  },
-  modeBtnTextActive: {
-    color: theme.text,
-    fontWeight: "700" as const,
-  },
-  searchArea: {
-    flex: 1,
-  },
-  searchInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: theme.card,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    ...Platform.select({
-      android: { elevation: 1 } as any,
-      default: {},
-    }),
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.text,
-  },
-  searchResultCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    backgroundColor: theme.card,
-    borderRadius: 24,
-    marginBottom: 10,
-    gap: 12,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    ...Platform.select({
-      android: { elevation: 3 } as any,
-      default: {},
-    }),
-  },
-  resultIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: theme.bg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resultName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: theme.text,
-  },
-  resultBrand: {
-    fontSize: 12,
-    color: theme.muted,
-  },
-  categoryChip: {
-    backgroundColor: theme.bg,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  categoryChipText: {
-    fontSize: 11,
-    color: theme.muted,
-    fontWeight: "500" as const,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 10,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: theme.text,
-    marginTop: 4,
-    letterSpacing: -0.3,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.muted,
-    textAlign: "center",
-    maxWidth: 260,
-  },
-  contributeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    marginTop: 8,
-    ...cardShadow("subtle"),
-  },
-  contributeBtnText: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: theme.primary,
-  },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: "#000",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: "hidden",
-  },
-  camera: {
-    flex: 1,
-  },
-  scanOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scanFrame: {
-    width: SCAN_FRAME_SIZE,
-    height: SCAN_FRAME_SIZE,
-    position: "relative",
-    shadowColor: theme.mint,
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  scanCorner: {
-    position: "absolute",
-    width: 28,
-    height: 28,
-    borderColor: theme.mint,
-  },
-  scanCornerTL: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderTopLeftRadius: 10,
-  },
-  scanCornerTR: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderTopRightRadius: 10,
-  },
-  scanCornerBL: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderBottomLeftRadius: 10,
-  },
-  scanCornerBR: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderBottomRightRadius: 10,
-  },
-  scanLine: {
-    position: "absolute",
-    left: 8,
-    right: 8,
-    height: 2,
-    backgroundColor: theme.mint,
-    opacity: 0.85,
-    borderRadius: 1,
-  },
-  scanBottomArea: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    paddingBottom: 40,
-    gap: 12,
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(0,0,0,0.72)",
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: "500" as const,
-    color: "white",
-  },
-  searchLinkPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  searchLinkText: {
-    fontSize: 13,
-    color: "white",
-    fontWeight: "500" as const,
-  },
-  iconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: theme.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  permissionState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  permissionTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: theme.text,
-    marginTop: 8,
-  },
-  permissionText: {
-    fontSize: 15,
-    color: theme.muted,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  permissionHint: {
-    fontSize: 13,
-    color: theme.muted,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  permissionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 18,
-    backgroundColor: "#3DD68C",
-    marginTop: 12,
-    ...cardShadow("medium"),
-  },
-  permissionBtnText: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: theme.card,
-  },
-  webFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  webFallbackTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: theme.text,
-    marginTop: 8,
-  },
-  webFallbackText: {
-    fontSize: 14,
-    color: theme.muted,
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  manualEntryWrap: {
-    width: "100%",
-    paddingHorizontal: 20,
-    marginTop: 16,
-  },
-  manualEntryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.card,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
-    ...cardShadow("subtle"),
-  },
-  manualEntryInput: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.text,
-  },
-  manualEntryGoBtn: {
-    backgroundColor: theme.mint,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  manualEntryGoBtnText: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: theme.card,
-  },
-  manualOverlay: {
-    position: "absolute",
-    bottom: 120,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-  },
-});
+const createStyles = (theme: ThemeColors) => {
+  const isDark = theme.bg === '#121212';
+
+  const bentoShadow = isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
+    : { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingBottom: 20,
+      backgroundColor: theme.card,
+      zIndex: 10,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      ...bentoShadow,
+    },
+    headerTitle: {
+      fontSize: 22,
+      fontWeight: "700" as const,
+      color: theme.text,
+      letterSpacing: -0.3,
+      marginBottom: 20,
+    },
+    modeToggle: {
+      flexDirection: "row",
+      backgroundColor: isDark ? '#2C2C2C' : '#F0F0F0',
+      borderRadius: 16,
+      padding: 4,
+    },
+    modeBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 10,
+      borderRadius: 14,
+    },
+    modeBtnActive: {
+      backgroundColor: isDark ? '#3A3A3A' : theme.card,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 6,
+      ...Platform.select({
+        android: { elevation: 2 } as any,
+        default: {},
+      }),
+    },
+    modeBtnText: {
+      fontSize: 14,
+      fontWeight: "500" as const,
+      color: theme.placeholder,
+    },
+    modeBtnTextActive: {
+      color: theme.text,
+      fontWeight: "600" as const,
+    },
+    searchArea: {
+      flex: 1,
+    },
+    searchInputWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginHorizontal: 20,
+      marginTop: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      gap: 12,
+      ...bentoShadow,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    searchResultCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 16,
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      marginBottom: 12,
+      gap: 16,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'transparent',
+      ...bentoShadow,
+    },
+    resultIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: theme.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    resultName: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: theme.text,
+      marginBottom: 6,
+    },
+    resultMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    resultBrand: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    resultDotSeparator: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: theme.placeholder,
+      opacity: 0.5,
+    },
+    categoryChip: {
+      backgroundColor: isDark ? '#2C2C2C' : '#F0F0F0',
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 2,
+    },
+    categoryChipText: {
+      fontSize: 11,
+      color: theme.muted,
+      fontWeight: "500" as const,
+    },
+    emptyState: {
+      alignItems: "center",
+      paddingTop: 60,
+      gap: 10,
+    },
+    emptyIconBox: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: theme.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 16,
+      ...bentoShadow,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700" as const,
+      color: theme.text,
+      marginTop: 4,
+      letterSpacing: -0.3,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.muted,
+      textAlign: "center",
+      maxWidth: 240,
+      lineHeight: 22,
+    },
+    contributeBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginTop: 8,
+      ...bentoShadow,
+    },
+    contributeBtnText: {
+      fontSize: 14,
+      fontWeight: "600" as const,
+      color: theme.primary,
+    },
+    cameraContainer: {
+      flex: 1,
+      backgroundColor: "#000",
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: "hidden",
+    },
+    camera: {
+      flex: 1,
+    },
+    scanOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    scanFrame: {
+      width: SCAN_FRAME_SIZE,
+      height: SCAN_FRAME_SIZE,
+      position: "relative",
+      shadowColor: theme.mint,
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 0 },
+    },
+    scanCorner: {
+      position: "absolute",
+      width: 28,
+      height: 28,
+      borderColor: theme.mint,
+    },
+    scanCornerTL: {
+      top: 0,
+      left: 0,
+      borderTopWidth: 3,
+      borderLeftWidth: 3,
+      borderTopLeftRadius: 10,
+    },
+    scanCornerTR: {
+      top: 0,
+      right: 0,
+      borderTopWidth: 3,
+      borderRightWidth: 3,
+      borderTopRightRadius: 10,
+    },
+    scanCornerBL: {
+      bottom: 0,
+      left: 0,
+      borderBottomWidth: 3,
+      borderLeftWidth: 3,
+      borderBottomLeftRadius: 10,
+    },
+    scanCornerBR: {
+      bottom: 0,
+      right: 0,
+      borderBottomWidth: 3,
+      borderRightWidth: 3,
+      borderBottomRightRadius: 10,
+    },
+    scanLine: {
+      position: "absolute",
+      left: 8,
+      right: 8,
+      height: 2,
+      backgroundColor: theme.mint,
+      opacity: 0.85,
+      borderRadius: 1,
+    },
+    scanBottomArea: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      alignItems: "center",
+      paddingBottom: 40,
+      gap: 12,
+    },
+    statusPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "rgba(0,0,0,0.72)",
+      borderRadius: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    statusDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 999,
+    },
+    statusText: {
+      fontSize: 13,
+      fontWeight: "500" as const,
+      color: "white",
+    },
+    searchLinkPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: "rgba(255,255,255,0.15)",
+      borderRadius: 999,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+    },
+    searchLinkText: {
+      fontSize: 13,
+      color: "white",
+      fontWeight: "500" as const,
+    },
+    iconCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: theme.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+    permissionState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 40,
+      gap: 12,
+    },
+    permissionTitle: {
+      fontSize: 20,
+      fontWeight: "700" as const,
+      color: theme.text,
+      marginTop: 8,
+    },
+    permissionText: {
+      fontSize: 15,
+      color: theme.muted,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    permissionHint: {
+      fontSize: 13,
+      color: theme.muted,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    permissionBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 16,
+      paddingHorizontal: 32,
+      borderRadius: 18,
+      backgroundColor: "#3DD68C",
+      marginTop: 12,
+      ...cardShadow("medium"),
+    },
+    permissionBtnText: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: theme.card,
+    },
+    webFallback: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 40,
+      gap: 12,
+    },
+    webFallbackTitle: {
+      fontSize: 18,
+      fontWeight: "700" as const,
+      color: theme.text,
+      marginTop: 8,
+    },
+    webFallbackText: {
+      fontSize: 14,
+      color: theme.muted,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    manualEntryWrap: {
+      width: "100%",
+      paddingHorizontal: 20,
+      marginTop: 16,
+    },
+    manualEntryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      borderWidth: 0.5,
+      borderColor: theme.border,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 10,
+      ...cardShadow("subtle"),
+    },
+    manualEntryInput: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    manualEntryGoBtn: {
+      backgroundColor: theme.mint,
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    manualEntryGoBtnText: {
+      fontSize: 14,
+      fontWeight: "700" as const,
+      color: theme.card,
+    },
+    manualOverlay: {
+      position: "absolute",
+      bottom: 120,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+    },
+  });
+};

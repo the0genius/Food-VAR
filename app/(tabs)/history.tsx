@@ -23,7 +23,7 @@ import {
   WifiSlash,
 } from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
+import { getScoreColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -42,11 +42,19 @@ function getDateGroup(dateStr: string): string {
 
   const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  if (itemDate >= today) return "Today";
-  if (itemDate >= yesterday) return "Yesterday";
-  if (itemDate >= weekAgo) return "This Week";
-  if (itemDate >= monthAgo) return "This Month";
-  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  if (itemDate >= today) return "TODAY";
+  if (itemDate >= yesterday) return "YESTERDAY";
+  if (itemDate >= weekAgo) return "THIS WEEK";
+  if (itemDate >= monthAgo) return "THIS MONTH";
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase();
+}
+
+function getTierLabel(score: number): string {
+  if (score === 0) return "Alert";
+  if (score <= 35) return "Poor";
+  if (score <= 50) return "Fair";
+  if (score <= 74) return "Good";
+  return "Great";
 }
 
 export default function HistoryScreen() {
@@ -78,12 +86,6 @@ export default function HistoryScreen() {
             transition={{ loop: true, type: "timing" as const, duration: 850 }}
             style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: theme.skeleton, marginTop: 6 }}
           />
-          <MotiView
-            from={{ opacity: 0.4 }}
-            animate={{ opacity: 0.9 }}
-            transition={{ loop: true, type: "timing" as const, duration: 850 }}
-            style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: theme.skeleton, marginTop: 6 }}
-          />
         </View>
       </View>
     );
@@ -91,22 +93,14 @@ export default function HistoryScreen() {
 
   function ScoreBadge({ score }: { score: number }) {
     const color = getScoreColor(score, theme);
-    const bgColor = getScoreBgColor(score, theme);
-    const label = getScoreShortLabel(score, score === 0);
+    const label = getTierLabel(score);
     return (
       <View
-        style={[
-          styles.scoreBadge,
-          {
-            backgroundColor: bgColor,
-            borderWidth: 1,
-            borderColor: color + "33",
-          },
-        ]}
+        style={[styles.scoreBadge, { backgroundColor: color }]}
         accessibilityLabel={`Score ${score}, ${label}`}
       >
-        <Text style={[styles.scoreBadgeText, { color }]}>{score}</Text>
-        <Text style={[styles.scoreBadgeLabelText, { color }]}>{label}</Text>
+        <Text style={styles.scoreBadgeText}>{score}</Text>
+        <Text style={styles.scoreBadgeLabelText}>{label}</Text>
       </View>
     );
   }
@@ -162,29 +156,29 @@ export default function HistoryScreen() {
           accessibilityRole="button"
           accessibilityHint="Tap to view details, long press to delete"
         >
-          <ScoreBadge score={item.score} />
-          <View style={styles.accessIconBox}>
-            {isScanned ? (
-              <Barcode size={15} color={theme.placeholder} />
-            ) : (
-              <MagnifyingGlass size={15} color={theme.placeholder} />
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.historyName} numberOfLines={1}>
-              {item.productName}
-            </Text>
-            <View style={styles.historyMetaRow}>
-              <Text style={styles.historyBrand} numberOfLines={1}>
-                {item.productBrand || ""}
-                {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
-              </Text>
+          <View>
+            <ScoreBadge score={item.score} />
+            <View style={styles.accessIconBox}>
+              {isScanned ? (
+                <Barcode size={12} color={theme.muted} />
+              ) : (
+                <MagnifyingGlass size={12} color={theme.muted} />
+              )}
             </View>
-            <Text style={styles.historyDate}>
-              {timeStr}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.nameTimeRow}>
+              <Text style={styles.historyName} numberOfLines={1}>
+                {item.productName}
+              </Text>
+              <Text style={styles.historyTime}>{timeStr}</Text>
+            </View>
+            <Text style={styles.historyBrand} numberOfLines={1}>
+              {item.productBrand || ""}
+              {item.productCategory ? ` \u00B7 ${item.productCategory}` : ""}
             </Text>
           </View>
-          <CaretRight size={15} color={theme.placeholder} />
+          <CaretRight size={20} color={theme.mutedIcon} />
         </TouchableOpacity>
       </MotiView>
     );
@@ -203,7 +197,7 @@ export default function HistoryScreen() {
       return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.8} accessibilityLabel={`Sort by ${label}, selected`} accessibilityRole="radio">
           <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
+            colors={["#2E7D32", "#3DD68C"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.sortChipGradient}
@@ -260,7 +254,7 @@ export default function HistoryScreen() {
           { paddingTop: (insets.top || webTopInset) + 12 },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: theme.text }]}>History</Text>
+        <Text style={styles.headerTitle}>History</Text>
         <View style={styles.searchBar}>
           <MagnifyingGlass size={18} color={theme.placeholder} />
           <TextInput
@@ -403,182 +397,194 @@ export default function HistoryScreen() {
   );
 }
 
-const createStyles = (theme: ThemeColors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.bg,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: theme.card,
-    zIndex: 10,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "900" as const,
-    color: theme.text,
-    letterSpacing: -0.5,
-    marginBottom: 12,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.bg,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 8,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.text,
-  },
-  sortRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-  },
-  sortChipGradient: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sortChipInactive: {
-    backgroundColor: theme.card,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-  },
-  sortChipTextActive: {
-    fontSize: 13,
-    fontWeight: "700" as const,
-    color: "#FFFFFF",
-  },
-  sortChipTextInactive: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: theme.muted,
-  },
-  sectionDate: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    letterSpacing: 1.3,
-    color: theme.placeholder,
-    textTransform: "uppercase",
-    marginTop: 24,
-    marginBottom: 10,
-  },
-  historyCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    backgroundColor: theme.card,
-    borderRadius: 24,
-    marginBottom: 10,
-    gap: 12,
-    borderWidth: 0.5,
-    borderColor: theme.border,
-    ...cardShadow("medium"),
-  },
-  accessIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: theme.bg,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scoreBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-  },
-  scoreBadgeText: {
-    fontSize: 15,
-    fontWeight: "800" as const,
-    lineHeight: 16,
-  },
-  scoreBadgeLabelText: {
-    fontSize: 8,
-    fontWeight: "700" as const,
-    letterSpacing: 0.3,
-    textTransform: "uppercase" as const,
-    marginTop: 1,
-  },
-  historyName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: theme.text,
-  },
-  historyMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  historyBrand: {
-    fontSize: 12,
-    color: theme.muted,
-    marginTop: 2,
-  },
-  historyDate: {
-    fontSize: 11,
-    color: theme.placeholder,
-    marginTop: 2,
-    fontWeight: "500" as const,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 80,
-    paddingBottom: 80,
-    gap: 6,
-  },
-  emptyIconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: theme.bg,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: theme.text,
-    marginTop: 4,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.muted,
-    textAlign: "center",
-    maxWidth: 260,
-    marginTop: 6,
-  },
-  emptyCTAButton: {
-    borderRadius: 999,
-    paddingHorizontal: 28,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-  emptyCTAText: {
-    color: "#FFFFFF",
-    fontWeight: "700" as const,
-    fontSize: 15,
-  },
-});
+const createStyles = (theme: ThemeColors) => {
+  const isDark = theme.bg === '#121212';
+
+  const bentoShadow = isDark
+    ? { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
+    : { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 };
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    header: {
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+      backgroundColor: theme.card,
+      zIndex: 10,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      ...bentoShadow,
+    },
+    headerTitle: {
+      fontSize: 28,
+      fontWeight: "700" as const,
+      color: theme.text,
+      letterSpacing: -0.3,
+      marginBottom: 16,
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.bg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 8,
+      marginBottom: 16,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    sortRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    sortChipGradient: {
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+    },
+    sortChipInactive: {
+      backgroundColor: isDark ? '#2C2C2C' : theme.card,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+    },
+    sortChipTextActive: {
+      fontSize: 13,
+      fontWeight: "600" as const,
+      color: "#FFFFFF",
+    },
+    sortChipTextInactive: {
+      fontSize: 13,
+      fontWeight: "500" as const,
+      color: theme.muted,
+    },
+    sectionDate: {
+      fontSize: 12,
+      fontWeight: "600" as const,
+      letterSpacing: 1.5,
+      color: theme.placeholder,
+      textTransform: "uppercase" as const,
+      marginTop: 24,
+      marginBottom: 12,
+    },
+    historyCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 12,
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      marginBottom: 12,
+      gap: 12,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'transparent',
+      ...bentoShadow,
+    },
+    accessIconBox: {
+      position: "absolute",
+      bottom: -4,
+      right: -4,
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      backgroundColor: theme.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.card,
+    },
+    scoreBadge: {
+      width: 46,
+      height: 46,
+      borderRadius: 12,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    scoreBadgeText: {
+      fontSize: 17,
+      fontWeight: "700" as const,
+      lineHeight: 20,
+      color: "white",
+    },
+    scoreBadgeLabelText: {
+      fontSize: 8,
+      fontWeight: "500" as const,
+      letterSpacing: 0.5,
+      textTransform: "uppercase" as const,
+      color: "rgba(255,255,255,0.9)",
+      marginTop: 0,
+    },
+    nameTimeRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 2,
+    },
+    historyName: {
+      fontSize: 15,
+      fontWeight: "700" as const,
+      color: theme.text,
+      flex: 1,
+      marginRight: 8,
+    },
+    historyTime: {
+      fontSize: 11,
+      color: theme.placeholder,
+      fontWeight: "400" as const,
+      marginTop: 2,
+    },
+    historyBrand: {
+      fontSize: 13,
+      color: theme.muted,
+    },
+    emptyState: {
+      alignItems: "center",
+      paddingTop: 80,
+      paddingBottom: 80,
+      gap: 6,
+    },
+    emptyIconCircle: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: theme.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 20,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: "700" as const,
+      color: theme.text,
+      marginTop: 4,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: theme.muted,
+      textAlign: "center",
+      maxWidth: 260,
+      marginTop: 6,
+    },
+    emptyCTAButton: {
+      borderRadius: 999,
+      paddingHorizontal: 28,
+      paddingVertical: 15,
+      alignItems: "center",
+    },
+    emptyCTAText: {
+      color: "#FFFFFF",
+      fontWeight: "700" as const,
+      fontSize: 15,
+    },
+  });
+};
