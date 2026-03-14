@@ -87,6 +87,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
+          tabBarAccessibilityLabel: "Home tab",
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={House} label="Home" focused={focused} />
           ),
@@ -96,6 +97,7 @@ export default function TabLayout() {
         name="scan"
         options={{
           title: "Scan",
+          tabBarAccessibilityLabel: "Scan a product",
           tabBarIcon: () => (
             <LinearGradient
               colors={["#3DD68C", "#2E7D32"]}
@@ -124,6 +126,7 @@ export default function TabLayout() {
         name="history"
         options={{
           title: "History",
+          tabBarAccessibilityLabel: "Scan history tab",
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={ClockCounterClockwise} label="History" focused={focused} />
           ),
@@ -133,6 +136,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          tabBarAccessibilityLabel: "Your profile tab",
           tabBarIcon: ({ focused }) => (
             <TabIcon icon={User} label="Profile" focused={focused} />
           ),

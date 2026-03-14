@@ -39,7 +39,7 @@ import {
   FileText,
   ShieldCheck,
 } from "phosphor-react-native";
-import Colors, { C, cardShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -76,22 +76,8 @@ interface StatsData {
   worstProducts: StatsProduct[];
 }
 
-function getScoreColor(score: number): string {
-  if (score === 0) return C.danger;
-  if (score <= 15) return C.darkRed;
-  if (score <= 35) return C.danger;
-  if (score <= 50) return C.amber;
-  if (score <= 74) return C.tealScore;
-  return C.green;
-}
-
 function getScoreColorLight(score: number): string {
-  if (score === 0) return C.dangerBg;
-  if (score <= 15) return "#FFE8E8";
-  if (score <= 35) return C.dangerBg;
-  if (score <= 50) return C.amberBg;
-  if (score <= 74) return C.tealBg;
-  return C.greenBg;
+  return getScoreBgColor(score);
 }
 
 function dedupeProducts(products: StatsProduct[]): StatsProduct[] {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { getScoreLabel, SCORE_LABELS, computeClusterId, SCORING_VERSION } from "../server/scoring-engine";
+import { getScoreLabel, SCORE_LABELS, computeClusterId, SCORING_VERSION, SCORE_SHORT_LABELS, getScoreTier } from "../server/scoring-engine";
+import { getScoreShortLabel, getScoreLabel as sharedGetScoreLabel, SCORE_LABELS as sharedLabels } from "../shared/score-labels";
 
 describe("getScoreLabel", () => {
   it("returns Allergen Alert when isAllergenAlert is true", () => {
@@ -109,5 +110,52 @@ describe("SCORE_LABELS", () => {
     expect(SCORE_LABELS.CAUTION).toBe("Consume with Caution");
     expect(SCORE_LABELS.GENERALLY_GOOD).toBe("Generally Good");
     expect(SCORE_LABELS.EXCELLENT_FIT).toBe("Excellent Fit");
+  });
+});
+
+describe("shared score-labels consistency", () => {
+  it("backend re-exports match shared module exactly", () => {
+    expect(SCORE_LABELS).toEqual(sharedLabels);
+  });
+
+  it("getScoreLabel from backend matches shared module", () => {
+    const testCases = [
+      { score: 0, alert: true },
+      { score: 0, alert: false },
+      { score: 10, alert: false },
+      { score: 25, alert: false },
+      { score: 40, alert: false },
+      { score: 60, alert: false },
+      { score: 85, alert: false },
+    ];
+    for (const { score, alert } of testCases) {
+      expect(getScoreLabel(score, alert)).toBe(sharedGetScoreLabel(score, alert));
+    }
+  });
+
+  it("every tier has both a full and short label", () => {
+    const tiers = Object.keys(SCORE_LABELS) as Array<keyof typeof SCORE_LABELS>;
+    for (const tier of tiers) {
+      expect(SCORE_LABELS[tier]).toBeTruthy();
+      expect(SCORE_SHORT_LABELS[tier]).toBeTruthy();
+    }
+  });
+
+  it("getScoreShortLabel returns correct short labels for all tiers", () => {
+    expect(getScoreShortLabel(0, true)).toBe("Allergen");
+    expect(getScoreShortLabel(10)).toBe("Avoid");
+    expect(getScoreShortLabel(25)).toBe("Risky");
+    expect(getScoreShortLabel(45)).toBe("Caution");
+    expect(getScoreShortLabel(65)).toBe("Good");
+    expect(getScoreShortLabel(90)).toBe("Great");
+  });
+
+  it("getScoreTier returns correct tier keys", () => {
+    expect(getScoreTier(0, true)).toBe("ALLERGEN_ALERT");
+    expect(getScoreTier(10)).toBe("STRONGLY_AVOID");
+    expect(getScoreTier(25)).toBe("HIGH_RISK");
+    expect(getScoreTier(45)).toBe("CAUTION");
+    expect(getScoreTier(65)).toBe("GENERALLY_GOOD");
+    expect(getScoreTier(90)).toBe("EXCELLENT_FIT");
   });
 });

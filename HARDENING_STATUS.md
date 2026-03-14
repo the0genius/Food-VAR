@@ -23,3 +23,10 @@ AI advice includes medical disclaimers and prompt hardening. However:
 - Chat feature is disabled by default (ENABLE_CHAT=false) — no system prompt guardrails.
 - Image generation is disabled by default (ENABLE_IMAGE_GENERATION=false) — no content moderation.
 - Enable these features only after adding appropriate safety measures.
+
+### Score Labels & Accessibility (Task #5)
+- Score labels are unified via `shared/score-labels.ts` — single source of truth for both backend and frontend.
+- Full labels (e.g., "Consume with Caution") used in API responses; short labels (e.g., "Caution") used in UI badges.
+- Score badges now show text labels alongside numeric values (non-color-only meaning for accessibility).
+- Tab bar, history items, score badges, and score ring all have `accessibilityLabel` and `accessibilityRole` props.
+- 83 unit tests passing (5 new label consistency tests).

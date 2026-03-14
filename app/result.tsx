@@ -30,7 +30,7 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
-import Colors, { C, cardShadow, coloredShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreShortLabel } from "@/constants/colors";
 import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
@@ -300,7 +300,11 @@ function ScoreRing({
   const strokeDashoffset = CIRCUMFERENCE * (1 - score / 100);
 
   return (
-    <Animated.View style={[ringStyles.container, containerStyle]}>
+    <Animated.View
+      style={[ringStyles.container, containerStyle]}
+      accessibilityLabel={`Health score ${score} out of 100, ${getScoreShortLabel(score, isAllergenAlert)}`}
+      accessibilityRole="text"
+    >
       <Svg width={GAUGE_SIZE} height={GAUGE_SIZE}>
         <Defs>
           <SvgGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
@@ -348,7 +352,7 @@ function ScoreRing({
           {displayedNumber}
         </Text>
         <Text style={[ringStyles.scoreLabel, { color: scoreColor }]}>
-          {isAllergenAlert ? "DANGER" : score <= 15 ? "AVOID" : score <= 35 ? "RISKY" : score <= 50 ? "FAIR" : score <= 74 ? "GOOD" : "GREAT"}
+          {getScoreShortLabel(score, isAllergenAlert)}
         </Text>
       </View>
     </Animated.View>

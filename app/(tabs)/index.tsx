@@ -4,8 +4,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import { C } from "@/constants/colors";
-import Colors, { cardShadow, coloredShadow } from "@/constants/colors";
+import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
@@ -67,31 +66,8 @@ function SkeletonRecentCard() {
   );
 }
 
-function getScoreColor(score: number): string {
-  if (score === 0) return C.danger;
-  if (score <= 15) return C.darkRed;
-  if (score <= 35) return C.danger;
-  if (score <= 50) return C.amber;
-  if (score <= 74) return C.tealScore;
-  return C.green;
-}
-
 function getScoreColorLight(score: number): string {
-  if (score === 0) return C.dangerBg;
-  if (score <= 15) return "#FFE8E8";
-  if (score <= 35) return C.dangerBg;
-  if (score <= 50) return C.amberBg;
-  if (score <= 74) return C.tealBg;
-  return C.greenBg;
-}
-
-function getScoreLabel(score: number): string {
-  if (score === 0) return "Allergen";
-  if (score <= 15) return "Avoid";
-  if (score <= 35) return "Risky";
-  if (score <= 50) return "Caution";
-  if (score <= 74) return "Good";
-  return "Great";
+  return getScoreBgColor(score);
 }
 
 function getRelativeTime(dateStr: string): string {
@@ -137,7 +113,10 @@ function getInsightText(avgScore: number, weeklyScans: number, totalScans: numbe
 
 function ScoreBadgeCircle({ score }: { score: number }) {
   return (
-    <View style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}>
+    <View
+      style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}
+      accessibilityLabel={`Score ${score}, ${getScoreShortLabel(score)}`}
+    >
       <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
     </View>
   );
@@ -168,6 +147,8 @@ function RecentScanCard({
         style={styles.recentCard}
         onPress={onPress}
         activeOpacity={0.7}
+        accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}`}
+        accessibilityRole="button"
       >
         <View style={styles.recentCardInner}>
           <View style={{ alignItems: "flex-end" }}>

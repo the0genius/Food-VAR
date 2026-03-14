@@ -23,7 +23,7 @@ import {
   WifiSlash,
 } from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import Colors, { C, cardShadow, getScoreColor, getScoreBgColor } from "@/constants/colors";
+import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, queryClient } from "@/lib/query-client";
 
@@ -85,6 +85,7 @@ function SkeletonHistoryCard() {
 function ScoreBadge({ score }: { score: number }) {
   const color = getScoreColor(score);
   const bgColor = getScoreBgColor(score);
+  const label = getScoreShortLabel(score);
   return (
     <View
       style={[
@@ -95,8 +96,10 @@ function ScoreBadge({ score }: { score: number }) {
           borderColor: color + "33",
         },
       ]}
+      accessibilityLabel={`Score ${score}, ${label}`}
     >
       <Text style={[styles.scoreBadgeText, { color }]}>{score}</Text>
+      <Text style={[styles.scoreBadgeLabelText, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -148,6 +151,9 @@ function HistoryItem({
           ]);
         }}
         activeOpacity={0.7}
+        accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}, ${timeStr}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to view details, long press to delete"
       >
         <ScoreBadge score={item.score} />
         <View style={styles.accessIconBox}>
@@ -494,12 +500,20 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   scoreBadgeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800" as const,
+    lineHeight: 16,
+  },
+  scoreBadgeLabelText: {
+    fontSize: 8,
+    fontWeight: "700" as const,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+    marginTop: 1,
   },
   historyName: {
     fontSize: 14,

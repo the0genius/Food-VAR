@@ -144,13 +144,12 @@ export function getScoreBgColor(score: number): string {
   return C.greenBg;
 }
 
-export function getScoreLabel(score: number): string {
-  if (score === 0) return "Allergen";
-  if (score <= 15) return "Avoid";
-  if (score <= 35) return "Risky";
-  if (score <= 50) return "Caution";
-  if (score <= 74) return "Good";
-  return "Great";
-}
+export {
+  getScoreLabel,
+  getScoreShortLabel,
+  getScoreTier,
+  SCORE_LABELS,
+  SCORE_SHORT_LABELS,
+} from "@shared/score-labels";
 
 export default Colors;

@@ -74,14 +74,8 @@ const CONDITION_LABELS: Record<string, string> = {
   goal_muscle_gain_bonus: "muscle gain goal",
 };
 
-export const SCORE_LABELS = {
-  ALLERGEN_ALERT: "Allergen Alert",
-  STRONGLY_AVOID: "Strongly Avoid",
-  HIGH_RISK: "High Risk",
-  CAUTION: "Consume with Caution",
-  GENERALLY_GOOD: "Generally Good",
-  EXCELLENT_FIT: "Excellent Fit",
-} as const;
+export { SCORE_LABELS, SCORE_SHORT_LABELS, getScoreTier } from "@shared/score-labels";
+import { SCORE_LABELS, getScoreLabel } from "@shared/score-labels";
 
 function getConditionLabel(condition: string): string {
   if (CONDITION_LABELS[condition]) return CONDITION_LABELS[condition];
@@ -126,14 +120,7 @@ function bonusInterpolate(
   }
 }
 
-export function getScoreLabel(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return SCORE_LABELS.ALLERGEN_ALERT;
-  if (score <= 15) return SCORE_LABELS.STRONGLY_AVOID;
-  if (score <= 35) return SCORE_LABELS.HIGH_RISK;
-  if (score <= 50) return SCORE_LABELS.CAUTION;
-  if (score <= 74) return SCORE_LABELS.GENERALLY_GOOD;
-  return SCORE_LABELS.EXCELLENT_FIT;
-}
+export { getScoreLabel } from "@shared/score-labels";
 
 function getAllergenSources(product: Product): string[] {
   return (product.declaredAllergens || []).map((a: string) => a.toLowerCase());

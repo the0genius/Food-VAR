@@ -98,7 +98,7 @@ Preferred communication style: Simple, everyday language.
 - Task #2: Allergen safety (declaredAllergens-only scoring, inferredAllergenWarnings, getApprovedProductFilter)
 - Task #3: AI cache & history integrity (version-aware cache, extraction confidence, history preservation, medical disclaimer)
 - Task #4: Auth flows & operational readiness (email verification, password reset, pino logger, health/readiness endpoints, env validation, ALLOWED_ORIGINS CORS)
-- Task #5: UX quality (pending)
+- Task #5: UX quality (unified score labels via shared/score-labels.ts, accessibility labels, non-color-only score meaning, 83 tests)
 
 ## Auth Security
 - **Password policy**: Min 8 chars, at least one number, at least one special character
@@ -117,5 +117,5 @@ Preferred communication style: Simple, everyday language.
 - **Typecheck**: `npm run typecheck` (tsc --noEmit)
 
 ## Testing
-- Unit tests: `npx vitest run` (78 tests across 6 files)
+- Unit tests: `npx vitest run` (83 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)
