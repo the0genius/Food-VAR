@@ -26,6 +26,7 @@ import {
   Pill,
   TrendDown,
   Heartbeat,
+  ShieldCheck,
 } from "phosphor-react-native";
 import Animated, {
   FadeInDown,
@@ -99,7 +100,8 @@ export default function OnboardingScreen() {
   const [diet, setDiet] = useState("none");
   const [loading, setLoading] = useState(false);
 
-  const totalSteps = 5;
+  const [consentChecked, setConsentChecked] = useState(false);
+  const totalSteps = 6;
   const progressWidth = useSharedValue(((0 + 1) / totalSteps) * 100);
 
   const progressAnimStyle = useAnimatedStyle(() => ({
@@ -156,6 +158,9 @@ export default function OnboardingScreen() {
           goal: goal || "general_wellness",
           dietaryPreference: diet === "none" ? null : diet,
           onboardingCompleted: true,
+          consentPolicyVersion: "1.0",
+          consentAiVersion: "1.0",
+          consentAcceptedAt: new Date().toISOString(),
         });
         router.replace("/(tabs)");
       } catch (e) {
@@ -452,6 +457,67 @@ export default function OnboardingScreen() {
             </View>
           </MotiView>
         );
+      case 5:
+        return (
+          <MotiView
+            from={{ opacity: 0, translateX: 60 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: "timing", duration: 450 }}
+            key="step-5"
+            style={styles.stepContent}
+          >
+            <View style={styles.stepIcon}>
+              <LinearGradient
+                colors={["#3DD68C", "#2E7D32"]}
+                style={styles.stepIconCircle}
+              >
+                <ShieldCheck size={56} color="#fff" weight="fill" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.stepTitle}>Before You Start</Text>
+            <Text style={styles.stepSubtitle}>
+              Please review and agree to our policies
+            </Text>
+
+            <View style={styles.consentWarningBox}>
+              <Text style={styles.consentWarningText}>
+                FoodVAR is not a medical device. Health scores and AI-generated advice are informational only. Always consult a healthcare professional for medical decisions.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.consentLink}
+              onPress={() => router.push("/privacy")}
+            >
+              <Text style={styles.consentLinkText}>Read Privacy Policy</Text>
+              <ArrowRight size={16} color={C.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.consentLink}
+              onPress={() => router.push("/terms")}
+            >
+              <Text style={styles.consentLinkText}>Read Terms of Service</Text>
+              <ArrowRight size={16} color={C.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.consentCheckRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setConsentChecked(!consentChecked);
+              }}
+              testID="consent-checkbox"
+            >
+              <View style={[styles.checkbox, consentChecked && styles.checkboxChecked]}>
+                {consentChecked && <CheckCircle size={20} color="#fff" weight="fill" />}
+              </View>
+              <Text style={styles.consentCheckText}>
+                I agree to the Privacy Policy and Terms of Service, and understand that AI-generated advice is not medical advice.
+              </Text>
+            </TouchableOpacity>
+          </MotiView>
+        );
     }
   }
 
@@ -508,7 +574,7 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           style={[styles.nextBtnWrapper, loading && styles.nextBtnDisabled]}
           onPress={handleNext}
-          disabled={loading || (step === 0 && (!email.trim() || !password.trim()))}
+          disabled={loading || (step === 0 && (!email.trim() || !password.trim())) || (step === 5 && !consentChecked)}
           activeOpacity={0.8}
           testID="next-button"
         >
@@ -800,5 +866,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: C.muted,
     fontWeight: "500",
+  },
+  consentWarningBox: {
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: "#FFA726",
+    marginBottom: 20,
+  },
+  consentWarningText: {
+    fontSize: 13,
+    color: "#5D4037",
+    lineHeight: 20,
+  },
+  consentLink: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: C.card,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    marginBottom: 10,
+    ...cardShadow("subtle"),
+  },
+  consentLinkText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: C.primary,
+  },
+  consentCheckRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 12,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: C.border,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: C.card,
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: C.primary,
+    borderColor: C.primary,
+  },
+  consentCheckText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.muted,
+    lineHeight: 20,
   },
 });

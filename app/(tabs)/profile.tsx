@@ -34,9 +34,14 @@ import {
   Shield,
   GearSix,
   Fire,
+  Export,
+  Trash,
+  FileText,
+  ShieldCheck,
 } from "phosphor-react-native";
 import Colors, { C, cardShadow } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 const CONDITIONS_MAP: Record<string, string> = {
   diabetes_type2: "Diabetes (Type 2)",
@@ -156,6 +161,50 @@ export default function ProfileScreen() {
   function handleEditProfile() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push("/edit-profile");
+  }
+
+  async function handleExportData() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const res = await apiRequest("GET", "/api/auth/export");
+      const data = await res.json();
+      const json = JSON.stringify(data, null, 2);
+      if (Platform.OS === "web") {
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "foodvar-data-export.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      Alert.alert("Data Exported", "Your data has been exported successfully.");
+    } catch (e) {
+      Alert.alert("Export Failed", "Could not export your data. Please try again.");
+    }
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all associated data. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Forever",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await apiRequest("DELETE", "/api/auth/account");
+              await logout();
+              router.replace("/onboarding");
+            } catch (e) {
+              Alert.alert("Error", "Could not delete your account. Please try again.");
+            }
+          },
+        },
+      ]
+    );
   }
 
   if (!user) return null;
@@ -484,13 +533,56 @@ export default function ProfileScreen() {
             <CaretRight size={18} color={C.placeholder} />
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/privacy")} activeOpacity={0.8} accessibilityLabel="Privacy policy" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: C.tealScore }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: C.tealBg }]}>
+                <ShieldCheck size={16} color={C.tealScore} weight="fill" />
+              </View>
+              <Text style={[styles.actionText, { color: C.text }]}>Privacy Policy</Text>
+            </View>
+            <CaretRight size={18} color={C.placeholder} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/terms")} activeOpacity={0.8} accessibilityLabel="Terms of service" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: C.tealScore }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: C.tealBg }]}>
+                <FileText size={16} color={C.tealScore} weight="fill" />
+              </View>
+              <Text style={[styles.actionText, { color: C.text }]}>Terms of Service</Text>
+            </View>
+            <CaretRight size={18} color={C.placeholder} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionCard} onPress={handleExportData} activeOpacity={0.8} accessibilityLabel="Export your data" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: "#1976D2" }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: "#EBF4FF" }]}>
+                <Export size={16} color="#1976D2" weight="fill" />
+              </View>
+              <Text style={[styles.actionText, { color: C.text }]}>Export My Data</Text>
+            </View>
+            <CaretRight size={18} color={C.placeholder} />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionCard} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: C.amber }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: C.amberBg }]}>
+                <SignOut size={16} color={C.amber} />
+              </View>
+              <Text style={[styles.actionText, { color: C.text }]}>Log Out</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionCard} onPress={handleDeleteAccount} activeOpacity={0.8} accessibilityLabel="Delete account" accessibilityRole="button">
             <View style={[styles.actionLeftBorder, { backgroundColor: C.danger }]} />
             <View style={styles.actionContent}>
               <View style={[styles.actionIconCircle, { backgroundColor: C.dangerBg }]}>
-                <SignOut size={16} color={C.danger} />
+                <Trash size={16} color={C.danger} />
               </View>
-              <Text style={[styles.actionText, { color: C.danger }]}>Log Out</Text>
+              <Text style={[styles.actionText, { color: C.danger }]}>Delete Account</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>

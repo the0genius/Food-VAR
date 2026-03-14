@@ -61,6 +61,9 @@ const profileSchema = z.object({
   dietaryPreference: z.string().max(50).nullable().optional(),
   goal: z.string().max(50).nullable().optional(),
   onboardingCompleted: z.boolean().optional(),
+  consentPolicyVersion: z.string().max(20).optional(),
+  consentAiVersion: z.string().max(20).optional(),
+  consentAcceptedAt: z.string().datetime().optional(),
 });
 
 const scoreSchema = z.object({
@@ -404,6 +407,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dietaryPreference,
         goal,
         onboardingCompleted,
+        consentPolicyVersion,
+        consentAiVersion,
+        consentAcceptedAt,
       } = parsed.data;
 
       const clusterId = computeClusterId({
@@ -431,6 +437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             onboardingCompleted !== undefined ? onboardingCompleted : true,
           profileClusterId: clusterId,
           updatedAt: new Date(),
+          ...(consentPolicyVersion !== undefined && { consentPolicyVersion }),
+          ...(consentAiVersion !== undefined && { consentAiVersion }),
+          ...(consentAcceptedAt !== undefined && { consentAcceptedAt: new Date(consentAcceptedAt) }),
         })
         .where(eq(users.id, userId))
         .returning();

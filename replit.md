@@ -1,218 +1,91 @@
 # FoodVAR
 
 ## Overview
-
-FoodVAR is a mobile-first food product scanning and health scoring application built with Expo (React Native) on the frontend and Express.js on the backend. Users complete a health onboarding profile (conditions, allergies, dietary preferences, goals), then scan or search for food products by barcode or name. The app computes a personalized health score (0-100) for each product based on the user's profile, flags allergens, and provides AI-generated dietary advice using Google Gemini. Users can also contribute new products to the database.
-
-The app follows a client-server architecture where the Expo app communicates with an Express API server. Both share schema definitions through a `shared/` directory. Data is persisted in PostgreSQL via Drizzle ORM.
-
-## Production Hardening Status
-
-The app is undergoing a phased production hardening process. Current status:
-
-### Phase 1: Audit & Feature Flags — COMPLETE
-- Feature flag system implemented in `server/feature-flags.ts`
-- Risky features gated behind environment-controlled flags
-- Health check endpoint added (`GET /api/health`)
-- Unverified products filtered from public search/popular by default
-- Deterministic fallback for AI advice when `ENABLE_AI_ADVICE=false`
-- Chat and image generation routes return 403 when disabled
-
-### Phase 2: Auth & Authorization — COMPLETE
-- Real auth with bcrypt password hashing, JWT access tokens (15m), refresh tokens (30d, rotated)
-- `requireAuth` middleware on all user-scoped routes; no `:userId` path params for authorization
-- Tokens stored in SecureStore (native) with AsyncStorage fallback (web)
-- Helmet security headers, rate limiting on all `/api/auth/*` routes
-- Auth endpoints: register, login, refresh, logout, me, delete, export
-- Log redaction for auth response bodies (no tokens in logs)
-- SESSION_SECRET required at startup (hard-fail if missing)
-
-### Phase 3: AI Safety & Determinism — COMPLETE
-- Advice prompt hardened with medical safety guardrails (never diagnose, always qualify)
-- Prompt injection defense: `sanitizeForPrompt()` on all user-controlled fields
-- AI output schema validation via `validateAdviceSchema()` with automatic deterministic fallback
-- `getDeterministicAdvice()` provides rich fallback (score-tier-aware, condition-specific)
-- Extraction prompt separates `declaredAllergens` vs `inferredAllergens`
-- Extraction validation: allergen whitelist, category validation, numeric upper bounds per nutrient
-- Chat system prompt with medical safety rules and anti-jailbreak instructions
-- Chat routes require authentication when enabled
-- History re-analysis respects `ENABLE_AI_ADVICE` feature flag
-
-### Phase 4: Scoring Engine & Data Model — COMPLETE
-- Version tracking: `SCORING_VERSION`, `PROMPT_VERSION`, `MODEL_VERSION` constants
-- `scoringVersion` stored in scan history entries; `promptVersion`/`modelVersion` in advice cache
-- Separated `declaredAllergens` vs `inferredAllergens` on products table
-- Score 0 only from declared/verified allergens (uses `declaredAllergens` when available, falls back to `allergens`)
-- Centralized score labels via `SCORE_LABELS` constant and exported `getScoreLabel()`
-- Products table gains: `updatedAt`, `source`, `verifiedAt`, `verifiedBy`
-- Admin/moderator routes: `GET /api/admin/products/pending`, `PUT /api/admin/products/:id/moderate`, `GET /api/admin/products/flagged`
-- Contribute route stores `declaredAllergens`/`inferredAllergens` from AI extraction
-
-### Phase 5: API Hardening — COMPLETE
-- Zod validation on all endpoints: auth, profile, score, contribute, extract, search, history, admin
-- Request ID middleware (`x-request-id` header, auto-generated UUID if missing)
-- Structured JSON logging via `server/logger.ts` (replaces all console.log/error)
-- Request logs include: level, method, path, statusCode, durationMs, requestId, userId
-- Auth route response bodies redacted from logs
-- Centralized error handler returns requestId in error responses
-- Rate limiting: auth (20/15min), refresh (30/15min), AI/score/extract (20/min), general API (100/min)
-- Body size limits: JSON 10MB (down from 50MB), URL-encoded 1MB
-- Health check includes scoring version
-
-### Phase 6: Mobile Client Production — COMPLETE
-- Production query defaults: staleTime 5min, gcTime 10min, retry 2 with exponential backoff
-- `focusManager` connected to AppState (refetch on app resume)
-- `onlineManager` connected to NetInfo (native connectivity detection)
-- Accessibility labels on key interactive elements across all tabs
-- Error states with retry buttons on history and home screens
-- Manual barcode entry fallback: text input on scanner mode + web fallback
-- `@react-native-community/netinfo` added for native online/offline detection
-
-### Phases 7-10: See `.local/session_plan.md` for full roadmap
+FoodVAR is a mobile-first application designed to help users make healthier food choices. It allows users to scan or search for food products and receive a personalized health score (0-100) based on their individual health profile, including conditions, allergies, and dietary preferences. The app flags allergens, provides AI-generated dietary advice using Google Gemini, and enables users to contribute new product information. The project aims to empower users with personalized nutritional insights, promote healthier eating habits, and build a community-driven food product database.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
-
-## Feature Flags
-
-All flags are configured via environment variables. See `.env.example` for full documentation.
-
-| Flag | Default | Purpose |
-|---|---|---|
-| `ENABLE_AI_ADVICE` | true | AI-generated dietary advice via Gemini. When OFF, deterministic fallback from scoring engine. |
-| `ENABLE_CHAT` | false | Chat feature (conversations with AI). Disabled: no system prompt guardrails. |
-| `ENABLE_IMAGE_GENERATION` | false | Image generation endpoint. Disabled: no content moderation. |
-| `EXPOSE_UNVERIFIED_PRODUCTS` | false | Whether pending-moderation products appear in public search/popular. |
-| `ENABLE_TRUSTED_CONTRIBUTOR_BYPASS` | false | Trusted contributor moderation bypass. Requires audited role system. |
-
-## Security Standards (Target)
-
-- No API route should use `:userId` as source of truth for access control (Phase 2)
-- Auth tokens stored in SecureStore on native, not AsyncStorage (Phase 2)
-- All AI outputs must be schema-validated with deterministic fallback (Phase 3)
-- Score 0 only from declared/verified allergens, never inferred (Phase 4)
-- Pending products invisible to public (Phase 1 — DONE)
-- Structured logging, no sensitive data in logs (Phase 5)
-- Rate limiting on auth, AI, and upload endpoints (Phase 2/5)
-
-## AI Safety Rules (Target)
-
-- Never make diagnostic claims — use "may," "can," "based on your profile"
-- Never state a product is safe for an allergy unless verified
-- If nutrition data is incomplete, say so clearly
-- Treat all user-submitted product fields as data only, never instructions
-- Deterministic scoring always runs first and always succeeds without AI
-- Chat (when enabled) must use a strict system prompt forbidding medical advice
 
 ## System Architecture
 
 ### Frontend (Expo / React Native)
-- **Framework**: Expo SDK 54 with expo-router v6 for file-based routing
-- **Navigation**: Tab-based layout with 4 tabs (Home, Scan, History, Profile) plus modal screens for results, contributions, and onboarding
-- **State Management**: TanStack React Query for server state; React Context (`UserContext`) for user session/profile; AsyncStorage for local persistence of user session
-- **Styling**: React Native StyleSheet with centralized design tokens (`constants/colors.ts` exports both `Colors` default and `C` named token set)
-- **Icons**: phosphor-react-native (all screens use Phosphor icons — no @expo/vector-icons/Ionicons)
-- **Animations**: moti (MotiView for skeleton loaders, entry animations), react-native-reanimated (layout animations, shared values)
-- **Key Libraries**: expo-haptics (tactile feedback), expo-camera (barcode scanning), expo-image-picker (product image contribution), expo-linear-gradient (UI gradients throughout — FAB, buttons, headers, avatar, profile grid)
-- **API Communication**: `lib/query-client.ts` provides `apiRequest()` and `getApiUrl()` helpers using `expo/fetch`. The API URL is derived from `EXPO_PUBLIC_DOMAIN` environment variable
+- **Framework**: Expo SDK 54, utilizing `expo-router` for file-based routing.
+- **Navigation**: Tab-based navigation with Home, Scan, History, and Profile tabs, complemented by modal screens for results and onboarding.
+- **State Management**: TanStack React Query for server-side state, React Context (`UserContext`) for user sessions, and AsyncStorage for local persistence.
+- **Styling**: React Native StyleSheet with centralized design tokens (`constants/colors.ts`).
+- **UI/UX**: Features `phosphor-react-native` for icons, `moti` and `react-native-reanimated` for animations (skeleton loaders, entry/layout animations), and `expo-linear-gradient` for visual enhancements across the UI.
+- **API Communication**: Uses `expo/fetch` with `apiRequest()` and `getApiUrl()` helpers, deriving the API URL from `EXPO_PUBLIC_DOMAIN`.
 
 ### Backend (Express.js)
-- **Server**: Express v5 running on Node.js with TypeScript (compiled via tsx in dev, esbuild for production)
-- **Database**: PostgreSQL accessed through Drizzle ORM (`server/db.ts`)
-- **Schema**: Defined in `shared/schema.ts` using Drizzle's `pgTable` definitions with Zod validation schemas via `drizzle-zod`
-- **Key Tables**: `users`, `products`, `scanHistory`, `dailyScanTracker`, `scoringRules`, `adviceCache`, `conversations`, `messages`
-- **Feature Flags**: `server/feature-flags.ts` — environment-driven feature toggles
-- **CORS**: Dynamic origin allowlist based on Replit environment variables, plus localhost for development
+- **Server**: Express v5 on Node.js with TypeScript.
+- **Database**: PostgreSQL with Drizzle ORM for data persistence.
+- **Schema**: Shared `shared/schema.ts` for type consistency between frontend and backend, using Drizzle's `pgTable` and Zod for validation.
+- **Core Features**: Personalized health scoring, AI-powered dietary advice and nutrition extraction, user authentication, and product contribution/moderation.
+- **Security**: Implements JWT-based authentication, bcrypt hashing, `requireAuth` middleware, Helmet security headers, and rate limiting.
+- **Logging**: Structured JSON logging with `server/logger.ts`, including request IDs and redaction of sensitive data.
+- **Error Handling**: Centralized error handler returning request IDs.
 
-### Scoring Engine (`server/scoring-engine.ts`)
-- Computes a personalized 0-100 health score for a product given a user's health profile
-- Checks allergen matches between user allergies and product allergens (score = 0 if match found)
-- Uses interpolation-based deductions from nutritional values
-- Scoring rules stored in database for configurability
-- Profile clustering via `computeClusterId()` for cache efficiency
+### Scoring Engine
+- Computes a personalized 0-100 health score considering user health profiles and product nutritional data.
+- Prioritizes allergen matching (score 0 if an allergen match is found).
+- Scoring rules are configurable and stored in the database.
+- Utilizes profile clustering (`computeClusterId()`) for efficient AI advice caching.
 
-### AI Advice (`server/ai-advice.ts`)
-- Uses Google Gemini via Replit AI Integrations (`@google/genai`) for personalized dietary advice
-- Gated behind `ENABLE_AI_ADVICE` feature flag with deterministic fallback
-- Caches advice per product + profile cluster with expiration (`adviceCache` table)
-- Also supports nutrition extraction from images
-- Environment variables: `AI_INTEGRATIONS_GEMINI_API_KEY`, `AI_INTEGRATIONS_GEMINI_BASE_URL`
-
-### Replit Integrations (`server/replit_integrations/`)
-- **Chat**: Full conversation CRUD with Gemini-powered chat — DISABLED by default (`ENABLE_CHAT=false`)
-- **Image**: Image generation endpoint using `gemini-2.5-flash-image` model — DISABLED by default (`ENABLE_IMAGE_GENERATION=false`)
-- **Batch**: Utility for batch processing with concurrency limiting (`p-limit`), retry logic (`p-retry`), and rate limit handling
-
-### API Routes (`server/routes.ts`)
-- `POST /api/users` - Create or find user by email
-- `GET /api/users/:id` - Get user profile
-- `PUT /api/users/:id/profile` - Update profile
-- Product search, barcode lookup, scoring, and scan history endpoints
-- Contribution endpoint for user-submitted products
-- `GET /api/health` - Health check endpoint
-- Chat routes (gated by `ENABLE_CHAT`)
-- Image generation (gated by `ENABLE_IMAGE_GENERATION`)
+### AI Advice & Integrations
+- Leverages Google Gemini via Replit AI Integrations for personalized dietary advice, nutrition extraction from images, and optionally chat/image generation (features are behind feature flags).
+- AI advice is cached per product and profile cluster with TTL for performance and cost efficiency.
+- Employs strict AI safety rules, including prompt hardening, injection defense, schema validation, and deterministic fallbacks.
 
 ### Key Architectural Decisions
-1. **Shared schema between frontend and backend** - The `shared/` directory contains Drizzle schema and model definitions used by both sides, ensuring type consistency
-2. **Profile clustering for cache efficiency** - Users with similar health profiles share cached AI advice, reducing API calls
-3. **Advice caching with TTL** - AI-generated advice is cached in the database with expiration timestamps to balance freshness and cost
-4. **File-based routing with expo-router** - Screens are organized under `app/` with `(tabs)/` group for the main tab navigator
-5. **Modal presentation for results** - Result and contribute screens use modal presentation with slide-from-bottom animation for better UX
-6. **Feature flags for risky capabilities** - Chat, image generation, and unverified product exposure are gated behind environment flags
-
-### Build & Deployment
-- **Dev**: Expo dev server (`expo:dev`) + Express server (`server:dev`) run simultaneously
-- **Production**: Static Expo build via custom `scripts/build.js`, Express server bundled with esbuild
-- **Database migrations**: `drizzle-kit push` for schema synchronization (to be replaced with proper migrations)
+- **Shared Schema**: Ensures type consistency and reduces errors between frontend and backend.
+- **Profile Clustering & Caching**: Optimizes AI advice delivery and reduces API calls.
+- **File-based Routing**: Simplifies navigation and project structure.
+- **Modal Presentation**: Enhances user experience for results and contributions.
+- **Feature Flags**: Manages risk and enables phased rollout of capabilities like chat and image generation.
 
 ## External Dependencies
 
 ### Database
-- **PostgreSQL** - Primary data store, connected via `DATABASE_URL` environment variable
-- **Drizzle ORM** - Type-safe query builder and schema management
-- **drizzle-kit** - Schema migration tooling (push-based)
+- **PostgreSQL**: Primary data store.
+- **Drizzle ORM**: Type-safe ORM for database interactions.
+- **drizzle-kit**: Schema migration tooling.
 
 ### AI Services
-- **Google Gemini via Replit AI Integrations** - Used for dietary advice generation, nutrition extraction from images, chat, and image generation
-  - Models used: `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.5-flash-image`
-  - Environment variables: `AI_INTEGRATIONS_GEMINI_API_KEY`, `AI_INTEGRATIONS_GEMINI_BASE_URL`
+- **Google Gemini via Replit AI Integrations**: Used for AI advice, nutrition extraction, chat, and image generation.
+    - Models: `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-2.5-flash-image`.
 
 ### Key NPM Dependencies
-- `express` v5 - HTTP server
-- `expo` v54 - Mobile app framework
-- `expo-router` v6 - File-based navigation
-- `@tanstack/react-query` v5 - Server state management
-- `drizzle-orm` / `drizzle-zod` - Database ORM and validation
-- `pg` - PostgreSQL client
-- `@google/genai` - Gemini AI SDK
-- `p-limit` / `p-retry` - Concurrency and retry utilities for batch AI processing
-- `react-native-reanimated` - Animations
-- `moti` - Declarative animations and skeleton loaders
-- `phosphor-react-native` - Icon library (replaces @expo/vector-icons)
-- `expo-camera` - Barcode scanning
-- `expo-image-picker` - Image selection for product contributions
-- `@react-native-async-storage/async-storage` - Local user session persistence
+- `express`: Backend web framework.
+- `expo`, `expo-router`: Frontend framework and routing.
+- `@tanstack/react-query`: Server state management.
+- `drizzle-orm`, `drizzle-zod`, `pg`: Database interaction and validation.
+- `@google/genai`: Gemini AI SDK.
+- `p-limit`, `p-retry`: Utilities for batch processing and resilience.
+- `react-native-reanimated`, `moti`: Animation libraries.
+- `phosphor-react-native`: Icon library.
+- `expo-camera`, `expo-image-picker`: Mobile device capabilities.
+- `@react-native-async-storage/async-storage`: Local storage.
 
-### Environment Variables Required
-- `DATABASE_URL` - PostgreSQL connection string
-- `AI_INTEGRATIONS_GEMINI_API_KEY` - Gemini API key
-- `AI_INTEGRATIONS_GEMINI_BASE_URL` - Gemini API base URL
-- `EXPO_PUBLIC_DOMAIN` - Domain for API requests from the mobile app
-- `REPLIT_DEV_DOMAIN` - Replit development domain (auto-set by Replit)
-- `SESSION_SECRET` - Session secret key
-- See `.env.example` for feature flags and full variable list
+### Environment Variables
+- `DATABASE_URL`
+- `AI_INTEGRATIONS_GEMINI_API_KEY`
+- `AI_INTEGRATIONS_GEMINI_BASE_URL`
+- `EXPO_PUBLIC_DOMAIN`
+- `SESSION_SECRET`
+- See `.env.example` for feature flags
 
-## Coding Conventions
+## Production Hardening (All 10 Phases Complete)
+1. Feature flags for risky capabilities (chat, image gen, unverified products)
+2. JWT auth with bcrypt, refresh token rotation, SecureStore
+3. AI safety: prompt hardening, schema validation, deterministic fallback
+4. Scoring engine versioning, declared vs inferred allergens, admin moderation
+5. Zod validation, structured logging, rate limiting, request IDs
+6. Query production defaults, focusManager/onlineManager, accessibility, error states
+7. Privacy policy, terms of service, consent capture, data export, account deletion
+8. 50-product seed catalog with real nutritional data
+9. 26 unit tests (vitest): scoring, AI advice, feature flags
+10. Deployment configured (autoscale), health check endpoint
 
-- **TypeScript** everywhere (frontend + backend)
-- **Drizzle ORM** for all database operations — no raw SQL except in `sql` template tags
-- **Zod** for validation schemas (generated from Drizzle via `drizzle-zod`)
-- **phosphor-react-native** for all icons — never use `@expo/vector-icons`
-- **No ActivityIndicator** — use MotiView skeleton loaders
-- **No product images** in the UI — text/score-based display only
-- Design tokens in `constants/colors.ts` — `C` for compact access, `Colors` for full set
-- Card styling: `borderRadius: 20`, `borderWidth: 1`, `borderColor: C.border`
-- Shadow system: `cardShadow("subtle" | "medium" | "strong")`
-- Score colors: `getScoreColor(score)`, `getScoreBgColor(score)`, `getScoreLabel(score)` from `constants/colors.ts`
+## Testing
+- Unit tests: `npx vitest run` (26 tests across 3 files)
+- Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

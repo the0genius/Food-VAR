@@ -1,0 +1,72 @@
+import { describe, it, expect } from "vitest";
+import { getDeterministicAdvice } from "../server/ai-advice";
+import type { ScoreDeduction } from "../server/scoring-engine";
+
+describe("getDeterministicAdvice", () => {
+  it("returns allergen alert for allergen matches", () => {
+    const result = getDeterministicAdvice(0, "Allergen Alert", true, ["gluten", "nuts"], []);
+    expect(result.headline).toBe("Allergen Alert");
+    expect(result.advice).toContain("gluten");
+    expect(result.advice).toContain("nuts");
+    expect(result.advice).toContain("Avoid");
+    expect(result.highlights).toEqual(["Contains: gluten", "Contains: nuts"]);
+    expect(result.fromCache).toBe(false);
+  });
+
+  it("returns positive advice for high scores (75+)", () => {
+    const result = getDeterministicAdvice(85, "Excellent Fit", false, [], []);
+    expect(result.advice).toContain("good match");
+    expect(result.coachTip).toContain("Great choice");
+  });
+
+  it("uses top bonus for high score advice", () => {
+    const deductions: ScoreDeduction[] = [
+      { nutrient: "fiber", value: 8, points: 5, reason: "fiber is beneficial for general nutrition", category: "bonus" },
+    ];
+    const result = getDeterministicAdvice(80, "Excellent Fit", false, [], deductions);
+    expect(result.advice).toContain("fiber is beneficial");
+  });
+
+  it("returns moderate advice for scores 51-74", () => {
+    const deductions: ScoreDeduction[] = [
+      { nutrient: "sugar", value: 15, points: -8, reason: "sugar (15g) is concerning for diabetes type 2", category: "penalty" },
+    ];
+    const result = getDeterministicAdvice(55, "Generally Good", false, [], deductions);
+    expect(result.advice).toContain("decent option");
+    expect(result.coachTip).toContain("sugar");
+  });
+
+  it("returns caution advice for scores 36-50", () => {
+    const result = getDeterministicAdvice(42, "Consume with Caution", false, [], []);
+    expect(result.coachTip).toContain("occasional treat");
+  });
+
+  it("returns concern advice for low scores (1-35)", () => {
+    const deductions: ScoreDeduction[] = [
+      { nutrient: "sodium", value: 800, points: -15, reason: "sodium (800mg) is concerning for hypertension", category: "penalty" },
+    ];
+    const result = getDeterministicAdvice(20, "Strongly Avoid", false, [], deductions);
+    expect(result.advice).toContain("sodium");
+    expect(result.coachTip).toContain("alternatives");
+  });
+
+  it("includes up to 3 deduction reasons in highlights", () => {
+    const deductions: ScoreDeduction[] = [
+      { nutrient: "sugar", value: 30, points: -10, reason: "High sugar", category: "penalty" },
+      { nutrient: "fat", value: 20, points: -8, reason: "High fat", category: "penalty" },
+      { nutrient: "sodium", value: 600, points: -5, reason: "High sodium", category: "penalty" },
+      { nutrient: "calories", value: 400, points: -3, reason: "High calories", category: "penalty" },
+    ];
+    const result = getDeterministicAdvice(30, "High Risk", false, [], deductions);
+    expect(result.highlights.length).toBe(3);
+  });
+
+  it("never returns empty advice string", () => {
+    const scores = [0, 1, 15, 35, 50, 74, 100];
+    for (const score of scores) {
+      const result = getDeterministicAdvice(score, "test", false, [], []);
+      expect(result.advice.length).toBeGreaterThan(0);
+      expect(result.headline.length).toBeGreaterThan(0);
+    }
+  });
+});
