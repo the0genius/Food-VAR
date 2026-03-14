@@ -230,7 +230,7 @@ function getNutrientUnit(key: string): string {
 
 function getNutrientBarColor(key: string, value: number, t: ThemeColors = C): string {
   const dailyVal = DAILY_VALUES[key];
-  if (!dailyVal) return t.green;
+  if (!dailyVal) return t.muted;
   const pct = value / dailyVal;
   if (pct > 0.4) return t.danger;
   if (pct > 0.2) return t.amber;

@@ -423,23 +423,20 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {user.dietaryPreference && user.dietaryPreference !== "none" && (
-            <>
-              <View style={styles.passportDivider} />
-              <View style={styles.passportRow}>
-                <View style={[styles.passportIcon, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
-                  <Leaf size={16} color={theme.tealScore} weight="fill" />
-                </View>
-                <View style={styles.passportTextWrap}>
-                  <Text style={styles.passportLabel}>DIET</Text>
-                  <Text style={styles.passportValue}>
-                    {user.dietaryPreference.charAt(0).toUpperCase() +
-                      user.dietaryPreference.slice(1)}
-                  </Text>
-                </View>
-              </View>
-            </>
-          )}
+          <View style={styles.passportDivider} />
+          <View style={styles.passportRow}>
+            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
+              <Leaf size={16} color={theme.tealScore} weight="fill" />
+            </View>
+            <View style={styles.passportTextWrap}>
+              <Text style={styles.passportLabel}>DIET</Text>
+              <Text style={styles.passportValue}>
+                {user.dietaryPreference && user.dietaryPreference !== "none"
+                  ? user.dietaryPreference.charAt(0).toUpperCase() + user.dietaryPreference.slice(1)
+                  : "Not set"}
+              </Text>
+            </View>
+          </View>
         </Animated.View>
 
         {/* 5. Performance Snapshot — Side by Side */}
