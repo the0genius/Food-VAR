@@ -14,12 +14,17 @@ export interface ScoreDeduction {
   category: string;
 }
 
+export type AllergenDisplayState = "hard_alert" | "product_contains_nonmatching" | "possible_risk" | "none";
+
 export interface ScoreResult {
   score: number;
   label: string;
   isAllergenAlert: boolean;
   matchedAllergens: string[];
   inferredAllergenWarnings: string[];
+  allergenDisplayState: AllergenDisplayState;
+  productDeclaredAllergens: string[];
+  productInferredAllergens: string[];
   deductions: ScoreDeduction[];
   scoringVersion: string;
 }
@@ -182,6 +187,9 @@ export async function computeScore(
 
   const inferredAllergenWarnings = getInferredAllergenWarnings(product, user, ALLERGEN_GROUPS);
 
+  const productDeclaredAllergens = (product.declaredAllergens || []).map((a: string) => a.toLowerCase());
+  const productInferredAllergens = (product.inferredAllergens || []).map((a: string) => a.toLowerCase());
+
   if (matchedAllergens.length > 0) {
     return {
       score: 0,
@@ -189,6 +197,9 @@ export async function computeScore(
       isAllergenAlert: true,
       matchedAllergens,
       inferredAllergenWarnings,
+      allergenDisplayState: "hard_alert",
+      productDeclaredAllergens,
+      productInferredAllergens,
       deductions: [],
       scoringVersion: SCORING_VERSION,
     };
@@ -324,12 +335,22 @@ export async function computeScore(
 
   deductions.sort((a, b) => a.points - b.points);
 
+  let allergenDisplayState: AllergenDisplayState = "none";
+  if (inferredAllergenWarnings.length > 0) {
+    allergenDisplayState = "possible_risk";
+  } else if (productDeclaredAllergens.length > 0 || productInferredAllergens.length > 0) {
+    allergenDisplayState = "product_contains_nonmatching";
+  }
+
   return {
     score,
     label: getScoreLabel(score, false),
     isAllergenAlert: false,
     matchedAllergens: [],
     inferredAllergenWarnings,
+    allergenDisplayState,
+    productDeclaredAllergens,
+    productInferredAllergens,
     deductions,
     scoringVersion: SCORING_VERSION,
   };

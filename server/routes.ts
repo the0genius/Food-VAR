@@ -866,6 +866,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isAllergenAlert: scoreResult.isAllergenAlert,
         matchedAllergens: scoreResult.matchedAllergens,
         inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
+        allergenDisplayState: scoreResult.allergenDisplayState,
+        productDeclaredAllergens: scoreResult.productDeclaredAllergens,
+        productInferredAllergens: scoreResult.productInferredAllergens,
         advice: adviceResult.advice,
         headline: adviceResult.headline,
         coachTip: adviceResult.coachTip,
@@ -1104,6 +1107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productFiber: products.fiber,
           productSodium: products.sodium,
           productAllergens: products.allergens,
+          productDeclaredAllergens: products.declaredAllergens,
+          productInferredAllergens: products.inferredAllergens,
           productServingSize: products.servingSize,
           productIngredients: products.ingredients,
           productNutritionFacts: products.nutritionFacts,
@@ -1176,6 +1181,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 matchedAllergens: scoreResult.matchedAllergens,
                 isAllergenAlert: scoreResult.isAllergenAlert,
                 inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
+                allergenDisplayState: scoreResult.allergenDisplayState,
+                productDeclaredAllergens: scoreResult.productDeclaredAllergens,
+                productInferredAllergens: scoreResult.productInferredAllergens,
               });
             }
           }

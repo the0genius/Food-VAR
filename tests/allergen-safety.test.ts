@@ -171,3 +171,73 @@ describe("allergen source safety", () => {
     expect(result.inferredAllergenWarnings).toEqual([]);
   });
 });
+
+describe("allergenDisplayState", () => {
+  it("returns hard_alert when user allergies match declared allergens", async () => {
+    const product = makeProduct({ declaredAllergens: ["milk", "soy"] });
+    const user = makeUser({ allergies: ["milk"] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("hard_alert");
+    expect(result.isAllergenAlert).toBe(true);
+    expect(result.score).toBe(0);
+  });
+
+  it("returns product_contains_nonmatching when product has allergens but none match user", async () => {
+    const product = makeProduct({ declaredAllergens: ["gluten", "soy"] });
+    const user = makeUser({ allergies: ["peanuts"] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("product_contains_nonmatching");
+    expect(result.isAllergenAlert).toBe(false);
+    expect(result.score).not.toBe(0);
+  });
+
+  it("returns possible_risk when inferred allergens match user but declared do not", async () => {
+    const product = makeProduct({
+      declaredAllergens: [],
+      inferredAllergens: ["milk"],
+    });
+    const user = makeUser({ allergies: ["milk"] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("possible_risk");
+    expect(result.isAllergenAlert).toBe(false);
+    expect(result.inferredAllergenWarnings).toContain("milk");
+  });
+
+  it("returns none when no allergens and no user allergies", async () => {
+    const product = makeProduct({ declaredAllergens: [], inferredAllergens: [] });
+    const user = makeUser({ allergies: [] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("none");
+    expect(result.isAllergenAlert).toBe(false);
+  });
+
+  it("returns none when user has allergies but product has no allergens", async () => {
+    const product = makeProduct({ declaredAllergens: [], inferredAllergens: [] });
+    const user = makeUser({ allergies: ["milk", "peanuts"] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("none");
+    expect(result.isAllergenAlert).toBe(false);
+  });
+
+  it("returns productDeclaredAllergens and productInferredAllergens in result", async () => {
+    const product = makeProduct({
+      declaredAllergens: ["gluten", "soy"],
+      inferredAllergens: ["milk"],
+    });
+    const user = makeUser({ allergies: [] });
+    const result = await computeScore(product, user);
+    expect(result.productDeclaredAllergens).toEqual(["gluten", "soy"]);
+    expect(result.productInferredAllergens).toEqual(["milk"]);
+  });
+
+  it("possible_risk takes priority over product_contains_nonmatching", async () => {
+    const product = makeProduct({
+      declaredAllergens: ["gluten"],
+      inferredAllergens: ["milk"],
+    });
+    const user = makeUser({ allergies: ["milk"] });
+    const result = await computeScore(product, user);
+    expect(result.allergenDisplayState).toBe("possible_risk");
+    expect(result.inferredAllergenWarnings).toContain("milk");
+  });
+});

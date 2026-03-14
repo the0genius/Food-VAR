@@ -107,6 +107,7 @@ Preferred communication style: Simple, everyday language.
 ## Second-Round Hardening (Tasks #1-5)
 - Task #1: Schema, migrations & data ownership fixes (conversations/messages userId FK, scanDate date type, migration chain)
 - Task #2: Allergen safety (declaredAllergens-only scoring, inferredAllergenWarnings, getApprovedProductFilter)
+- Task #16: Allergen display clarity — `allergenDisplayState` field (`hard_alert`, `product_contains_nonmatching`, `possible_risk`, `none`) added to score responses; result screen renders four distinct states with appropriate colors (red for hard alert, amber for product-contains/possible-risk, neutral for none); green never used for allergen status; "No allergens detected" replaced with profile-aware wording
 - Task #3: AI cache & history integrity (version-aware cache, extraction confidence, history preservation, medical disclaimer)
 - Task #4: Auth flows & operational readiness (email verification, password reset, pino logger, health/readiness endpoints, env validation, ALLOWED_ORIGINS CORS)
 - Task #5: UX quality (unified score labels via shared/score-labels.ts, accessibility labels, non-color-only score meaning, 83 tests)
@@ -128,5 +129,5 @@ Preferred communication style: Simple, everyday language.
 - **Typecheck**: `npm run typecheck` (tsc --noEmit)
 
 ## Testing
-- Unit tests: `npx vitest run` (83 tests across 6 files)
+- Unit tests: `npx vitest run` (90 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

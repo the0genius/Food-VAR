@@ -39,6 +39,10 @@ interface ScoreData {
   label: string;
   isAllergenAlert: boolean;
   matchedAllergens: string[];
+  inferredAllergenWarnings?: string[];
+  allergenDisplayState?: string;
+  productDeclaredAllergens?: string[];
+  productInferredAllergens?: string[];
   advice: string;
   headline: string;
   coachTip: string;
@@ -506,11 +510,34 @@ export default function ResultScreen() {
           const entry = await res.json();
           const wasReAnalyzed = entry.reAnalyzed === true;
           setReAnalyzed(wasReAnalyzed);
+          const isAlert = entry.isAllergenAlert ?? entry.score === 0;
+          const declaredAllergens = entry.productDeclaredAllergens || [];
+          const inferredAllergens = entry.productInferredAllergens || [];
+          const inferredWarnings = entry.inferredAllergenWarnings || [];
+          const matched = entry.matchedAllergens || [];
+
+          let allergenDisplayState = entry.allergenDisplayState;
+          if (!allergenDisplayState) {
+            if (isAlert && matched.length > 0) {
+              allergenDisplayState = "hard_alert";
+            } else if (inferredWarnings.length > 0) {
+              allergenDisplayState = "possible_risk";
+            } else if (declaredAllergens.length > 0 || inferredAllergens.length > 0) {
+              allergenDisplayState = "product_contains_nonmatching";
+            } else {
+              allergenDisplayState = "none";
+            }
+          }
+
           setData({
             score: entry.score,
-            label: getScoreLabelFull(entry.score, entry.isAllergenAlert ?? entry.score === 0),
-            isAllergenAlert: entry.isAllergenAlert ?? entry.score === 0,
-            matchedAllergens: entry.matchedAllergens || [],
+            label: getScoreLabelFull(entry.score, isAlert),
+            isAllergenAlert: isAlert,
+            matchedAllergens: matched,
+            inferredAllergenWarnings: inferredWarnings,
+            allergenDisplayState,
+            productDeclaredAllergens: declaredAllergens,
+            productInferredAllergens: inferredAllergens,
             advice: entry.adviceText || "",
             headline: entry.headline || "",
             coachTip: entry.coachTip || "",
@@ -778,6 +805,68 @@ export default function ResultScreen() {
     );
   }
 
+  const allergenState = data.allergenDisplayState || "none";
+
+  const allProductAllergens = [
+    ...(data.productDeclaredAllergens || []),
+    ...(data.productInferredAllergens || []).filter(
+      (a: string) => !(data.productDeclaredAllergens || []).includes(a)
+    ),
+  ];
+
+  function renderAllergenSection() {
+    if (allergenState === "product_contains_nonmatching") {
+      return (
+        <View style={[styles.allergenPill, {
+          backgroundColor: isDark ? '#2D2510' : '#FFF8E1',
+          borderColor: isDark ? 'rgba(255,183,77,0.3)' : '#FFE0B2',
+        }]}>
+          <ShieldCheck size={18} color={isDark ? '#FFB74D' : '#F57C00'} weight="fill" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.allergenPillText, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+              No match with your saved allergies
+            </Text>
+            {allProductAllergens.length > 0 && (
+              <Text style={[styles.allergenPillSubtext, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+                Product contains: {allProductAllergens.join(', ')}
+              </Text>
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    if (allergenState === "possible_risk") {
+      return (
+        <View style={[styles.allergenPill, {
+          backgroundColor: isDark ? '#2D2510' : '#FFF8E1',
+          borderColor: isDark ? 'rgba(255,183,77,0.3)' : '#FFE0B2',
+        }]}>
+          <Warning size={18} color={isDark ? '#FFB74D' : '#F57C00'} weight="fill" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.allergenPillText, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+              Possible allergen risk
+            </Text>
+            <Text style={[styles.allergenPillSubtext, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+              Ingredients suggest possible risk for: {(data?.inferredAllergenWarnings || []).join(', ')}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.allergenPill, {
+        backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5',
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E0E0E0',
+      }]}>
+        <ShieldCheck size={18} color={theme.muted} weight="regular" />
+        <Text style={[styles.allergenPillText, { color: theme.muted }]}>
+          No allergen match found for your profile
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -844,18 +933,7 @@ export default function ResultScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
-          {!data.isAllergenAlert ? (
-            <View style={[styles.allergenPill, { backgroundColor: isDark ? '#1B3A1D' : '#E8F5E9', borderColor: isDark ? 'rgba(46,125,50,0.3)' : '#C8E6C9' }]}>
-              <ShieldCheck size={18} color={isDark ? '#66BB6A' : '#2E7D32'} weight="fill" />
-              <Text style={[styles.allergenPillText, { color: isDark ? '#66BB6A' : '#2E7D32' }]}>No allergens detected</Text>
-            </View>
-          ) : null}
-          {product.allergens && product.allergens.length > 0 && !data.isAllergenAlert && (
-            <View style={[styles.allergenPill, { backgroundColor: theme.dangerBg, borderColor: isDark ? 'rgba(239,83,80,0.3)' : '#FFCDD2', marginTop: 8 }]}>
-              <Warning size={18} color={theme.danger} weight="fill" />
-              <Text style={[styles.allergenPillText, { color: theme.danger }]}>Contains: {product.allergens.join(', ')}</Text>
-            </View>
-          )}
+          {renderAllergenSection()}
         </Animated.View>
 
         {data.advice ? (
@@ -1177,16 +1255,20 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   allergenPill: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    justifyContent: "center" as const,
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 999,
+    borderRadius: 16,
     borderWidth: 1,
   },
   allergenPillText: {
     fontSize: 14,
     fontWeight: "600" as const,
+  },
+  allergenPillSubtext: {
+    fontSize: 12,
+    fontWeight: "400" as const,
+    marginTop: 2,
   },
   aiCoachCard: {
     backgroundColor: theme.card,
