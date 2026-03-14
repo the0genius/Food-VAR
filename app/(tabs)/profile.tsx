@@ -138,18 +138,26 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleLogout() {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/onboarding");
+  async function handleLogout() {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to log out?");
+      if (confirmed) {
+        await logout();
+        router.replace("/onboarding");
+      }
+    } else {
+      Alert.alert("Log Out", "Are you sure you want to log out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Log Out",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace("/onboarding");
+          },
         },
-      },
-    ]);
+      ]);
+    }
   }
 
   function handleEditProfile() {
@@ -178,27 +186,42 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleDeleteAccount() {
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete your account and all associated data. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Forever",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await apiRequest("DELETE", "/api/auth/account");
-              await logout();
-              router.replace("/onboarding");
-            } catch (e) {
-              Alert.alert("Error", "Could not delete your account. Please try again.");
-            }
+  async function handleDeleteAccount() {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "This will permanently delete your account and all associated data. This action cannot be undone."
+      );
+      if (confirmed) {
+        try {
+          await apiRequest("DELETE", "/api/auth/account");
+          await logout();
+          router.replace("/onboarding");
+        } catch (e) {
+          alert("Could not delete your account. Please try again.");
+        }
+      }
+    } else {
+      Alert.alert(
+        "Delete Account",
+        "This will permanently delete your account and all associated data. This action cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete Forever",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await apiRequest("DELETE", "/api/auth/account");
+                await logout();
+                router.replace("/onboarding");
+              } catch (e) {
+                Alert.alert("Error", "Could not delete your account. Please try again.");
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }
 
   if (!user) return null;
