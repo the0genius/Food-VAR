@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
 import { adviceCache, type Product, type User } from "@shared/schema";
 import { eq, and, gt } from "drizzle-orm";
-import { type ScoreDeduction, PROMPT_VERSION, MODEL_VERSION } from "./scoring-engine";
+import { type ScoreDeduction, PROMPT_VERSION, MODEL_VERSION, SCORING_VERSION } from "./scoring-engine";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
@@ -125,6 +125,9 @@ export async function getAdvice(
       and(
         eq(adviceCache.productId, product.id),
         eq(adviceCache.profileClusterId, profileClusterId),
+        eq(adviceCache.promptVersion, PROMPT_VERSION),
+        eq(adviceCache.modelVersion, MODEL_VERSION),
+        eq(adviceCache.scoringVersion, SCORING_VERSION),
         gt(adviceCache.expiresAt, new Date())
       )
     )
@@ -192,6 +195,7 @@ export async function getAdvice(
       highlights: validated.highlights,
       promptVersion: PROMPT_VERSION,
       modelVersion: MODEL_VERSION,
+      scoringVersion: SCORING_VERSION,
       expiresAt,
     });
 
@@ -326,6 +330,11 @@ interface ExtractionResult {
   error?: string;
 }
 
+interface ExtractionConfidence {
+  overall: string;
+  fields: Record<string, string>;
+}
+
 interface ExtractionData {
   name: string | null;
   brand: string | null;
@@ -344,6 +353,7 @@ interface ExtractionData {
   ingredients: string | null;
   nutritionFacts: Record<string, unknown> | null;
   dataCompleteness: string;
+  confidence: ExtractionConfidence | null;
 }
 
 const VALID_ALLERGENS = new Set([
@@ -417,6 +427,24 @@ function validateExtractionData(raw: unknown): ExtractionData | null {
         ? "partial"
         : "minimal";
 
+  const VALID_CONFIDENCE_LEVELS = new Set(["high", "medium", "low"]);
+  let confidence: ExtractionConfidence | null = null;
+  if (obj.confidence && typeof obj.confidence === "object" && !Array.isArray(obj.confidence)) {
+    const rawConf = obj.confidence as Record<string, unknown>;
+    const overall = typeof rawConf.overall === "string" && VALID_CONFIDENCE_LEVELS.has(rawConf.overall)
+      ? rawConf.overall
+      : "low";
+    const fields: Record<string, string> = {};
+    if (rawConf.fields && typeof rawConf.fields === "object" && !Array.isArray(rawConf.fields)) {
+      for (const [k, v] of Object.entries(rawConf.fields as Record<string, unknown>)) {
+        if (typeof v === "string" && VALID_CONFIDENCE_LEVELS.has(v)) {
+          fields[k] = v;
+        }
+      }
+    }
+    confidence = { overall, fields };
+  }
+
   return {
     name,
     brand,
@@ -435,6 +463,7 @@ function validateExtractionData(raw: unknown): ExtractionData | null {
     ingredients,
     nutritionFacts,
     dataCompleteness,
+    confidence,
   };
 }
 
@@ -496,10 +525,26 @@ Return JSON format:
 
 CRITICAL RULES:
 - For any value you CANNOT read from the images, use null. Do NOT guess nutrition numbers.
-- You MUST always provide the product "name" — if you cannot read it clearly, make your best guess from what is visible.
+- If you cannot read the product name clearly, return null for "name". Do NOT guess.
 - Use the front image for name, brand, and category. Use the back image for nutrition facts and ingredients.
 - For the "ingredients" field, transcribe the FULL ingredients list text exactly as it appears on the packaging.
 - For "nutritionFacts", include ANY additional nutrients shown on the nutrition label beyond the core 8. Use camelCase keys.
+
+CONFIDENCE: For each extracted field, rate your confidence as "high", "medium", or "low". Return a "confidence" object at the top level:
+{
+  "confidence": {
+    "overall": "high" | "medium" | "low",
+    "fields": {
+      "name": "high" | "medium" | "low",
+      "brand": "high" | "medium" | "low",
+      "calories": "high" | "medium" | "low",
+      ...for each field you extracted
+    }
+  }
+}
+- "high" = clearly readable from image
+- "medium" = partially readable or inferred from context
+- "low" = barely visible, guessed, or uncertain
 
 ALLERGEN RULES:
 - "declaredAllergens": ONLY allergens explicitly printed on the packaging label (e.g., "Contains: wheat, milk, soy").

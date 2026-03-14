@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getDeterministicAdvice } from "../server/ai-advice";
 import type { ScoreDeduction } from "../server/scoring-engine";
+import { PROMPT_VERSION, MODEL_VERSION, SCORING_VERSION } from "../server/scoring-engine";
 
 describe("getDeterministicAdvice", () => {
   it("returns allergen alert for allergen matches", () => {
@@ -68,5 +69,94 @@ describe("getDeterministicAdvice", () => {
       expect(result.advice.length).toBeGreaterThan(0);
       expect(result.headline.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("advice cache version awareness", () => {
+  it("PROMPT_VERSION, MODEL_VERSION, and SCORING_VERSION are defined", () => {
+    expect(PROMPT_VERSION).toBeDefined();
+    expect(typeof PROMPT_VERSION).toBe("string");
+    expect(MODEL_VERSION).toBeDefined();
+    expect(typeof MODEL_VERSION).toBe("string");
+    expect(SCORING_VERSION).toBeDefined();
+    expect(typeof SCORING_VERSION).toBe("string");
+  });
+
+  it("advice_cache schema has scoringVersion column", async () => {
+    const { adviceCache } = await import("../shared/schema");
+    expect(adviceCache.scoringVersion).toBeDefined();
+    expect(adviceCache.scoringVersion.name).toBe("scoring_version");
+  });
+
+  it("getAdvice source code includes version checks in cache lookup", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheQuery = source.match(
+      /const cached = await db[\s\S]*?\.limit\(1\)/
+    );
+    expect(cacheQuery).toBeTruthy();
+    expect(cacheQuery![0]).toContain("adviceCache.promptVersion");
+    expect(cacheQuery![0]).toContain("adviceCache.modelVersion");
+    expect(cacheQuery![0]).toContain("adviceCache.scoringVersion");
+  });
+
+  it("cache write includes scoringVersion", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheInsert = source.match(
+      /db\.insert\(adviceCache\)\.values\([\s\S]*?\}\)/
+    );
+    expect(cacheInsert).toBeTruthy();
+    expect(cacheInsert![0]).toContain("scoringVersion: SCORING_VERSION");
+  });
+});
+
+describe("extraction safety", () => {
+  it("extraction prompt does not force product name guessing", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).not.toContain("You MUST always provide the product");
+    expect(source).toContain("return null for \"name\". Do NOT guess");
+  });
+
+  it("extraction prompt requests confidence model", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).toContain("confidence");
+    expect(source).toContain("\"high\" | \"medium\" | \"low\"");
+  });
+
+  it("ExtractionData interface includes confidence field", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).toContain("confidence: ExtractionConfidence | null");
+  });
+});
+
+describe("history re-analysis preservation", () => {
+  it("re-analysis route does NOT update scan_history row", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+
+    const reAnalysisSection = source.match(
+      /if \(currentClusterId !== entryClusterId\)[\s\S]*?reAnalyzed: true/
+    );
+    expect(reAnalysisSection).toBeTruthy();
+    expect(reAnalysisSection![0]).not.toContain(".update(scanHistory)");
+  });
+
+  it("re-analysis returns original data alongside refreshed data", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+
+    const reAnalysisResponse = source.match(
+      /reAnalyzed: true[\s\S]*?original:[\s\S]*?score: entry\.score/
+    );
+    expect(reAnalysisResponse).toBeTruthy();
   });
 });

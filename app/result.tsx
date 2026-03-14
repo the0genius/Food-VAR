@@ -468,6 +468,7 @@ export default function ResultScreen() {
   const [error, setError] = useState("");
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [reAnalyzed, setReAnalyzed] = useState(false);
+  const [originalScore, setOriginalScore] = useState<number | null>(null);
   const [showFullNutrition, setShowFullNutrition] = useState(false);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -512,6 +513,9 @@ export default function ResultScreen() {
             },
           });
           if (wasReAnalyzed) {
+            if (entry.original?.score !== undefined) {
+              setOriginalScore(entry.original.score);
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             queryClient.invalidateQueries({ queryKey: ["/api/history"] });
           }
@@ -740,6 +744,12 @@ export default function ResultScreen() {
             </Animated.View>
           ) : null}
 
+          <Animated.View entering={FadeInDown.delay(350).duration(300)} style={styles.disclaimerWrap}>
+            <Text style={styles.disclaimerText}>
+              Scores and advice are for informational purposes only and do not constitute medical advice.
+            </Text>
+          </Animated.View>
+
           <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
             <TouchableOpacity
               style={styles.allergenCta}
@@ -783,9 +793,16 @@ export default function ResultScreen() {
             style={styles.reAnalyzedBanner}
           >
             <ArrowsClockwise size={18} color={C.primary} />
-            <Text style={styles.reAnalyzedText}>
-              Updated for your latest health profile
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reAnalyzedText}>
+                Updated for your current profile
+              </Text>
+              {originalScore !== null && originalScore !== data.score && (
+                <Text style={styles.reAnalyzedSubtext}>
+                  Previously scored: {originalScore}/100
+                </Text>
+              )}
+            </View>
           </Animated.View>
         )}
 
@@ -868,6 +885,12 @@ export default function ResultScreen() {
             })()}
           </Animated.View>
         ) : null}
+
+        <Animated.View entering={FadeInDown.delay(350).duration(300)} style={styles.disclaimerWrap}>
+          <Text style={styles.disclaimerText}>
+            Scores and advice are for informational purposes only and do not constitute medical advice.
+          </Text>
+        </Animated.View>
 
         <Animated.View
           entering={FadeInDown.delay(450).duration(400)}
@@ -1116,7 +1139,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500" as const,
     color: C.primary,
-    flex: 1,
+  },
+  reAnalyzedSubtext: {
+    fontSize: 12,
+    color: C.muted,
+    marginTop: 2,
+  },
+  disclaimerWrap: {
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  disclaimerText: {
+    fontSize: 11,
+    color: C.muted,
+    textAlign: "center" as const,
+    lineHeight: 16,
+    fontStyle: "italic" as const,
   },
   scoreRingContainer: {
     backgroundColor: C.card,

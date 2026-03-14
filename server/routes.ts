@@ -99,6 +99,10 @@ const contributeSchema = z.object({
   inferredAllergens: z.array(z.string().max(100)).max(50).optional(),
   ingredients: z.string().max(5000).nullable().optional(),
   nutritionFacts: z.string().max(5000).nullable().optional(),
+  extractionConfidence: z.object({
+    overall: z.enum(["high", "medium", "low"]),
+    fields: z.record(z.enum(["high", "medium", "low"])),
+  }).nullable().optional(),
 });
 
 const extractSchema = z.object({
@@ -730,6 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inferredAllergens,
         ingredients,
         nutritionFacts,
+        extractionConfidence,
       } = parsed.data;
 
       const [existing] = await db
@@ -741,6 +746,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existing) {
         return res.json({ product: existing, isNew: false });
       }
+
+      const isLowConfidence = extractionConfidence?.overall === "low";
 
       const [product] = await db
         .insert(products)
@@ -763,9 +770,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inferredAllergens: inferredAllergens || [],
           ingredients: ingredients || null,
           nutritionFacts: nutritionFacts || null,
+          extractionConfidence: extractionConfidence || null,
           contributedBy: userId,
           source: "user",
-          moderationStatus: "pending",
+          moderationStatus: isLowConfidence ? "pending" : "pending",
         })
         .onConflictDoNothing()
         .returning();
@@ -974,28 +982,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 );
               }
 
-              await db
-                .update(scanHistory)
-                .set({
-                  score: scoreResult.score,
-                  adviceText: adviceResult.advice,
-                  headline: adviceResult.headline || "",
-                  coachTip: adviceResult.coachTip || "",
-                  highlights: adviceResult.highlights,
-                  profileClusterId: currentClusterId,
-                  scoringVersion: SCORING_VERSION,
-                })
-                .where(eq(scanHistory.id, id));
-
               return res.json({
                 ...entry,
+                reAnalyzed: true,
+                original: {
+                  score: entry.score,
+                  adviceText: entry.adviceText,
+                  headline: entry.headline,
+                  coachTip: entry.coachTip,
+                  highlights: entry.highlights,
+                  profileClusterId: entry.profileClusterId,
+                },
                 score: scoreResult.score,
                 adviceText: adviceResult.advice,
                 headline: adviceResult.headline || "",
                 coachTip: adviceResult.coachTip || "",
                 highlights: adviceResult.highlights,
                 profileClusterId: currentClusterId,
-                reAnalyzed: true,
                 matchedAllergens: scoreResult.matchedAllergens,
                 isAllergenAlert: scoreResult.isAllergenAlert,
                 inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,

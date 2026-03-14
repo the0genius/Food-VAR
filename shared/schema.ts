@@ -85,6 +85,10 @@ export const products = pgTable(
     inferredAllergens: jsonb("inferred_allergens").$type<string[]>().default([]),
     ingredients: text("ingredients"),
     nutritionFacts: jsonb("nutrition_facts").$type<Record<string, number | string | null>>(),
+    extractionConfidence: jsonb("extraction_confidence").$type<{
+      overall: string;
+      fields: Record<string, string>;
+    }>(),
     frontImageUrl: text("front_image_url"),
     nutritionImageUrl: text("nutrition_image_url"),
     contributedBy: integer("contributed_by"),
@@ -143,6 +147,7 @@ export const adviceCache = pgTable(
     highlights: jsonb("highlights").$type<string[]>().default([]),
     promptVersion: text("prompt_version"),
     modelVersion: text("model_version"),
+    scoringVersion: text("scoring_version"),
     createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     expiresAt: timestamp("expires_at").notNull(),
   },
