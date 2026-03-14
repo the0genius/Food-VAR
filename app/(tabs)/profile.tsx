@@ -583,24 +583,26 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionCard, { borderStyle: "dashed" as const, borderWidth: 1, borderColor: theme.muted, opacity: 0.7 }]}
-            onPress={() => {
-              const eventId = Sentry.captureException(new Error("FoodVAR Sentry Test Error"));
-              Alert.alert("Test Error Sent", `Event ID: ${eventId}\n\nCheck your Sentry dashboard to confirm it arrived.`);
-            }}
-            activeOpacity={0.8}
-            accessibilityLabel="Send test error to Sentry"
-            accessibilityRole="button"
-          >
-            <View style={[styles.actionLeftBorder, { backgroundColor: theme.muted }]} />
-            <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: theme.cardBg }]}>
-                <WarningCircle size={16} color={theme.muted} />
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.actionCard, { borderStyle: "dashed" as const, borderWidth: 1, borderColor: theme.muted, opacity: 0.7 }]}
+              onPress={() => {
+                const eventId = Sentry.captureException(new Error("FoodVAR Sentry Test Error"));
+                Alert.alert("Test Error Sent", `Event ID: ${eventId}\n\nCheck your Sentry dashboard to confirm it arrived.`);
+              }}
+              activeOpacity={0.8}
+              accessibilityLabel="Send test error to Sentry"
+              accessibilityRole="button"
+            >
+              <View style={[styles.actionLeftBorder, { backgroundColor: theme.muted }]} />
+              <View style={styles.actionContent}>
+                <View style={[styles.actionIconCircle, { backgroundColor: theme.cardBg }]}>
+                  <WarningCircle size={16} color={theme.muted} />
+                </View>
+                <Text style={[styles.actionText, { color: theme.muted }]}>Send Test Error to Sentry</Text>
               </View>
-              <Text style={[styles.actionText, { color: theme.muted }]}>Send Test Error to Sentry</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </View>
     </ScrollView>
