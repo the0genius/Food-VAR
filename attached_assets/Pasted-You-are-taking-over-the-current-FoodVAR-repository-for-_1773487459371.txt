@@ -1,0 +1,295 @@
+You are taking over the current FoodVAR repository for a focused final fix pass.
+
+Repository:
+- Repo: the0genius/Food-VAR
+- Branch: main
+
+Goal:
+Fix the last important product and UX inconsistencies that are still visible in the current app, without changing the overall design language or breaking working flows.
+
+This is NOT a full hardening rewrite.
+This is a targeted fix pass for 3 remaining issues that still matter before production:
+
+1. Result screen allergen messaging is still confusing
+2. AI advice cache returns incomplete UI data on cache hits
+3. Nutrition extraction still fails too hard when product name is unreadable
+
+Important rules:
+- Do not break existing working features
+- Do not redesign the app visually
+- Keep the FoodVAR visual identity intact
+- Do not change core auth or scoring architecture unless required for these fixes
+- Complete the work in order
+- After each section, run:
+  - npm run typecheck
+  - npm test
+- If something is already fixed, verify it carefully and document that in HARDENING_STATUS.md
+
+Files to inspect first:
+- server/routes.ts
+- server/scoring-engine.ts
+- server/ai-advice.ts
+- shared/schema.ts
+- app/result.tsx
+- any types/helpers used by result screen
+- any tests covering scoring, extraction, and result rendering
+
+Also update:
+- HARDENING_STATUS.md
+- replit.md if the implementation details materially change
+
+==================================================
+SECTION 1: FIX RESULT SCREEN ALLERGEN UX
+==================================================
+
+Problem:
+The app can still show a reassuring message for the current user profile while also showing a red allergen-style warning about product ingredients. Even if the backend allergen logic is now safer, the frontend messaging still feels contradictory.
+
+Your job:
+Make the result screen clearly distinguish between:
+1. confirmed allergen match for this user
+2. product contains allergens, but not ones in this user’s saved profile
+3. possible/inferred allergen risk from ingredients
+4. no relevant allergen signal
+
+Audit the current data flow first:
+- how `/api/score` responds
+- how `/api/history/entry/:id` responds
+- how `matchedAllergens`, `isAllergenAlert`, `inferredAllergenWarnings`, and product allergen fields are passed into the result screen
+- whether the screen is still relying on `product.allergens` too generically
+
+Requirements:
+- Red danger styling must only be used for actual confirmed user-specific allergen alert
+- If `isAllergenAlert === true` and `matchedAllergens.length > 0`, show the hard alert state
+- If the product contains declared allergens but none match the user’s saved allergies, do NOT show red
+- If `inferredAllergenWarnings.length > 0`, show an amber warning state, not a red alert
+- If there is no user-relevant allergen issue, do not show contradictory allergen messaging
+
+Preferred display states:
+
+STATE A: hard user-specific allergen alert
+- Red
+- Headline like: "Allergen Alert"
+- Message like: "This product contains allergens that match your saved profile: X, Y."
+
+STATE B: product contains allergens, but not a match for this user
+- Neutral or amber, not red
+- Headline like: "No match with your saved allergies"
+- Message like: "This product still contains: gluten, soy."
+
+STATE C: possible inferred allergen risk
+- Amber
+- Headline like: "Possible allergen risk"
+- Message like: "Ingredients suggest possible risk for: milk, soy."
+
+STATE D: no relevant allergen signal
+- Either show nothing
+- Or show a subtle neutral row like: "No allergen match found for your saved profile."
+- Never say "safe"
+
+Copy rules:
+- Do not use "No allergens detected" unless there are truly no declared allergens, no inferred warnings, and no relevant product allergen info
+- Never use green language that implies allergy safety
+- Never say a product is "safe"
+- Be profile-aware in wording
+
+Backend adjustments:
+If needed, improve the response shape from the backend so the frontend can render the right state cleanly.
+If helpful, add an explicit field such as:
+- `allergenDisplayState`
+with values like:
+- "hard_alert"
+- "product_contains_nonmatching"
+- "possible_risk"
+- "none"
+
+If you do this, update both `/api/score` and history-entry reanalysis responses consistently.
+
+Frontend requirements in `app/result.tsx`:
+- Replace any contradictory green plus red allergen stack with a single clear allergen-information block
+- Preserve the medical disclaimer already shown on the result screen
+- Keep the same visual style and layout rhythm
+- Only adjust severity colors, headings, and condition logic
+
+Also check:
+- fresh score result flow
+- history detail flow
+- re-analyzed history flow
+
+Add tests where practical for:
+1. user allergy matches declared allergens => red alert
+2. product contains allergens but not user-matching => not red
+3. inferred allergen warning exists => amber warning only
+4. no relevant allergen signal => no contradiction
+5. history-entry result uses the same logic as fresh score result
+
+Acceptance criteria:
+- The screen never simultaneously reassures the user and uses red allergen-danger styling for a non-matching allergen case
+- Confirmed personal allergen alerts remain strong and obvious
+- Product-level allergen info is still visible, but not misleading
+- Inferred allergen risk is visibly softer than confirmed allergen alert
+
+==================================================
+SECTION 2: FIX AI ADVICE CACHE RESPONSE INCONSISTENCY
+==================================================
+
+Problem:
+The advice cache lookup is version-aware now, which is good, but cache hits still return incomplete UI fields like blank `headline` and blank `coachTip`. That means the same product can render differently depending on whether the advice was fresh or cached.
+
+Your job:
+Make cached AI advice structurally consistent with fresh AI advice.
+
+Audit:
+- `server/ai-advice.ts`
+- cache table fields in `shared/schema.ts`
+- how fresh advice is returned
+- how cached advice is returned
+- how the result screen consumes `headline`, `advice`, `coachTip`, and `highlights`
+
+Requirements:
+- Cache hits must return all fields the UI expects
+- At minimum ensure cache-hit responses can provide:
+  - advice
+  - headline
+  - coachTip
+  - highlights
+  - fromCache
+- Do not return blank fields on cache hit if the same request would return populated fields on a fresh generation
+
+Choose one clean approach:
+Option A:
+- store `headline` and `coachTip` in the cache table too
+Option B:
+- if full structured cache expansion is not practical in this pass, build a deterministic fallback object on cache hit that fills missing fields consistently
+
+Preferred approach:
+Store enough structured advice fields in cache so cached UI behavior matches fresh UI behavior as closely as possible.
+
+Also verify:
+- promptVersion
+- modelVersion
+- scoringVersion
+are actually used on cache read, not only on write
+
+If schema changes are needed:
+- add the required cache columns
+- write proper migration(s)
+- update code paths cleanly
+
+Tests to add or update:
+1. fresh advice returns full fields
+2. cached advice returns the same required fields
+3. promptVersion change invalidates cache
+4. modelVersion change invalidates cache
+5. scoringVersion change invalidates cache
+
+Acceptance criteria:
+- Cached and fresh advice are functionally equivalent for the result UI
+- No more blank headline/coachTip on cache hit unless intentionally and explicitly designed that way
+- Advice cache remains version-aware
+
+==================================================
+SECTION 3: FIX EXTRACTION NULL-NAME FLOW TO ALLOW PARTIAL SUCCESS
+==================================================
+
+Problem:
+The extraction prompt now allows `name: null` when unreadable, which is good, but the backend still returns `success: false` if the product name is unreadable. That means the extraction flow still fails too hard instead of supporting review and manual correction.
+
+Your job:
+Change extraction behavior so unreadable product name becomes a reviewable partial-success state instead of a total failure.
+
+Audit:
+- extraction prompt in `server/ai-advice.ts`
+- extraction result validation
+- extraction API route in `server/routes.ts`
+- any frontend contribute/review flow that receives extraction results
+
+Requirements:
+- If product name is unreadable, extraction may still return `success: true` if other meaningful data was extracted
+- The returned payload should clearly indicate that manual review is required
+- The frontend must allow the contributor to manually enter or correct the product name before submission
+- Do not guess product name from ambiguous packaging visuals
+- Do not fabricate name
+- Do not throw away good nutrition/ingredient extraction just because the name is missing
+
+Preferred response shape:
+If name is null but useful extraction exists, return something like:
+- `success: true`
+- `requiresReview: true`
+- `missingCriticalFields: ["name"]`
+- `data: { ... }`
+
+If there is truly too little usable information overall, then failure is still okay.
+The key is:
+- null name alone should not automatically make extraction fail
+
+Also improve data-quality signaling:
+- if name is null, mark it clearly in the result
+- keep existing confidence structure
+- if confidence overall is low, keep moderation pending
+- if name is missing, the contribution flow should require manual user confirmation before create/submit
+
+Frontend flow requirements:
+- In the contribute/review step, show a clear prompt when name is missing:
+  - "We couldn’t read the product name clearly. Please enter it before submitting."
+- Allow user to edit/fill it
+- Do not block the user from reviewing extracted nutrition if the rest is usable
+
+Tests to add:
+1. extraction with readable nutrition but null name => success true, requires review
+2. extraction with null name does not crash frontend review flow
+3. extraction with extremely poor data overall can still fail if appropriate
+4. null name never gets silently auto-filled with a guessed value
+
+Acceptance criteria:
+- Null-name extraction no longer hard-fails by default
+- The app supports partial extraction review properly
+- Product names are never guessed when unreadable
+
+==================================================
+SECTION 4: INTEGRATION CHECKS
+==================================================
+
+After finishing the 3 fixes above, verify the full affected flows:
+
+Flow A:
+- scan/search product
+- score result loads
+- result screen allergen block is clear and non-contradictory
+
+Flow B:
+- open history result
+- if re-analysis exists, allergen messaging still behaves correctly
+
+Flow C:
+- contribute product with partially readable packaging
+- extraction returns partial success
+- user can manually complete name
+- submit remains pending if review/confidence requires it
+
+Flow D:
+- repeat the same score request twice
+- confirm fresh advice and cached advice render consistently
+
+==================================================
+SECTION 5: TESTING AND DOCUMENTATION
+==================================================
+
+Run after each section:
+- npm run typecheck
+- npm test
+
+At the end:
+- update HARDENING_STATUS.md with exactly what was fixed
+- update replit.md only if backend response shapes or extraction workflow changed materially
+
+Return at the end:
+- files changed
+- exact backend changes
+- exact frontend changes
+- migrations added
+- tests added or updated
+- before/after summary for allergen UX
+- before/after summary for cache-hit advice behavior
+- before/after summary for extraction null-name handling
+- any remaining tradeoffs
