@@ -300,6 +300,7 @@ export default function HistoryScreen() {
             onRefresh={() => historyQuery.refetch()}
             tintColor={theme.primary}
             colors={[theme.primary]}
+            accessibilityLabel="Pull to refresh history"
           />
         }
         ListHeaderComponent={

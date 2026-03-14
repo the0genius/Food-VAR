@@ -331,6 +331,7 @@ export default function HomeScreen() {
             onRefresh={handleRefresh}
             tintColor={theme.primary}
             colors={[theme.primary]}
+            accessibilityLabel="Pull to refresh"
           />
         }
         ListHeaderComponent={

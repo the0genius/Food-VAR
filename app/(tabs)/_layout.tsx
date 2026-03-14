@@ -111,20 +111,22 @@ export default function TabLayout() {
               <Text style={styles.scanPillText}>Scan</Text>
             </LinearGradient>
           ),
-          tabBarButton: (props) => {
-            const { delayLongPress, ...rest } = props as any;
-            return (
-              <TouchableOpacity
-                {...rest}
-                onPress={(e: any) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  if (props.onPress) props.onPress(e);
-                }}
-                activeOpacity={0.85}
-                style={[props.style, { flex: 1, alignItems: "center", justifyContent: "center" }]}
-              />
-            );
-          },
+          tabBarButton: (props) => (
+            <TouchableOpacity
+              onPress={(e) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                if (props.onPress) props.onPress(e);
+              }}
+              activeOpacity={0.85}
+              style={[props.style, { flex: 1, alignItems: "center", justifyContent: "center" }]}
+              accessibilityRole={props.accessibilityRole}
+              accessibilityState={props.accessibilityState}
+              accessibilityLabel={props.accessibilityLabel}
+              testID={props.testID}
+            >
+              {props.children}
+            </TouchableOpacity>
+          ),
         }}
       />
       <Tabs.Screen
