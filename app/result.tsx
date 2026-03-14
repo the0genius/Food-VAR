@@ -670,92 +670,84 @@ export default function ResultScreen() {
     (k) => product.nutritionFacts[k] !== null && product.nutritionFacts[k] !== undefined
   ).length > 0;
 
+  const isDark = theme.bg === '#121212';
+
   if (data.isAllergenAlert) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.dangerBg }]}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close result" accessibilityRole="button">
-            <X size={24} color={theme.text} />
+          <TouchableOpacity onPress={() => router.back()} style={[styles.closeBtn, styles.headerBtn]} accessibilityLabel="Close result" accessibilityRole="button">
+            <X size={20} color={theme.text} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share result" accessibilityRole="button">
-            <ShareNetwork size={22} color={theme.text} />
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerProductName, { color: theme.text }]} numberOfLines={1}>{product.name}</Text>
+            <Text style={[styles.headerProductSub, { color: theme.muted }]} numberOfLines={1}>
+              {[product.brand, product.category].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleShare} style={[styles.shareBtn, styles.headerBtn]} accessibilityLabel="Share result" accessibilityRole="button">
+            <ShareNetwork size={18} color={theme.text} />
           </TouchableOpacity>
         </View>
 
         <ScrollView
           contentContainerStyle={{
             paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20,
+            gap: 16,
+            paddingHorizontal: 20,
           }}
           showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={["#E53935", "#C62828"]}
-            style={styles.allergenTopBanner}
-          >
-            <Warning size={22} color="white" weight="fill" />
-            <Text style={styles.allergenTopBannerText}>
-              Allergen Alert — Contains: {data.matchedAllergens.join(", ")}
-            </Text>
-          </LinearGradient>
-
-          <View style={styles.allergenAlertCard}>
-            <MotiView
-              from={{ scale: 0.7 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring" as const, damping: 10, delay: 200 }}
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <LinearGradient
+              colors={isDark ? ['#3D1515', theme.card] : ['#FFEBEE', '#FFFFFF']}
+              style={styles.scoreGradientCard}
             >
-              <ShieldWarning size={64} color={theme.danger} weight="fill" />
-            </MotiView>
+              <MotiView
+                from={{ scale: 0.7 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring" as const, damping: 10, delay: 200 }}
+              >
+                <ShieldWarning size={64} color={theme.danger} weight="fill" />
+              </MotiView>
+              <Text style={[styles.scoreHeadline, { color: theme.danger, marginTop: 12 }]}>Allergen Detected</Text>
+              <Text style={[styles.scoreSubline, { color: theme.text, fontWeight: '600' as const }]}>
+                Contains {data.matchedAllergens.join(", ")}
+              </Text>
+            </LinearGradient>
+          </Animated.View>
 
-            <Text style={styles.allergenAlertLabel}>ALLERGEN ALERT</Text>
-            <Text style={styles.allergenContainsText}>
-              Contains {data.matchedAllergens.join(", ")}
-            </Text>
-          </View>
-
-          <View style={styles.allergenProductInfo}>
-            <Text style={styles.productName}>{product.name}</Text>
-            {product.brand ? <Text style={styles.productBrand}>{product.brand}</Text> : null}
-            <View style={styles.chipRow}>
-              {product.category ? (
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>{product.category}</Text>
-                </View>
-              ) : null}
-              {params.accessMethod ? (
-                <View style={styles.chipNeutral}>
-                  <Text style={styles.chipNeutralText}>
-                    {params.accessMethod === "scan" ? "Scanned" : "Searched"}
-                  </Text>
-                </View>
-              ) : null}
+          <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+            <View style={[styles.allergenPill, { backgroundColor: theme.dangerBg, borderColor: isDark ? 'rgba(239,83,80,0.3)' : '#FFCDD2' }]}>
+              <Warning size={18} color={theme.danger} weight="fill" />
+              <Text style={[styles.allergenPillText, { color: theme.danger }]}>
+                Allergen Alert — {data.matchedAllergens.join(", ")}
+              </Text>
             </View>
-          </View>
+          </Animated.View>
 
           {data.advice ? (
-            <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.adviceCard}>
-              <View style={styles.adviceHeader}>
-                <LinearGradient
-                  colors={[theme.tinted, "#D4EDDA"]}
-                  style={styles.adviceIconBox}
-                >
-                  <Robot size={16} color={theme.primary} weight="fill" />
-                </LinearGradient>
-                <Text style={styles.adviceLabel}>FOODVAR VERDICT</Text>
+            <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.aiCoachCard}>
+              <View style={[styles.aiCoachAccent, { backgroundColor: theme.danger }]} />
+              <View style={styles.aiCoachContent}>
+                <View style={styles.aiCoachHeader}>
+                  <View style={[styles.aiCoachIconCircle, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
+                    <Robot size={18} color={isDark ? '#4DD0C8' : '#2EC4B6'} weight="fill" />
+                  </View>
+                  <Text style={[styles.aiCoachTitle, { color: theme.text }]}>AI Coach</Text>
+                </View>
+                <Text style={[styles.adviceText, { color: theme.text }]}>{data.advice}</Text>
               </View>
-              <View style={styles.adviceDivider} />
-              <Text style={[styles.adviceHeadline, { color: scoreColor }]}>{headlineText}</Text>
-              <Text style={styles.adviceText}>{data.advice}</Text>
             </Animated.View>
           ) : null}
 
-          <Animated.View entering={FadeInDown.delay(350).duration(300)} style={{ marginHorizontal: 20, marginTop: 4, marginBottom: 8 }}>
+          <Animated.View entering={FadeInDown.delay(350).duration(300)}>
             <Text style={styles.disclaimerText}>
-              Scores and advice are for informational purposes only and do not constitute medical advice.
+              This is not medical advice.{'\n'}Always consult your healthcare provider.
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
+          <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.scanAnotherWrap}>
             <TouchableOpacity
               style={styles.allergenCta}
               onPress={() => {
@@ -774,8 +766,6 @@ export default function ResultScreen() {
       </View>
     );
   }
-
-  const isDark = theme.bg === '#121212';
 
   const filteredHighlights = useMemo(() => {
     if (!data.highlights || data.highlights.length === 0) return [];
