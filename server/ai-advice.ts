@@ -139,8 +139,8 @@ export async function getAdvice(
     );
     return {
       advice: cached[0].adviceText,
-      headline: cached[0].headline || cachedFallback.headline,
-      coachTip: cached[0].coachTip || cachedFallback.coachTip,
+      headline: cached[0].headline ?? cachedFallback.headline,
+      coachTip: cached[0].coachTip ?? cachedFallback.coachTip,
       highlights: (cached[0].highlights || []) as string[],
       fromCache: true,
     };
