@@ -599,7 +599,7 @@ ALLERGEN RULES:
       };
     }
 
-    const nameMissing = !validated.name || validated.name === "Unknown" || validated.name === "";
+    const nameMissing = !validated.name?.trim() || validated.name.trim() === "Unknown";
     const hasUsableData = validated.calories != null || validated.protein != null ||
       validated.fat != null || validated.carbohydrates != null || !!validated.ingredients;
 
