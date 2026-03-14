@@ -209,10 +209,11 @@ export default function ContributeScreen() {
       }
 
       const d = extractData.data;
+      const needsNameReview = !d.name || extractData.requiresReview;
 
-      if (!d.name) {
+      if (needsNameReview) {
         setExtractedData(d);
-        setReviewName("");
+        setReviewName(d.name || "");
         setStep("review");
         setTimeout(() => nameInputRef.current?.focus(), 500);
         return;
@@ -482,43 +483,76 @@ export default function ContributeScreen() {
               )}
             </View>
 
-            {(extractedData.calories != null || extractedData.protein != null || extractedData.fat != null || extractedData.carbohydrates != null) && (
-              <View style={[styles.reviewExtractedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.reviewExtractedTitle, { color: theme.text }]}>
-                  Extracted Data
+            <View style={[styles.reviewExtractedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.reviewExtractedTitle, { color: theme.text }]}>
+                Extracted Data
+              </Text>
+              {extractedData.brand ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Brand: {extractedData.brand}
                 </Text>
-                {extractedData.brand && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Brand: {extractedData.brand}
-                  </Text>
-                )}
-                {extractedData.calories != null && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Calories: {extractedData.calories}
-                  </Text>
-                )}
-                {extractedData.protein != null && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Protein: {extractedData.protein}g
-                  </Text>
-                )}
-                {extractedData.carbohydrates != null && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Carbs: {extractedData.carbohydrates}g
-                  </Text>
-                )}
-                {extractedData.fat != null && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Fat: {extractedData.fat}g
-                  </Text>
-                )}
-                {extractedData.allergens?.length > 0 && (
-                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                    Allergens: {extractedData.allergens.join(", ")}
-                  </Text>
-                )}
-              </View>
-            )}
+              ) : null}
+              {extractedData.category ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Category: {extractedData.category}
+                </Text>
+              ) : null}
+              {extractedData.servingSize ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Serving: {extractedData.servingSize}
+                </Text>
+              ) : null}
+              {extractedData.calories != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Calories: {extractedData.calories}
+                </Text>
+              ) : null}
+              {extractedData.protein != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Protein: {extractedData.protein}g
+                </Text>
+              ) : null}
+              {extractedData.carbohydrates != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Carbs: {extractedData.carbohydrates}g
+                </Text>
+              ) : null}
+              {extractedData.sugar != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Sugar: {extractedData.sugar}g
+                </Text>
+              ) : null}
+              {extractedData.fat != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Fat: {extractedData.fat}g
+                </Text>
+              ) : null}
+              {extractedData.saturatedFat != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Saturated Fat: {extractedData.saturatedFat}g
+                </Text>
+              ) : null}
+              {extractedData.fiber != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Fiber: {extractedData.fiber}g
+                </Text>
+              ) : null}
+              {extractedData.sodium != null ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Sodium: {extractedData.sodium}mg
+                </Text>
+              ) : null}
+              {extractedData.allergens?.length > 0 ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                  Allergens: {extractedData.allergens.join(", ")}
+                </Text>
+              ) : null}
+              {extractedData.ingredients ? (
+                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]} numberOfLines={3}>
+                  Ingredients: {extractedData.ingredients}
+                </Text>
+              ) : null}
+            </View>
 
             <TouchableOpacity
               style={[styles.reviewSubmitWrapper, { opacity: reviewName.trim() && !isSubmitting ? 1 : 0.5 }]}

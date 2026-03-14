@@ -599,16 +599,23 @@ ALLERGEN RULES:
       };
     }
 
-    if (!validated.name || validated.name === "Unknown" || validated.name === "") {
+    const nameMissing = !validated.name || validated.name === "Unknown" || validated.name === "";
+    const hasUsableData = validated.calories != null || validated.protein != null ||
+      validated.fat != null || validated.carbohydrates != null || !!validated.ingredients;
+
+    if (nameMissing && !hasUsableData) {
       return {
         success: false,
-        data: validated,
-        error:
-          "Could not identify the product. Please retake the front photo with the product name clearly visible.",
+        error: "Could not extract enough data from the images. Please retake the photos with better lighting.",
       };
     }
 
-    return { success: true, data: validated };
+    return {
+      success: true,
+      data: validated,
+      requiresReview: nameMissing,
+      missingFields: nameMissing ? ["name"] : [],
+    };
   } catch (error) {
     console.error("Gemini Vision extraction failed:", error);
     return {
