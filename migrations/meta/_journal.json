@@ -8,6 +8,20 @@
       "when": 1773449865665,
       "tag": "0000_sticky_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773450200000,
+      "tag": "0001_add_conversations_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773450300000,
+      "tag": "0002_scan_date_text_to_date",
+      "breakpoints": true
     }
   ]
 }
