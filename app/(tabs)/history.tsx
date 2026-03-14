@@ -92,7 +92,7 @@ export default function HistoryScreen() {
   function ScoreBadge({ score }: { score: number }) {
     const color = getScoreColor(score, theme);
     const bgColor = getScoreBgColor(score, theme);
-    const label = getScoreShortLabel(score);
+    const label = getScoreShortLabel(score, score === 0);
     return (
       <View
         style={[
@@ -158,7 +158,7 @@ export default function HistoryScreen() {
             ]);
           }}
           activeOpacity={0.7}
-          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}, ${timeStr}`}
+          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score, item.score === 0)}, ${timeStr}`}
           accessibilityRole="button"
           accessibilityHint="Tap to view details, long press to delete"
         >

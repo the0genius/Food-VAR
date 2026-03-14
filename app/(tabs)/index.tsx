@@ -93,7 +93,7 @@ export default function HomeScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   function ScoreBadgeCircle({ score }: { score: number }) {
-    const label = getScoreShortLabel(score);
+    const label = getScoreShortLabel(score, score === 0);
     return (
       <View
         style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score, theme) }]}
@@ -130,7 +130,7 @@ export default function HomeScreen() {
           style={styles.recentCard}
           onPress={onPress}
           activeOpacity={0.7}
-          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score)}`}
+          accessibilityLabel={`${item.productName}, score ${item.score} ${getScoreShortLabel(item.score, item.score === 0)}`}
           accessibilityRole="button"
         >
           <View style={styles.recentCardInner}>

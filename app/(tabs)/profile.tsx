@@ -447,7 +447,7 @@ export default function ProfileScreen() {
                   <Text style={styles.perfTitle}>Best Picks</Text>
                 </View>
                 {bestProducts.map((product, index) => (
-                  <View key={`best-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score)}`}>
+                  <View key={`best-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score, product.score === 0)}`}>
                     <View
                       style={[
                         styles.perfScoreBadge,
@@ -462,7 +462,7 @@ export default function ProfileScreen() {
                       >
                         {Math.round(product.score)}
                       </Text>
-                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score)}</Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score, product.score === 0)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>
@@ -484,7 +484,7 @@ export default function ProfileScreen() {
                   <Text style={styles.perfTitle}>Avoid</Text>
                 </View>
                 {worstProducts.map((product, index) => (
-                  <View key={`worst-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score)}`}>
+                  <View key={`worst-${product.productId}-${index}`} style={styles.perfProductRow} accessibilityLabel={`${product.productName}, score ${Math.round(product.score)}, ${getScoreShortLabel(product.score, product.score === 0)}`}>
                     <View
                       style={[
                         styles.perfScoreBadge,
@@ -499,7 +499,7 @@ export default function ProfileScreen() {
                       >
                         {Math.round(product.score)}
                       </Text>
-                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score)}</Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score, product.score === 0)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>

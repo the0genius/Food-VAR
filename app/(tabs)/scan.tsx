@@ -81,7 +81,7 @@ export default function ScanScreen() {
   const [lastScannedBarcode, setLastScannedBarcode] = useState("");
   const [scanStatus, setScanStatus] = useState<"scanning" | "found" | "not_found">("scanning");
   const [foundProductName, setFoundProductName] = useState("");
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastScanTime = useRef(0);
   const [permission, requestPermission] = useCameraPermissions();
 

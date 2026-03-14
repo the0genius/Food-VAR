@@ -30,6 +30,9 @@ interface UserProfile {
   goal: string | null;
   profileClusterId: string | null;
   onboardingCompleted: boolean;
+  consentPolicyVersion: string | null;
+  consentAiVersion: string | null;
+  consentAcceptedAt: string | null;
   isPro: boolean;
   role: string;
   contributionCount: number;
