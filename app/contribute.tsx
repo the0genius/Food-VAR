@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   Platform,
   Image,
@@ -16,6 +18,7 @@ import {
   Check,
   WarningCircle,
   Confetti,
+  PencilSimple,
 } from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -38,7 +41,7 @@ import { apiRequest, queryClient } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type FlowStep = "front_photo" | "back_photo" | "analyzing" | "success" | "error";
+type FlowStep = "front_photo" | "back_photo" | "analyzing" | "review" | "success" | "error";
 
 export default function ContributeScreen() {
   const router = useRouter();
@@ -75,9 +78,13 @@ export default function ContributeScreen() {
   const [analyzeStatus, setAnalyzeStatus] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [successProduct, setSuccessProduct] = useState<any>(null);
+  const [extractedData, setExtractedData] = useState<any>(null);
+  const [reviewName, setReviewName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasLaunched = useRef(false);
   const frontImageRef = useRef<{ uri: string; base64: string } | null>(null);
   const lottiePlayedRef = useRef(false);
+  const nameInputRef = useRef<TextInput>(null);
 
   const barcode = params.barcode || "";
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -202,11 +209,29 @@ export default function ContributeScreen() {
       }
 
       const d = extractData.data;
-      setAnalyzeStatus("Adding to database...");
 
+      if (!d.name) {
+        setExtractedData(d);
+        setReviewName("");
+        setStep("review");
+        setTimeout(() => nameInputRef.current?.focus(), 500);
+        return;
+      }
+
+      setAnalyzeStatus("Adding to database...");
+      await submitProduct(d, d.name);
+    } catch (e) {
+      console.error("Process error:", e);
+      setStep("error");
+      setErrorMsg("Something went wrong while analyzing the product. Please try again.");
+    }
+  }
+
+  async function submitProduct(d: any, productName: string) {
+    try {
       const contributeRes = await apiRequest("POST", "/api/products/contribute", {
         barcode: barcode || `USR${Date.now()}`,
-        name: d.name || "Unknown Product",
+        name: productName,
         brand: d.brand || "",
         category: d.category || "",
         servingSize: d.servingSize || "",
@@ -245,10 +270,17 @@ export default function ContributeScreen() {
         }, 3000);
       }
     } catch (e) {
-      console.error("Process error:", e);
+      console.error("Submit error:", e);
       setStep("error");
-      setErrorMsg("Something went wrong while analyzing the product. Please try again.");
+      setErrorMsg("Something went wrong while submitting the product. Please try again.");
     }
+  }
+
+  async function handleReviewSubmit() {
+    if (!reviewName.trim() || !extractedData || isSubmitting) return;
+    setIsSubmitting(true);
+    await submitProduct(extractedData, reviewName.trim());
+    setIsSubmitting(false);
   }
 
   function handleRetry() {
@@ -405,6 +437,120 @@ export default function ContributeScreen() {
             </Text>
           </View>
         </Animated.View>
+      )}
+
+      {step === "review" && extractedData && (
+        <MotiView
+          from={{ opacity: 0, translateY: 20 }}
+          animate={{ opacity: 1, translateY: 0 }}
+          transition={{ type: "timing", duration: 400 }}
+          style={styles.reviewState}
+        >
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.reviewContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.reviewIconRow}>
+              <PencilSimple size={40} color={theme.amber} weight="fill" />
+            </View>
+            <Text style={[styles.reviewTitle, { color: theme.text }]}>
+              Product Name Needed
+            </Text>
+            <Text style={[styles.reviewSubtitle, { color: theme.muted }]}>
+              We couldn't read the product name from the packaging. Please enter it below.
+            </Text>
+
+            <View style={styles.reviewInputWrapper}>
+              <TextInput
+                ref={nameInputRef}
+                style={[styles.reviewInput, { color: theme.text, borderColor: reviewName.trim() ? theme.mint : theme.amber }]}
+                placeholder="Enter product name"
+                placeholderTextColor={theme.placeholder}
+                value={reviewName}
+                onChangeText={setReviewName}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={handleReviewSubmit}
+                testID="review-name-input"
+              />
+              {!reviewName.trim() && (
+                <Text style={[styles.reviewValidation, { color: theme.amber }]}>
+                  Required before submitting
+                </Text>
+              )}
+            </View>
+
+            {(extractedData.calories != null || extractedData.protein != null || extractedData.fat != null || extractedData.carbohydrates != null) && (
+              <View style={[styles.reviewExtractedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.reviewExtractedTitle, { color: theme.text }]}>
+                  Extracted Data
+                </Text>
+                {extractedData.brand && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Brand: {extractedData.brand}
+                  </Text>
+                )}
+                {extractedData.calories != null && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Calories: {extractedData.calories}
+                  </Text>
+                )}
+                {extractedData.protein != null && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Protein: {extractedData.protein}g
+                  </Text>
+                )}
+                {extractedData.carbohydrates != null && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Carbs: {extractedData.carbohydrates}g
+                  </Text>
+                )}
+                {extractedData.fat != null && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Fat: {extractedData.fat}g
+                  </Text>
+                )}
+                {extractedData.allergens?.length > 0 && (
+                  <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
+                    Allergens: {extractedData.allergens.join(", ")}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.reviewSubmitWrapper, { opacity: reviewName.trim() && !isSubmitting ? 1 : 0.5 }]}
+              onPress={handleReviewSubmit}
+              disabled={!reviewName.trim() || isSubmitting}
+              accessibilityLabel="Submit product"
+              accessibilityRole="button"
+              testID="review-submit-btn"
+            >
+              <LinearGradient
+                colors={["#3DD68C", "#2E7D32"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.reviewSubmitBtn}
+              >
+                <Check size={20} color="#fff" weight="bold" />
+                <Text style={styles.reviewSubmitText}>
+                  {isSubmitting ? "Submitting..." : "Submit Product"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => router.back()}
+              accessibilityLabel="Cancel and go back"
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </MotiView>
       )}
 
       {step === "success" && (
@@ -751,5 +897,85 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     color: theme.muted,
     fontWeight: "500",
+  },
+  reviewState: {
+    flex: 1,
+  },
+  reviewContent: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    paddingTop: 32,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  reviewIconRow: {
+    marginBottom: 4,
+  },
+  reviewTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  reviewSubtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    maxWidth: 300,
+  },
+  reviewInputWrapper: {
+    width: "100%",
+    marginTop: 8,
+    gap: 6,
+  },
+  reviewInput: {
+    width: "100%",
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
+    paddingHorizontal: 16,
+    fontSize: 17,
+    fontWeight: "500" as const,
+    backgroundColor: "transparent",
+  },
+  reviewValidation: {
+    fontSize: 13,
+    fontWeight: "500" as const,
+    paddingLeft: 4,
+  },
+  reviewExtractedCard: {
+    width: "100%",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    gap: 6,
+    marginTop: 4,
+  },
+  reviewExtractedTitle: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    marginBottom: 2,
+  },
+  reviewExtractedRow: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  reviewSubmitWrapper: {
+    marginTop: 12,
+    borderRadius: 999,
+    overflow: "hidden" as const,
+  },
+  reviewSubmitBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 999,
+  },
+  reviewSubmitText: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
 });
