@@ -50,7 +50,7 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={styles.sectionTitle}>4. Data Storage & Security</Text>
         <Text style={styles.body}>
-          Your data is stored in a secure PostgreSQL database. Passwords are hashed using bcrypt and are never stored in plain text. Authentication uses short-lived JWT access tokens and rotated refresh tokens. We use HTTPS for all data transmission.
+          Your data is stored in a secure PostgreSQL database. Authentication is handled through trusted third-party providers (Google and Apple sign-in). We use short-lived JWT access tokens and rotated refresh tokens. All data is transmitted over HTTPS.
         </Text>
 
         <Text style={styles.sectionTitle}>5. Data Retention</Text>

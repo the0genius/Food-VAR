@@ -294,11 +294,8 @@ function setupErrorHandler(app: express.Application) {
     legacyHeaders: false,
   });
 
-  app.use("/api/auth/login", authLimiter);
-  app.use("/api/auth/register", authLimiter);
-  app.use("/api/auth/verify-email", authLimiter);
-  app.use("/api/auth/resend-verification", authLimiter);
-  app.use("/api/auth/password-reset", authLimiter);
+  app.use("/api/auth/google", authLimiter);
+  app.use("/api/auth/apple", authLimiter);
   app.use("/api/auth/refresh", refreshLimiter);
   app.use("/api/auth/logout", refreshLimiter);
   app.use("/api/score", aiLimiter);

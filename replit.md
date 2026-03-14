@@ -113,12 +113,14 @@ Preferred communication style: Simple, everyday language.
 - Task #5: UX quality (unified score labels via shared/score-labels.ts, accessibility labels, non-color-only score meaning, 83 tests)
 
 ## Auth Security
-- **Password policy**: Min 8 chars, at least one number, at least one special character
-- **Refresh token reuse detection**: If a revoked refresh token is replayed, all sessions for that user are invalidated
-- **Email verification**: Token generated on register, hashed at rest, 24h expiry. POST /api/auth/verify-email, POST /api/auth/resend-verification. No email provider integrated (dev-only token logging).
-- **Password reset**: POST /api/auth/password-reset/request (always success to prevent enumeration), POST /api/auth/password-reset/confirm (validates token, updates password, revokes all sessions). Tokens hashed, 1h expiry.
+- **Social sign-in only**: Google and Apple sign-in via POST /api/auth/google and POST /api/auth/apple. No email/password auth.
+- **Token verification**: Google tokens verified via tokeninfo endpoint; Apple tokens decoded and validated (iss, exp).
+- **User linking**: `findOrCreateSocialUser` links by (provider+providerId) → email match → new user creation.
+- **Schema**: users table has `authProvider` and `authProviderId` columns. `passwordHash` column retained (nullable) for backwards compatibility. `emailVerificationTokens` and `passwordResetTokens` tables removed from schema.
+- **Refresh token reuse detection**: If a revoked refresh token is replayed, all sessions for that user are invalidated.
 - **Rate limiting**: Auth endpoints 20 req/15min, refresh 30 req/15min, AI routes 20 req/min
 - **Web auth storage**: AsyncStorage (localStorage) on web — documented tradeoff in HARDENING_STATUS.md. SecureStore on native.
+- **Frontend**: expo-auth-session for Google, expo-apple-authentication for Apple. UserContext exposes `loginWithGoogle`, `loginWithApple`, `devLogin`.
 
 ## Operational
 - **Logger**: pino with structured JSON, redaction of sensitive fields (passwords, tokens, health data, chat content)

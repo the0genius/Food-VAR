@@ -14,18 +14,15 @@ import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import {
-  hashPassword,
-  verifyPassword,
   generateAccessToken,
   createRefreshToken,
   rotateRefreshToken,
   revokeAllRefreshTokens,
   requireAuth,
   stripSensitiveFields,
-  createEmailVerificationToken,
-  verifyEmailToken,
-  createPasswordResetToken,
-  verifyPasswordResetToken,
+  verifyGoogleIdToken,
+  verifyAppleIdToken,
+  findOrCreateSocialUser,
   type AuthPayload,
 } from "./auth";
 import { z } from "zod";
@@ -41,20 +38,9 @@ function getApprovedProductFilter() {
   return eq(products.moderationStatus, "approved");
 }
 
-const registerSchema = z.object({
-  email: z.string().email().max(255),
-  password: z
-    .string()
-    .min(8)
-    .max(128)
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character"),
-  name: z.string().max(100).optional().default(""),
-});
-
-const loginSchema = z.object({
-  email: z.string().email().max(255),
-  password: z.string().min(1).max(128),
+const socialAuthSchema = z.object({
+  idToken: z.string().min(1),
+  name: z.string().max(100).optional(),
 });
 
 const refreshSchema = z.object({
@@ -161,12 +147,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(1);
 
         if (!user) {
-          const passwordHash = await hashPassword("DevTest1!");
           [user] = await db
             .insert(users)
             .values({
               email: devEmail,
-              passwordHash,
+              authProvider: "dev",
+              authProviderId: "dev-tester-001",
               name: "Dev Tester",
               age: 30,
               conditions: ["diabetes_type2"],
@@ -200,10 +186,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
-  // ========== AUTH ROUTES ==========
-  app.post("/api/auth/register", async (req: Request, res: Response) => {
+  // ========== SOCIAL AUTH ROUTES ==========
+  app.post("/api/auth/google", async (req: Request, res: Response) => {
     try {
-      const parsed = registerSchema.safeParse(req.body);
+      const parsed = socialAuthSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
           error: "Validation failed",
@@ -211,80 +197,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { email, password, name } = parsed.data;
-
-      const [existing] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email.toLowerCase()))
-        .limit(1);
-
-      if (existing) {
-        return res.status(409).json({ error: "Email already registered" });
+      const tokenPayload = await verifyGoogleIdToken(parsed.data.idToken);
+      if (!tokenPayload) {
+        return res.status(401).json({ error: "Invalid Google token" });
       }
 
-      const passwordHash = await hashPassword(password);
-      const [user] = await db
-        .insert(users)
-        .values({
-          email: email.toLowerCase(),
-          passwordHash,
-          name: name || "",
-        })
-        .returning();
-
-      const payload: AuthPayload = {
-        userId: user.id,
-        email: user.email,
-        role: user.role || "user",
-      };
-      const accessToken = generateAccessToken(payload);
-      const refreshToken = await createRefreshToken(user.id);
-
-      await createEmailVerificationToken(user.id);
-
-      res.status(201).json({
-        user: stripSensitiveFields(user),
-        accessToken,
-        refreshToken,
-      });
-    } catch (error) {
-      logger.error("Registration failed", error, {}, req);
-      res.status(500).json({ error: "Registration failed" });
-    }
-  });
-
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
-    try {
-      const parsed = loginSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          error: "Validation failed",
-          details: parsed.error.flatten().fieldErrors,
-        });
-      }
-
-      const { email, password } = parsed.data;
-
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.email, email.toLowerCase()),
-            isNull(users.deletedAt)
-          )
-        )
-        .limit(1);
-
-      if (!user || !user.passwordHash) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
-
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
+      const user = await findOrCreateSocialUser(
+        "google",
+        tokenPayload.sub,
+        tokenPayload.email,
+        parsed.data.name || tokenPayload.name,
+      );
 
       const payload: AuthPayload = {
         userId: user.id,
@@ -299,9 +222,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken,
         refreshToken,
       });
-    } catch (error) {
-      logger.error("Login failed", error, {}, req);
-      res.status(500).json({ error: "Login failed" });
+    } catch (error: any) {
+      if (error?.message === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
+        return res.status(409).json({ error: "This email is already linked to a different sign-in method" });
+      }
+      logger.error("Google auth failed", error, {}, req);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  });
+
+  app.post("/api/auth/apple", async (req: Request, res: Response) => {
+    try {
+      const parsed = socialAuthSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const tokenPayload = await verifyAppleIdToken(parsed.data.idToken);
+      if (!tokenPayload) {
+        return res.status(401).json({ error: "Invalid Apple token" });
+      }
+
+      const user = await findOrCreateSocialUser(
+        "apple",
+        tokenPayload.sub,
+        tokenPayload.email,
+        parsed.data.name,
+      );
+
+      const payload: AuthPayload = {
+        userId: user.id,
+        email: user.email,
+        role: user.role || "user",
+      };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = await createRefreshToken(user.id);
+
+      res.json({
+        user: stripSensitiveFields(user),
+        accessToken,
+        refreshToken,
+      });
+    } catch (error: any) {
+      if (error?.message === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
+        return res.status(409).json({ error: "This email is already linked to a different sign-in method" });
+      }
+      logger.error("Apple auth failed", error, {}, req);
+      res.status(500).json({ error: "Authentication failed" });
     }
   });
 
@@ -398,123 +368,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stripSensitiveFields(user));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
-    }
-  });
-
-  app.post("/api/auth/verify-email", async (req: Request, res: Response) => {
-    try {
-      const schema = z.object({ token: z.string().min(1) });
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: "Token is required" });
-      }
-
-      const userId = await verifyEmailToken(parsed.data.token);
-      if (!userId) {
-        return res.status(400).json({ error: "Invalid or expired verification token" });
-      }
-
-      res.json({ success: true, message: "Email verified successfully" });
-    } catch (error) {
-      logger.error("Email verification failed", error, {}, req);
-      res.status(500).json({ error: "Verification failed" });
-    }
-  });
-
-  app.post("/api/auth/resend-verification", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.auth!.userId;
-
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      if (user.emailVerifiedAt) {
-        return res.json({ success: true, message: "Email already verified" });
-      }
-
-      await createEmailVerificationToken(userId);
-
-      res.json({ success: true, message: "Verification email sent" });
-    } catch (error) {
-      logger.error("Resend verification failed", error, {}, req);
-      res.status(500).json({ error: "Failed to resend verification" });
-    }
-  });
-
-  app.post("/api/auth/password-reset/request", async (req: Request, res: Response) => {
-    const genericSuccess = { success: true, message: "If an account exists with that email, a reset link has been sent" };
-    try {
-      const email = req.body?.email;
-      if (typeof email !== "string" || !email.includes("@")) {
-        return res.json(genericSuccess);
-      }
-
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.email, email.toLowerCase()),
-            isNull(users.deletedAt)
-          )
-        )
-        .limit(1);
-
-      if (user) {
-        await createPasswordResetToken(user.id);
-      }
-
-      res.json(genericSuccess);
-    } catch (error) {
-      logger.error("Password reset request failed", error, {}, req);
-      res.json(genericSuccess);
-    }
-  });
-
-  app.post("/api/auth/password-reset/confirm", async (req: Request, res: Response) => {
-    try {
-      const passwordPolicy = z.string()
-        .min(8, "Password must be at least 8 characters")
-        .regex(/[0-9]/, "Password must contain at least one number")
-        .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character");
-
-      const schema = z.object({
-        token: z.string().min(1),
-        newPassword: passwordPolicy,
-      });
-
-      const parsed = schema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          error: "Validation failed",
-          details: parsed.error.flatten().fieldErrors,
-        });
-      }
-
-      const userId = await verifyPasswordResetToken(parsed.data.token);
-      if (!userId) {
-        return res.status(400).json({ error: "Invalid or expired reset token" });
-      }
-
-      const newHash = await hashPassword(parsed.data.newPassword);
-      await db
-        .update(users)
-        .set({ passwordHash: newHash, updatedAt: new Date() })
-        .where(eq(users.id, userId));
-
-      await revokeAllRefreshTokens(userId);
-
-      res.json({ success: true, message: "Password reset successfully" });
-    } catch (error) {
-      logger.error("Password reset confirm failed", error, {}, req);
-      res.status(500).json({ error: "Password reset failed" });
     }
   });
 

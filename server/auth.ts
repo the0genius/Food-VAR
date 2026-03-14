@@ -1,10 +1,9 @@
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { users, refreshTokens, emailVerificationTokens, passwordResetTokens } from "@shared/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { users, refreshTokens } from "@shared/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "./logger";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
@@ -26,17 +25,6 @@ declare global {
       auth?: AuthPayload;
     }
   }
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
-}
-
-export async function verifyPassword(
-  password: string,
-  hash: string
-): Promise<boolean> {
-  return bcrypt.compare(password, hash);
 }
 
 export function generateAccessToken(payload: AuthPayload): string {
@@ -133,90 +121,143 @@ export function stripSensitiveFields(user: Record<string, unknown>) {
   return safe;
 }
 
-const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
-const RESET_TOKEN_EXPIRY_HOURS = 1;
-
-export async function createEmailVerificationToken(userId: number): Promise<string> {
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + VERIFICATION_TOKEN_EXPIRY_HOURS);
-
-  await db.insert(emailVerificationTokens).values({
-    userId,
-    tokenHash,
-    expiresAt,
-  });
-
-  if (process.env.NODE_ENV === "development") {
-    logger.info(`[DEV] Email verification token for user ${userId}: ${token}`);
-  }
-
-  return token;
+interface GoogleTokenPayload {
+  sub: string;
+  email: string;
+  name?: string;
+  email_verified?: boolean;
 }
 
-export async function verifyEmailToken(token: string): Promise<number | null> {
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
 
-  const [record] = await db
-    .select()
-    .from(emailVerificationTokens)
-    .where(eq(emailVerificationTokens.tokenHash, tokenHash))
-    .limit(1);
+export async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenPayload | null> {
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    if (!res.ok) return null;
+    const data = await res.json() as Record<string, unknown>;
+    if (!data.sub || !data.email) return null;
 
-  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    if (GOOGLE_CLIENT_ID && data.aud !== GOOGLE_CLIENT_ID) {
+      logger.error("Google token aud mismatch", { expected: GOOGLE_CLIENT_ID, got: data.aud });
+      return null;
+    }
+
+    const emailVerified = data.email_verified === "true" || data.email_verified === true;
+    if (!emailVerified) {
+      logger.error("Google token email not verified");
+      return null;
+    }
+
+    return {
+      sub: data.sub as string,
+      email: data.email as string,
+      name: (data.name as string) || undefined,
+      email_verified: emailVerified,
+    };
+  } catch (err) {
+    logger.error("Google token verification failed", err);
     return null;
   }
-
-  await db
-    .update(emailVerificationTokens)
-    .set({ usedAt: new Date() })
-    .where(eq(emailVerificationTokens.id, record.id));
-
-  await db
-    .update(users)
-    .set({ emailVerifiedAt: new Date() })
-    .where(eq(users.id, record.userId));
-
-  return record.userId;
 }
 
-export async function createPasswordResetToken(userId: number): Promise<string> {
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + RESET_TOKEN_EXPIRY_HOURS);
-
-  await db.insert(passwordResetTokens).values({
-    userId,
-    tokenHash,
-    expiresAt,
-  });
-
-  if (process.env.NODE_ENV === "development") {
-    logger.info(`[DEV] Password reset token for user ${userId}: ${token}`);
-  }
-
-  return token;
+interface AppleTokenPayload {
+  sub: string;
+  email: string;
+  email_verified?: boolean;
 }
 
-export async function verifyPasswordResetToken(token: string): Promise<number | null> {
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+const APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
+const APPLE_BUNDLE_ID = process.env.EXPO_PUBLIC_APPLE_BUNDLE_ID || "";
 
-  const [record] = await db
-    .select()
-    .from(passwordResetTokens)
-    .where(eq(passwordResetTokens.tokenHash, tokenHash))
-    .limit(1);
+export async function verifyAppleIdToken(idToken: string): Promise<AppleTokenPayload | null> {
+  try {
+    const { createRemoteJWKSet, jwtVerify } = await import("jose");
+    const JWKS = createRemoteJWKSet(new URL(APPLE_JWKS_URL));
 
-  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    const verifyOptions: Record<string, unknown> = {
+      issuer: "https://appleid.apple.com",
+    };
+    if (APPLE_BUNDLE_ID) {
+      verifyOptions.audience = APPLE_BUNDLE_ID;
+    }
+
+    const { payload } = await jwtVerify(idToken, JWKS, verifyOptions as any);
+
+    if (!payload.sub || !payload.email) return null;
+
+    return {
+      sub: payload.sub as string,
+      email: (payload as any).email as string,
+      email_verified: (payload as any).email_verified === true || (payload as any).email_verified === "true",
+    };
+  } catch (err) {
+    logger.error("Apple token verification failed", err);
     return null;
   }
+}
 
-  await db
-    .update(passwordResetTokens)
-    .set({ usedAt: new Date() })
-    .where(eq(passwordResetTokens.id, record.id));
+export async function findOrCreateSocialUser(
+  provider: string,
+  providerId: string,
+  email: string,
+  name?: string,
+): Promise<typeof users.$inferSelect> {
+  const [existingByProvider] = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.authProvider, provider),
+        eq(users.authProviderId, providerId),
+        isNull(users.deletedAt),
+      )
+    )
+    .limit(1);
 
-  return record.userId;
+  if (existingByProvider) return existingByProvider;
+
+  const [existingByEmail] = await db
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.email, email.toLowerCase()),
+        isNull(users.deletedAt),
+      )
+    )
+    .limit(1);
+
+  if (existingByEmail) {
+    if (existingByEmail.authProvider && existingByEmail.authProvider !== provider) {
+      logger.error("Account already linked to different provider", {
+        userId: existingByEmail.id,
+        existingProvider: existingByEmail.authProvider,
+        attemptedProvider: provider,
+      });
+      throw new Error("ACCOUNT_LINKED_DIFFERENT_PROVIDER");
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set({
+        authProvider: provider,
+        authProviderId: providerId,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, existingByEmail.id))
+      .returning();
+    return updated;
+  }
+
+  const [newUser] = await db
+    .insert(users)
+    .values({
+      email: email.toLowerCase(),
+      authProvider: provider,
+      authProviderId: providerId,
+      name: name || "",
+    })
+    .returning();
+
+  return newUser;
 }

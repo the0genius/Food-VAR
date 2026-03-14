@@ -9,6 +9,8 @@ import {
   Dimensions,
   Platform,
   KeyboardAvoidingView,
+  Alert,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -27,6 +29,8 @@ import {
   TrendDown,
   Heartbeat,
   ShieldCheck,
+  GoogleLogo,
+  AppleLogo,
 } from "phosphor-react-native";
 import Animated, {
   FadeInDown,
@@ -38,6 +42,11 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import * as AuthSession from "expo-auth-session";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as WebBrowser from "expo-web-browser";
+
+WebBrowser.maybeCompleteAuthSession();
 import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
 
@@ -82,17 +91,16 @@ const DIETS = [
   { id: "kosher", label: "Kosher" },
 ];
 
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
+
 export default function OnboardingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { user, register, login, devLogin, updateProfile } = useUser();
+  const { user, loginWithGoogle, loginWithApple, devLogin, updateProfile } = useUser();
   const [step, setStep] = useState(0);
-  const [isLoginMode, setIsLoginMode] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
@@ -110,6 +118,18 @@ export default function OnboardingScreen() {
     width: `${progressWidth.value}%` as any,
   }));
 
+  const redirectUri = AuthSession.makeRedirectUri({ scheme: "foodvar" });
+
+  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      redirectUri,
+      scopes: ["openid", "email", "profile"],
+      responseType: AuthSession.ResponseType.IdToken,
+    },
+    { authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth" }
+  );
+
   function toggleItem(list: string[], setList: (v: string[]) => void, id: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (list.includes(id)) {
@@ -119,31 +139,62 @@ export default function OnboardingScreen() {
     }
   }
 
+  async function handleGoogleLogin() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
+    try {
+      const result = await googlePromptAsync();
+      if (result.type === "success" && result.params?.id_token) {
+        const loggedInUser = await loginWithGoogle(result.params.id_token);
+        if (loggedInUser?.onboardingCompleted) {
+          router.replace("/(tabs)");
+        } else {
+          const nextStep = 1;
+          setStep(nextStep);
+          progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
+        }
+      }
+    } catch (e: any) {
+      console.error("Google login failed:", e);
+      Alert.alert("Sign In Failed", "Could not sign in with Google. Please try again.");
+    }
+    setLoading(false);
+  }
+
+  async function handleAppleLogin() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        ],
+      });
+      if (credential.identityToken) {
+        const appleName = credential.fullName
+          ? [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(" ")
+          : undefined;
+        const loggedInUser = await loginWithApple(credential.identityToken, appleName || undefined);
+        if (loggedInUser?.onboardingCompleted) {
+          router.replace("/(tabs)");
+        } else {
+          const nextStep = 1;
+          setStep(nextStep);
+          progressWidth.value = withTiming(((nextStep + 1) / totalSteps) * 100, { duration: 350 });
+        }
+      }
+    } catch (e: any) {
+      if (e?.code !== "ERR_REQUEST_CANCELED") {
+        console.error("Apple login failed:", e);
+        Alert.alert("Sign In Failed", "Could not sign in with Apple. Please try again.");
+      }
+    }
+    setLoading(false);
+  }
+
   async function handleNext() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (step === 0) {
-      if (!email.trim() || !password.trim()) return;
-      setLoading(true);
-      try {
-        if (isLoginMode) {
-          await login(email.trim(), password.trim());
-          router.replace("/(tabs)");
-          setLoading(false);
-          return;
-        } else {
-          await register(email.trim(), password.trim(), name.trim());
-        }
-      } catch (e: any) {
-        const msg = e?.message || "";
-        if (msg.includes("409")) {
-          setIsLoginMode(true);
-        }
-        console.error(e);
-        setLoading(false);
-        return;
-      }
-      setLoading(false);
-    }
     if (step < totalSteps - 1) {
       const nextStep = step + 1;
       setStep(nextStep);
@@ -204,68 +255,61 @@ export default function OnboardingScreen() {
                 <UserCircle size={56} color="#fff" weight="fill" />
               </LinearGradient>
             </View>
-            <Text style={styles.stepTitle}>{isLoginMode ? "Welcome Back" : "Welcome to FoodVAR"}</Text>
+            <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
             <Text style={styles.stepSubtitle}>
-              {isLoginMode
-                ? "Sign in to access your personalized food scores"
-                : "Get personalized food scores based on your unique health profile"}
+              Get personalized food scores based on your unique health profile
             </Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="your@email.com"
-                placeholderTextColor={theme.placeholder}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                testID="email-input"
-                accessibilityLabel="Email address"
-              />
-            </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder={isLoginMode ? "Your password" : "Create a password (8+ characters)"}
-                placeholderTextColor={theme.placeholder}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                testID="password-input"
-                accessibilityLabel="Password"
-                accessibilityHint="Minimum 8 characters with a number and special character"
-              />
-            </View>
-            {!isLoginMode && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Name (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Your name"
-                  placeholderTextColor={theme.placeholder}
-                  autoCapitalize="words"
-                  testID="name-input"
-                  accessibilityLabel="Your name"
+            <View style={styles.socialButtonsWrap}>
+              <TouchableOpacity
+                style={styles.googleBtn}
+                onPress={handleGoogleLogin}
+                disabled={loading}
+                activeOpacity={0.8}
+                testID="google-login-button"
+                accessibilityLabel="Continue with Google"
+                accessibilityRole="button"
+              >
+                <GoogleLogo size={22} color="#4285F4" weight="bold" />
+                <Text style={styles.googleBtnText}>Continue with Google</Text>
+              </TouchableOpacity>
+
+              {Platform.OS === "ios" ? (
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                  buttonStyle={
+                    theme.bg === '#121212'
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                  }
+                  cornerRadius={16}
+                  style={styles.appleNativeBtn}
+                  onPress={handleAppleLogin}
                 />
-              </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.appleBtn}
+                  onPress={handleAppleLogin}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                  testID="apple-login-button"
+                  accessibilityLabel="Continue with Apple"
+                  accessibilityRole="button"
+                >
+                  <AppleLogo size={22} color="#fff" weight="fill" />
+                  <Text style={styles.appleBtnText}>Continue with Apple</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {loading && (
+              <MotiView
+                from={{ opacity: 0.4 }}
+                animate={{ opacity: 1 }}
+                transition={{ loop: true, type: "timing", duration: 850 }}
+                style={styles.loadingIndicator}
+              >
+                <Text style={styles.loadingText}>Signing in...</Text>
+              </MotiView>
             )}
-            <TouchableOpacity
-              onPress={() => setIsLoginMode(!isLoginMode)}
-              style={{ alignSelf: "center", paddingVertical: 8 }}
-              accessibilityLabel={isLoginMode ? "Switch to sign up" : "Switch to sign in"}
-              accessibilityRole="button"
-            >
-              <Text style={{ color: theme.primary, fontSize: 14, fontWeight: "600" as const }}>
-                {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-              </Text>
-            </TouchableOpacity>
           </MotiView>
         );
       case 1:
@@ -461,6 +505,19 @@ export default function OnboardingScreen() {
               })}
             </View>
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Name (optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Your name"
+                placeholderTextColor={theme.placeholder}
+                autoCapitalize="words"
+                testID="name-input"
+                accessibilityLabel="Your name"
+              />
+            </View>
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Age (optional)</Text>
               <TextInput
                 style={styles.input}
@@ -545,6 +602,7 @@ export default function OnboardingScreen() {
   }
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
+  const isStep0 = step === 0;
 
   return (
     <KeyboardAvoidingView
@@ -590,74 +648,84 @@ export default function OnboardingScreen() {
         {renderStep()}
       </ScrollView>
 
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 16) + 8 },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.nextBtnWrapper, loading && styles.nextBtnDisabled]}
-          onPress={handleNext}
-          disabled={loading || (step === 0 && (!email.trim() || !password.trim())) || (step === 5 && !consentChecked)}
-          activeOpacity={0.8}
-          testID="next-button"
-          accessibilityLabel={loading ? "Saving" : step === 0 && isLoginMode ? "Sign in" : step === totalSteps - 1 ? "Start scanning" : "Continue to next step"}
-          accessibilityRole="button"
+      {!isStep0 && (
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 16) + 8 },
+          ]}
         >
-          <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.nextBtn}
+          <TouchableOpacity
+            style={[styles.nextBtnWrapper, loading && styles.nextBtnDisabled]}
+            onPress={handleNext}
+            disabled={loading || (step === 5 && !consentChecked)}
+            activeOpacity={0.8}
+            testID="next-button"
+            accessibilityLabel={loading ? "Saving" : step === totalSteps - 1 ? "Start scanning" : "Continue to next step"}
+            accessibilityRole="button"
           >
-            <Text style={styles.nextBtnText}>
-              {loading
-                ? "Saving..."
-                : step === 0 && isLoginMode
-                  ? "Sign In"
+            <LinearGradient
+              colors={["#3DD68C", "#2E7D32"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.nextBtn}
+            >
+              <Text style={styles.nextBtnText}>
+                {loading
+                  ? "Saving..."
                   : step === totalSteps - 1
                     ? "Start Scanning"
                     : "Continue"}
-            </Text>
-            {!loading && (
-              <ArrowRight size={20} color="#fff" weight="bold" />
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-        {step > 0 && step < totalSteps - 1 && (
-          <TouchableOpacity
-            onPress={handleSkip}
-            style={styles.skipBtn}
-            accessibilityLabel="Skip this step"
-            accessibilityRole="button"
-          >
-            <Text style={styles.skipBtnText}>Skip</Text>
+              </Text>
+              {!loading && (
+                <ArrowRight size={20} color="#fff" weight="bold" />
+              )}
+            </LinearGradient>
           </TouchableOpacity>
-        )}
-        {__DEV__ && step === 0 && (
-          <TouchableOpacity
-            onPress={async () => {
-              setLoading(true);
-              try {
-                await devLogin();
-                router.replace("/(tabs)");
-              } catch (e) {
-                console.error("Dev login failed:", e);
-              }
-              setLoading(false);
-            }}
-            style={[styles.skipBtn, { marginTop: 8 }]}
-            disabled={loading}
-            accessibilityLabel="Skip sign up (dev only)"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.skipBtnText, { color: "#FF9800" }]}>
-              Skip Sign Up (Dev Only)
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          {step > 0 && step < totalSteps - 1 && (
+            <TouchableOpacity
+              onPress={handleSkip}
+              style={styles.skipBtn}
+              accessibilityLabel="Skip this step"
+              accessibilityRole="button"
+            >
+              <Text style={styles.skipBtnText}>Skip</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {isStep0 && (
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 16) + 8 },
+          ]}
+        >
+          {__DEV__ && (
+            <TouchableOpacity
+              onPress={async () => {
+                setLoading(true);
+                try {
+                  await devLogin();
+                  router.replace("/(tabs)");
+                } catch (e) {
+                  console.error("Dev login failed:", e);
+                }
+                setLoading(false);
+              }}
+              style={[styles.skipBtn, { marginTop: 0 }]}
+              disabled={loading}
+              accessibilityLabel="Skip sign up (dev only)"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.skipBtnText, { color: "#FF9800" }]}>
+                Skip Sign Up (Dev Only)
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -730,6 +798,55 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.muted,
     lineHeight: 22,
     marginBottom: 28,
+  },
+  socialButtonsWrap: {
+    gap: 14,
+    marginTop: 8,
+  },
+  googleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    ...cardShadow("medium"),
+  },
+  googleBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: theme.text,
+  },
+  appleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: "#000",
+    ...cardShadow("medium"),
+  },
+  appleBtnText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  appleNativeBtn: {
+    height: 54,
+    width: "100%",
+  },
+  loadingIndicator: {
+    alignItems: "center",
+    marginTop: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: theme.muted,
+    fontWeight: "500",
   },
   inputGroup: {
     marginBottom: 20,

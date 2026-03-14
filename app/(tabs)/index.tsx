@@ -24,7 +24,6 @@ import {
   Crown,
   Info,
 } from "phosphor-react-native";
-import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 function SkeletonBlock({ width, height, borderRadius = 12, style, color = "#EBEBEB" }: { width: number | string; height: number; borderRadius?: number; style?: any; color?: string }) {
   return (
@@ -368,9 +367,6 @@ export default function HomeScreen() {
               <AnimatedProgressBar used={scansToday} total={10} />
             )}
 
-            {user && !user.emailVerifiedAt && (
-              <EmailVerificationBanner />
-            )}
 
             <View style={styles.contentArea}>
               <View style={styles.statsRow}>

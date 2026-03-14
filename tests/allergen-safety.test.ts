@@ -43,6 +43,8 @@ function makeUser(overrides: Partial<User> = {}): User {
     id: 1,
     email: "test@test.com",
     passwordHash: null,
+    authProvider: "google",
+    authProviderId: "test-provider-id",
     name: "Test",
     age: 30,
     gender: "male",

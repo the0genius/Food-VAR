@@ -6,6 +6,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import { Platform } from "react-native";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import {
   getAccessToken,
@@ -36,15 +37,15 @@ interface UserProfile {
   isPro: boolean;
   role: string;
   contributionCount: number;
-  emailVerifiedAt: string | null;
+  authProvider: string | null;
 }
 
 interface UserContextValue {
   user: UserProfile | null;
   isLoading: boolean;
-  register: (email: string, password: string, name: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  devLogin: () => Promise<void>;
+  loginWithGoogle: (idToken: string, name?: string) => Promise<UserProfile>;
+  loginWithApple: (idToken: string, name?: string) => Promise<UserProfile>;
+  devLogin: () => Promise<UserProfile>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -102,32 +103,34 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function register(email: string, password: string, name: string) {
-    const res = await apiRequest("POST", "/api/auth/register", {
-      email,
-      password,
+  async function loginWithGoogle(idToken: string, name?: string): Promise<UserProfile> {
+    const res = await apiRequest("POST", "/api/auth/google", {
+      idToken,
       name,
     });
     const data = await res.json();
     await setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
+    return data.user;
   }
 
-  async function login(email: string, password: string) {
-    const res = await apiRequest("POST", "/api/auth/login", {
-      email,
-      password,
+  async function loginWithApple(idToken: string, name?: string): Promise<UserProfile> {
+    const res = await apiRequest("POST", "/api/auth/apple", {
+      idToken,
+      name,
     });
     const data = await res.json();
     await setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
+    return data.user;
   }
 
-  async function devLogin() {
+  async function devLogin(): Promise<UserProfile> {
     const res = await apiRequest("POST", "/api/auth/dev-login", {});
     const data = await res.json();
     await setTokens(data.accessToken, data.refreshToken);
     setUser(data.user);
+    return data.user;
   }
 
   async function updateProfile(data: Partial<UserProfile>) {
@@ -168,8 +171,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isLoading,
-      register,
-      login,
+      loginWithGoogle,
+      loginWithApple,
       devLogin,
       updateProfile,
       refreshUser,
