@@ -25,6 +25,21 @@ export const C = {
   tealBg: '#E0F7FA',
   green: '#43A047',
   greenBg: '#E8F5E9',
+  skeleton: '#EBEBEB',
+  mutedIcon: '#CCCCCC',
+  scoreBgGood: '#F2FAF6',
+  scoreBgCaution: '#FFFBF5',
+  scoreBgPoor: '#FFF8F8',
+  scoreBgAllergen: '#FFF5F5',
+  scoreChipGood: '#D4F0E0',
+  scoreChipCaution: '#FFE0B2',
+  scoreChipPoor: '#FFCDD2',
+  scoreChipAllergen: '#FFCDD2',
+  infoBg: '#EBF4FF',
+  info: '#1976D2',
+  warningBg: '#FFF8E1',
+  warningBorder: '#FFA726',
+  warningText: '#5D4037',
 };
 
 const darkTokens = {
@@ -52,6 +67,21 @@ const darkTokens = {
   tealBg: '#153D3A',
   green: '#66BB6A',
   greenBg: '#1B3A1D',
+  skeleton: '#2C2C2C',
+  mutedIcon: '#555555',
+  scoreBgGood: '#1B3A1D',
+  scoreBgCaution: '#3D2E15',
+  scoreBgPoor: '#3D1515',
+  scoreBgAllergen: '#3D1515',
+  scoreChipGood: '#1B3A1D',
+  scoreChipCaution: '#3D2E15',
+  scoreChipPoor: '#3D1515',
+  scoreChipAllergen: '#3D1515',
+  infoBg: '#152A3D',
+  info: '#64B5F6',
+  warningBg: '#3D2E15',
+  warningBorder: '#FFB74D',
+  warningText: '#FFE0B2',
 };
 
 export type ThemeColors = typeof C;
@@ -161,22 +191,22 @@ export function coloredShadow(color: string, intensity: "subtle" | "medium" | "s
   });
 }
 
-export function getScoreColor(score: number): string {
-  if (score === 0) return C.danger;
-  if (score <= 15) return C.darkRed;
-  if (score <= 35) return C.danger;
-  if (score <= 50) return C.amber;
-  if (score <= 74) return C.tealScore;
-  return C.green;
+export function getScoreColor(score: number, t: ThemeColors = C): string {
+  if (score === 0) return t.danger;
+  if (score <= 15) return t.darkRed;
+  if (score <= 35) return t.danger;
+  if (score <= 50) return t.amber;
+  if (score <= 74) return t.tealScore;
+  return t.green;
 }
 
-export function getScoreBgColor(score: number): string {
-  if (score === 0) return C.dangerBg;
-  if (score <= 15) return '#FFE8E8';
-  if (score <= 35) return C.dangerBg;
-  if (score <= 50) return C.amberBg;
-  if (score <= 74) return C.tealBg;
-  return C.greenBg;
+export function getScoreBgColor(score: number, t: ThemeColors = C): string {
+  if (score === 0) return t.dangerBg;
+  if (score <= 15) return t.dangerBg;
+  if (score <= 35) return t.dangerBg;
+  if (score <= 50) return t.amberBg;
+  if (score <= 74) return t.tealBg;
+  return t.greenBg;
 }
 
 export {

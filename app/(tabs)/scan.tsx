@@ -292,7 +292,7 @@ export default function ScanScreen() {
             from={{ opacity: 0.4 }}
             animate={{ opacity: 0.9 }}
             transition={{ loop: true, type: "timing", duration: 850 }}
-            style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "#EBEBEB" }}
+            style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: theme.skeleton }}
           />
         </View>
       );
@@ -475,13 +475,13 @@ export default function ScanScreen() {
                 from={{ opacity: 0.4 }}
                 animate={{ opacity: 0.9 }}
                 transition={{ loop: true, type: "timing", duration: 850 }}
-                style={{ width: 200, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB" }}
+                style={{ width: 200, height: 14, borderRadius: 7, backgroundColor: theme.skeleton }}
               />
               <MotiView
                 from={{ opacity: 0.4 }}
                 animate={{ opacity: 0.9 }}
                 transition={{ loop: true, type: "timing", duration: 850, delay: 100 }}
-                style={{ width: 140, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB" }}
+                style={{ width: 140, height: 14, borderRadius: 7, backgroundColor: theme.skeleton }}
               />
             </View>
           )}
@@ -503,7 +503,7 @@ export default function ScanScreen() {
                   accessibilityRole="button"
                 >
                   <View style={styles.resultIcon}>
-                    <Package size={22} color="#CCCCCC" />
+                    <Package size={22} color={theme.mutedIcon} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.resultName} numberOfLines={1}>
@@ -534,7 +534,7 @@ export default function ScanScreen() {
               searchQuery.length >= 2 && !searching ? (
                 <View style={styles.emptyState}>
                   <View style={styles.iconCircle}>
-                    <MagnifyingGlass size={32} color="#CCCCCC" weight="thin" />
+                    <MagnifyingGlass size={32} color={theme.mutedIcon} weight="thin" />
                   </View>
                   <Text style={styles.emptyTitle}>No products found</Text>
                   <Text style={styles.emptyText}>
@@ -553,7 +553,7 @@ export default function ScanScreen() {
               ) : searchQuery.length === 0 ? (
                 <View style={styles.emptyState}>
                   <View style={styles.iconCircle}>
-                    <Package size={32} color="#CCCCCC" weight="thin" />
+                    <Package size={32} color={theme.mutedIcon} weight="thin" />
                   </View>
                   <Text style={styles.emptyTitle}>Find Any Product</Text>
                   <Text style={styles.emptyText}>

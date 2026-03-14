@@ -76,8 +76,8 @@ interface StatsData {
   worstProducts: StatsProduct[];
 }
 
-function getScoreColorLight(score: number): string {
-  return getScoreBgColor(score);
+function getScoreColorLight(score: number, t: ThemeColors): string {
+  return getScoreBgColor(score, t);
 }
 
 function dedupeProducts(products: StatsProduct[]): StatsProduct[] {
@@ -89,13 +89,13 @@ function dedupeProducts(products: StatsProduct[]): StatsProduct[] {
   });
 }
 
-function SkeletonBlock({ width, height, style }: { width: number | string; height: number; style?: any }) {
+function SkeletonBlock({ width, height, style, color = "#EBEBEB" }: { width: number | string; height: number; style?: any; color?: string }) {
   return (
     <MotiView
       from={{ opacity: 0.4 }}
       animate={{ opacity: 0.9 }}
       transition={{ loop: true, type: "timing" as const, duration: 850 }}
-      style={[{ backgroundColor: "#EBEBEB", borderRadius: 12, width, height }, style]}
+      style={[{ backgroundColor: color, borderRadius: 12, width, height }, style]}
     />
   );
 }
@@ -256,6 +256,7 @@ export default function ProfileScreen() {
                 placeholder="Your name"
                 placeholderTextColor={theme.placeholder}
                 autoFocus
+                accessibilityLabel="Your name"
               />
               <TextInput
                 style={styles.editInput}
@@ -265,6 +266,7 @@ export default function ProfileScreen() {
                 placeholderTextColor={theme.placeholder}
                 keyboardType="number-pad"
                 maxLength={3}
+                accessibilityLabel="Your age"
               />
               <View style={styles.editActions}>
                 <TouchableOpacity
@@ -324,9 +326,9 @@ export default function ProfileScreen() {
         {/* 3. Stat Widgets Row */}
         {statsLoading ? (
           <View style={styles.statRow}>
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} />
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} />
-            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
+            <SkeletonBlock width="31%" height={100} style={{ borderRadius: 20 }} color={theme.skeleton} />
           </View>
         ) : (
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.statRow}>
@@ -344,7 +346,7 @@ export default function ProfileScreen() {
               <View style={styles.statWidgetIconWrap}>
                 <Speedometer
                   size={14}
-                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore) : theme.text}
+                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore, theme) : theme.text}
                 />
               </View>
               <View style={styles.statWidgetBottom}>
@@ -353,7 +355,7 @@ export default function ProfileScreen() {
                     styles.statWidgetValue,
                     {
                       color: stats?.avgScore != null
-                        ? getScoreColor(stats.avgScore)
+                        ? getScoreColor(stats.avgScore, theme)
                         : theme.text,
                     },
                   ]}
@@ -449,18 +451,18 @@ export default function ProfileScreen() {
                     <View
                       style={[
                         styles.perfScoreBadge,
-                        { backgroundColor: getScoreColorLight(product.score) },
+                        { backgroundColor: getScoreColorLight(product.score, theme) },
                       ]}
                     >
                       <Text
                         style={[
                           styles.perfScoreText,
-                          { color: getScoreColor(product.score) },
+                          { color: getScoreColor(product.score, theme) },
                         ]}
                       >
                         {Math.round(product.score)}
                       </Text>
-                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score) }]}>{getScoreShortLabel(product.score)}</Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>
@@ -486,18 +488,18 @@ export default function ProfileScreen() {
                     <View
                       style={[
                         styles.perfScoreBadge,
-                        { backgroundColor: getScoreColorLight(product.score) },
+                        { backgroundColor: getScoreColorLight(product.score, theme) },
                       ]}
                     >
                       <Text
                         style={[
                           styles.perfScoreText,
-                          { color: getScoreColor(product.score) },
+                          { color: getScoreColor(product.score, theme) },
                         ]}
                       >
                         {Math.round(product.score)}
                       </Text>
-                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score) }]}>{getScoreShortLabel(product.score)}</Text>
+                      <Text style={[styles.perfScoreTierText, { color: getScoreColor(product.score, theme) }]}>{getScoreShortLabel(product.score)}</Text>
                     </View>
                     <View style={styles.perfProductInfo}>
                       <Text style={styles.perfProductName} numberOfLines={1}>
@@ -519,7 +521,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.actionCard} onPress={handleEditProfile} activeOpacity={0.8} accessibilityLabel="Edit health profile" accessibilityRole="button">
             <View style={[styles.actionLeftBorder, { backgroundColor: theme.mint }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: "#F0FAF4" }]}>
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.tinted }]}>
                 <Flag size={16} color={theme.primary} weight="fill" />
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>Edit Health Profile</Text>
@@ -550,10 +552,10 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={handleExportData} activeOpacity={0.8} accessibilityLabel="Export your data" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: "#1976D2" }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.info }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: "#EBF4FF" }]}>
-                <Export size={16} color="#1976D2" weight="fill" />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.infoBg }]}>
+                <Export size={16} color={theme.info} weight="fill" />
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>Export My Data</Text>
             </View>

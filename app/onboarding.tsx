@@ -222,6 +222,7 @@ export default function OnboardingScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 testID="email-input"
+                accessibilityLabel="Email address"
               />
             </View>
             <View style={styles.inputGroup}>
@@ -236,6 +237,8 @@ export default function OnboardingScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 testID="password-input"
+                accessibilityLabel="Password"
+                accessibilityHint="Minimum 8 characters with a number and special character"
               />
             </View>
             {!isLoginMode && (
@@ -249,6 +252,7 @@ export default function OnboardingScreen() {
                   placeholderTextColor={theme.placeholder}
                   autoCapitalize="words"
                   testID="name-input"
+                  accessibilityLabel="Your name"
                 />
               </View>
             )}
@@ -465,6 +469,7 @@ export default function OnboardingScreen() {
                 placeholder="e.g., 35"
                 placeholderTextColor={theme.placeholder}
                 keyboardType="numeric"
+                accessibilityLabel="Your age"
               />
             </View>
           </MotiView>
@@ -653,7 +658,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: "#E0EDE1",
+    backgroundColor: theme.tinted,
     borderRadius: 999,
     overflow: "hidden",
   },
@@ -892,16 +897,16 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontWeight: "500",
   },
   consentWarningBox: {
-    backgroundColor: "#FFF8E1",
+    backgroundColor: theme.warningBg,
     borderRadius: 12,
     padding: 14,
     borderLeftWidth: 3,
-    borderLeftColor: "#FFA726",
+    borderLeftColor: theme.warningBorder,
     marginBottom: 20,
   },
   consentWarningText: {
     fontSize: 13,
-    color: "#5D4037",
+    color: theme.warningText,
     lineHeight: 20,
   },
   consentLink: {

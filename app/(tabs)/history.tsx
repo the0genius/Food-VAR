@@ -63,26 +63,26 @@ export default function HistoryScreen() {
           from={{ opacity: 0.4 }}
           animate={{ opacity: 0.9 }}
           transition={{ loop: true, type: "timing" as const, duration: 850 }}
-          style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: "#EBEBEB" }}
+          style={{ width: 46, height: 46, borderRadius: 12, backgroundColor: theme.skeleton }}
         />
         <View style={{ flex: 1 }}>
           <MotiView
             from={{ opacity: 0.4 }}
             animate={{ opacity: 0.9 }}
             transition={{ loop: true, type: "timing" as const, duration: 850 }}
-            style={{ width: "70%", height: 14, borderRadius: 6, backgroundColor: "#EBEBEB" }}
+            style={{ width: "70%", height: 14, borderRadius: 6, backgroundColor: theme.skeleton }}
           />
           <MotiView
             from={{ opacity: 0.4 }}
             animate={{ opacity: 0.9 }}
             transition={{ loop: true, type: "timing" as const, duration: 850 }}
-            style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: "#EBEBEB", marginTop: 6 }}
+            style={{ width: "50%", height: 12, borderRadius: 6, backgroundColor: theme.skeleton, marginTop: 6 }}
           />
           <MotiView
             from={{ opacity: 0.4 }}
             animate={{ opacity: 0.9 }}
             transition={{ loop: true, type: "timing" as const, duration: 850 }}
-            style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: "#EBEBEB", marginTop: 6 }}
+            style={{ width: "30%", height: 10, borderRadius: 5, backgroundColor: theme.skeleton, marginTop: 6 }}
           />
         </View>
       </View>
@@ -90,8 +90,8 @@ export default function HistoryScreen() {
   }
 
   function ScoreBadge({ score }: { score: number }) {
-    const color = getScoreColor(score);
-    const bgColor = getScoreBgColor(score);
+    const color = getScoreColor(score, theme);
+    const bgColor = getScoreBgColor(score, theme);
     const label = getScoreShortLabel(score);
     return (
       <View
@@ -343,7 +343,7 @@ export default function HistoryScreen() {
           historyQuery.isError ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <WifiSlash size={32} color="#CCCCCC" weight="thin" />
+                <WifiSlash size={32} color={theme.mutedIcon} weight="thin" />
               </View>
               <Text style={styles.emptyTitle}>Could not load history</Text>
               <Text style={styles.emptyText}>
@@ -369,7 +369,7 @@ export default function HistoryScreen() {
           ) : !historyQuery.isLoading ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <ClockCounterClockwise size={32} color="#CCCCCC" weight="thin" />
+                <ClockCounterClockwise size={32} color={theme.mutedIcon} weight="thin" />
               </View>
               <Text style={styles.emptyTitle}>No scan history yet.</Text>
               <Text style={styles.emptyText}>

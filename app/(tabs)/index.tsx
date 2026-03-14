@@ -28,20 +28,20 @@ import {
 } from "phosphor-react-native";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
-function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: number | string; height: number; borderRadius?: number; style?: any }) {
+function SkeletonBlock({ width, height, borderRadius = 12, style, color = "#EBEBEB" }: { width: number | string; height: number; borderRadius?: number; style?: any; color?: string }) {
   return (
     <MotiView
       from={{ opacity: 0.4 }}
       animate={{ opacity: 0.9 }}
       transition={{ loop: true, type: "timing" as const, duration: 850 }}
-      style={[{ backgroundColor: "#EBEBEB", borderRadius, width: width as any, height }, style]}
+      style={[{ backgroundColor: color, borderRadius, width: width as any, height }, style]}
     />
   );
 }
 
 
-function getScoreColorLight(score: number): string {
-  return getScoreBgColor(score);
+function getScoreColorLight(score: number, t: ThemeColors): string {
+  return getScoreBgColor(score, t);
 }
 
 function getRelativeTime(dateStr: string): string {
@@ -96,11 +96,11 @@ export default function HomeScreen() {
     const label = getScoreShortLabel(score);
     return (
       <View
-        style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score) }]}
+        style={[styles.scoreBadgeCircle, { backgroundColor: getScoreColorLight(score, theme) }]}
         accessibilityLabel={`Score ${score}, ${label}`}
       >
-        <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score) }]}>{score}</Text>
-        <Text style={[styles.scoreBadgeCircleLabel, { color: getScoreColor(score) }]}>{label}</Text>
+        <Text style={[styles.scoreBadgeCircleText, { color: getScoreColor(score, theme) }]}>{score}</Text>
+        <Text style={[styles.scoreBadgeCircleLabel, { color: getScoreColor(score, theme) }]}>{label}</Text>
       </View>
     );
   }
@@ -118,7 +118,7 @@ export default function HomeScreen() {
     index: number;
     onPress: () => void;
   }) {
-    const ribbonColor = getScoreColor(item.score);
+    const ribbonColor = getScoreColor(item.score, theme);
 
     return (
       <MotiView
@@ -163,7 +163,7 @@ export default function HomeScreen() {
     totalCount: number;
     onPress: () => void;
   }) {
-    const dotColor = getScoreColor(item.score || 50);
+    const dotColor = getScoreColor(item.score || 50, theme);
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 60).duration(400)}>
@@ -240,11 +240,11 @@ export default function HomeScreen() {
       <View style={styles.popularCard}>
         <View style={styles.popularDot} />
         <View style={styles.popularIconCircle}>
-          <SkeletonBlock width={48} height={48} borderRadius={24} />
+          <SkeletonBlock width={48} height={48} borderRadius={24} color={theme.skeleton} />
         </View>
         <View style={{ flex: 1 }}>
-          <SkeletonBlock width="65%" height={14} borderRadius={6} />
-          <SkeletonBlock width="45%" height={12} borderRadius={6} style={{ marginTop: 6 }} />
+          <SkeletonBlock width="65%" height={14} borderRadius={6} color={theme.skeleton} />
+          <SkeletonBlock width="45%" height={12} borderRadius={6} style={{ marginTop: 6 }} color={theme.skeleton} />
         </View>
       </View>
     );
@@ -254,9 +254,9 @@ export default function HomeScreen() {
     return (
       <View style={styles.recentCard}>
         <View style={styles.recentCardInner}>
-          <SkeletonBlock width={32} height={32} borderRadius={16} />
-          <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 10 }} />
-          <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} />
+          <SkeletonBlock width={32} height={32} borderRadius={16} color={theme.skeleton} />
+          <SkeletonBlock width="100%" height={14} borderRadius={6} style={{ marginTop: 10 }} color={theme.skeleton} />
+          <SkeletonBlock width="60%" height={11} borderRadius={6} style={{ marginTop: 4 }} color={theme.skeleton} />
         </View>
       </View>
     );
@@ -337,7 +337,7 @@ export default function HomeScreen() {
           <>
             <View>
               <LinearGradient
-                colors={["#F0FAF4", "#F6F8F7"]}
+                colors={[theme.tinted, theme.bg]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={[
@@ -446,7 +446,7 @@ export default function HomeScreen() {
                   <Text style={styles.statLabel}>Avg Score</Text>
                 </View>
                 <View style={styles.statValueRow}>
-                  <Text style={[styles.statNumber, { color: stats?.avgScore != null ? getScoreColor(stats.avgScore) : theme.text }]}>
+                  <Text style={[styles.statNumber, { color: stats?.avgScore != null ? getScoreColor(stats.avgScore, theme) : theme.text }]}>
                     {stats?.avgScore != null ? Math.round(stats.avgScore) : "--"}
                   </Text>
                   <Text style={styles.statSuffix}>/100</Text>
@@ -729,7 +729,7 @@ const createStyles = (theme: ThemeColors) => {
   },
   heroBanner: {
     ...TIER1,
-    backgroundColor: "#EDF5EE",
+    backgroundColor: theme.tinted,
     padding: 20,
     flexDirection: "row",
     alignItems: "center",

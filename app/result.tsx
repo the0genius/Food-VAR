@@ -70,22 +70,22 @@ function getScoreGradient(score: number, isAllergenAlert: boolean): [string, str
   return ["#3DD68C", "#2EC4B6"];
 }
 
-function getScoreTrackColor(score: number, isAllergenAlert: boolean): string {
-  return "#F0F0F0";
+function getScoreTrackColor(t: ThemeColors): string {
+  return t.skeleton;
 }
 
-function getScoreBg(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return "#FFF5F5";
-  if (score <= 35) return "#FFF8F8";
-  if (score <= 50) return "#FFFBF5";
-  return "#F2FAF6";
+function getScoreBg(score: number, isAllergenAlert: boolean, t: ThemeColors): string {
+  if (isAllergenAlert) return t.scoreBgAllergen;
+  if (score <= 35) return t.scoreBgPoor;
+  if (score <= 50) return t.scoreBgCaution;
+  return t.scoreBgGood;
 }
 
-function getAdviceBorderColor(score: number, isAllergenAlert: boolean): string {
-  if (isAllergenAlert) return "#FFCDD2";
-  if (score <= 35) return "#FFCDD2";
-  if (score <= 50) return "#FFE0B2";
-  return "#D4F0E0";
+function getAdviceBorderColor(score: number, isAllergenAlert: boolean, t: ThemeColors): string {
+  if (isAllergenAlert) return t.scoreChipAllergen;
+  if (score <= 35) return t.scoreChipPoor;
+  if (score <= 50) return t.scoreChipCaution;
+  return t.scoreChipGood;
 }
 
 function getPersonalizedHeadline(score: number, label: string, headline: string, isAllergenAlert: boolean, adviceText?: string): string {
@@ -248,9 +248,10 @@ function ScoreRing({
   const scale = useSharedValue(0.85);
   const opacity = useSharedValue(0);
 
+  const t = useThemeColors();
   const [gradientColors] = useState(getScoreGradient(score, isAllergenAlert));
   const scoreColor = getScoreColor(score, isAllergenAlert);
-  const trackColor = getScoreTrackColor(score, isAllergenAlert);
+  const trackColor = getScoreTrackColor(t);
 
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 400 });
@@ -581,19 +582,19 @@ export default function ResultScreen() {
           from={{ opacity: 0.4 }}
           animate={{ opacity: 0.9 }}
           transition={{ loop: true, type: "timing", duration: 850 }}
-          style={{ width: 200, height: 200, borderRadius: 100, backgroundColor: "#EBEBEB" }}
+          style={{ width: 200, height: 200, borderRadius: 100, backgroundColor: theme.skeleton }}
         />
         <MotiView
           from={{ opacity: 0.4 }}
           animate={{ opacity: 0.9 }}
           transition={{ loop: true, type: "timing", duration: 850 }}
-          style={{ width: 180, height: 20, borderRadius: 10, backgroundColor: "#EBEBEB", marginTop: 20 }}
+          style={{ width: 180, height: 20, borderRadius: 10, backgroundColor: theme.skeleton, marginTop: 20 }}
         />
         <MotiView
           from={{ opacity: 0.4 }}
           animate={{ opacity: 0.9 }}
           transition={{ loop: true, type: "timing", duration: 850 }}
-          style={{ width: 120, height: 14, borderRadius: 7, backgroundColor: "#EBEBEB", marginTop: 10 }}
+          style={{ width: 120, height: 14, borderRadius: 7, backgroundColor: theme.skeleton, marginTop: 10 }}
         />
         <Text style={styles.loadingText}>{params.historyId ? "Checking for profile updates..." : "Analyzing for your profile..."}</Text>
       </View>
@@ -1224,10 +1225,10 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: theme.divider,
   },
   chipNeutralText: {
-    color: "#666666",
+    color: theme.muted,
     fontSize: 12,
     fontWeight: "600" as const,
   },
@@ -1372,7 +1373,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   nutrientBarTrack: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: theme.divider,
     marginTop: 8,
     width: "100%" as const,
   },

@@ -151,15 +151,15 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   warningBox: {
-    backgroundColor: "#FFF8E1",
+    backgroundColor: theme.warningBg,
     borderRadius: 12,
     padding: 14,
     borderLeftWidth: 3,
-    borderLeftColor: "#FFA726",
+    borderLeftColor: theme.warningBorder,
   },
   warningText: {
     fontSize: 13,
-    color: "#5D4037",
+    color: theme.warningText,
     lineHeight: 20,
   },
 });
