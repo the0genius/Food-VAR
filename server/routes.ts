@@ -64,7 +64,7 @@ const refreshSchema = z.object({
 const profileSchema = z.object({
   name: z.string().max(100).optional(),
   age: z.number().int().min(1).max(150).nullable().optional(),
-  gender: z.string().max(50).optional(),
+  gender: z.string().max(50).nullable().optional(),
   heightCm: z.number().min(30).max(300).nullable().optional(),
   weightKg: z.number().min(10).max(500).nullable().optional(),
   conditions: z.array(z.string().max(100)).max(50).optional(),

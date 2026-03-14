@@ -124,10 +124,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   async function updateProfile(data: Partial<UserProfile>) {
     if (!user) return;
-    const res = await apiRequest("PUT", "/api/users/profile", {
-      ...user,
-      ...data,
-    });
+    const res = await apiRequest("PUT", "/api/users/profile", data);
     const updated = await res.json();
     setUser(updated);
   }
