@@ -8,10 +8,10 @@ export const modules: ModuleMap = {
   "./components/mockups/home-refined/TighterPolish.tsx": () => import("../components/mockups/home-refined/TighterPolish.tsx"),
   "./components/mockups/home-refined-v2/DetailRefinement.tsx": () => import("../components/mockups/home-refined-v2/DetailRefinement.tsx"),
   "./components/mockups/home-refined-v2/FinalPolish.tsx": () => import("../components/mockups/home-refined-v2/FinalPolish.tsx"),
-  "./components/mockups/tab-bar/FloatingGlass.tsx": () => import("../components/mockups/tab-bar/FloatingGlass.tsx"),
-  "./components/mockups/tab-bar/MinimalEdge.tsx": () => import("../components/mockups/tab-bar/MinimalEdge.tsx"),
-  "./components/mockups/tab-bar/NotchedDock.tsx": () => import("../components/mockups/tab-bar/NotchedDock.tsx"),
   "./components/mockups/profile-redesign/CardGrid.tsx": () => import("../components/mockups/profile-redesign/CardGrid.tsx"),
   "./components/mockups/profile-redesign/IdentityFirst.tsx": () => import("../components/mockups/profile-redesign/IdentityFirst.tsx"),
-  "./components/mockups/profile-redesign/StatsForward.tsx": () => import("../components/mockups/profile-redesign/StatsForward.tsx")
+  "./components/mockups/profile-redesign/StatsForward.tsx": () => import("../components/mockups/profile-redesign/StatsForward.tsx"),
+  "./components/mockups/tab-bar/FloatingGlass.tsx": () => import("../components/mockups/tab-bar/FloatingGlass.tsx"),
+  "./components/mockups/tab-bar/MinimalEdge.tsx": () => import("../components/mockups/tab-bar/MinimalEdge.tsx"),
+  "./components/mockups/tab-bar/NotchedDock.tsx": () => import("../components/mockups/tab-bar/NotchedDock.tsx")
 };

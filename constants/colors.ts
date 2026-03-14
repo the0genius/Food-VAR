@@ -1,4 +1,5 @@
-import { Platform, useColorScheme } from "react-native";
+import { Platform } from "react-native";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const C = {
   bg: '#F6F8F7',
@@ -87,8 +88,8 @@ const darkTokens = {
 export type ThemeColors = typeof C;
 
 export function useThemeColors(): ThemeColors {
-  const scheme = useColorScheme();
-  if (scheme === 'dark') return darkTokens;
+  const { resolved } = useTheme();
+  if (resolved === 'dark') return darkTokens;
   return C;
 }
 

@@ -8,8 +8,8 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { UserProvider } from "@/contexts/UserContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "react-native";
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -20,6 +20,11 @@ Sentry.init({
 });
 
 SplashScreen.preventAutoHideAsync();
+
+function ThemedStatusBar() {
+  const { resolved } = useTheme();
+  return <StatusBar style={resolved === "dark" ? "light" : "dark"} />;
+}
 
 function RootLayoutNav() {
   return (
@@ -73,14 +78,16 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <KeyboardProvider>
-            <UserProvider>
-              <StatusBar style="auto" />
-              <RootLayoutNav />
-            </UserProvider>
-          </KeyboardProvider>
-        </GestureHandlerRootView>
+        <ThemeProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <KeyboardProvider>
+              <UserProvider>
+                <ThemedStatusBar />
+                <RootLayoutNav />
+              </UserProvider>
+            </KeyboardProvider>
+          </GestureHandlerRootView>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

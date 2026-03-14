@@ -11,7 +11,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend (Expo / React Native)
 - **Framework**: Expo SDK 54, utilizing `expo-router` for file-based routing.
 - **Navigation**: Tab-based navigation with Home, Scan, History, and Profile tabs, complemented by modal screens for results and onboarding.
-- **State Management**: TanStack React Query for server-side state, React Context (`UserContext`) for user sessions, and AsyncStorage for local persistence.
+- **State Management**: TanStack React Query for server-side state, React Context (`UserContext`) for user sessions, `ThemeContext` for light/dark mode preference, and AsyncStorage for local persistence.
 - **Styling**: React Native StyleSheet with centralized design tokens (`constants/colors.ts`).
 - **UI/UX**: Features `phosphor-react-native` for icons, `moti` and `react-native-reanimated` for animations (skeleton loaders, entry/layout animations), and `expo-linear-gradient` for visual enhancements across the UI.
 - **API Communication**: Uses `expo/fetch` with `apiRequest()` and `getApiUrl()` helpers, deriving the API URL from `EXPO_PUBLIC_DOMAIN`.
@@ -42,7 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **File-based Routing**: Simplifies navigation and project structure.
 - **Modal Presentation**: Enhances user experience for results and contributions.
 - **Feature Flags**: Manages risk and enables phased rollout of capabilities like chat and image generation.
-- **Dark Mode Support**: `useThemeColors()` hook in `constants/colors.ts` provides light/dark token sets; priority screens (Home, History, Profile, tab bar) apply theme-driven backgrounds and text colors. StatusBar auto-adapts.
+- **Dark Mode Support**: `useThemeColors()` hook in `constants/colors.ts` provides light/dark token sets; priority screens (Home, History, Profile, tab bar) apply theme-driven backgrounds and text colors. StatusBar auto-adapts. Manual theme toggle on Profile screen via `ThemeContext` (`contexts/ThemeContext.tsx`) — stores preference (light/dark/system) in AsyncStorage, persists across restarts.
 
 ## External Dependencies
 

@@ -38,9 +38,12 @@ import {
   Trash,
   FileText,
   ShieldCheck,
+  Sun,
+  Moon,
 } from "phosphor-react-native";
 import * as Sentry from "@sentry/react-native";
 import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/contexts/UserContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -105,6 +108,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, updateProfile, logout } = useUser();
+  const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
   const theme = useThemeColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [editing, setEditing] = useState(false);
@@ -559,6 +563,32 @@ export default function ProfileScreen() {
                 <Export size={16} color={theme.info} weight="fill" />
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>Export My Data</Text>
+            </View>
+            <CaretRight size={18} color={theme.placeholder} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              toggleTheme();
+            }}
+            activeOpacity={0.8}
+            accessibilityLabel={currentTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            accessibilityRole="button"
+          >
+            <View style={[styles.actionLeftBorder, { backgroundColor: currentTheme === "dark" ? "#FFA726" : "#5C6BC0" }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: currentTheme === "dark" ? theme.amberBg : theme.infoBg }]}>
+                {currentTheme === "dark" ? (
+                  <Sun size={16} color="#FFA726" weight="fill" />
+                ) : (
+                  <Moon size={16} color="#5C6BC0" weight="fill" />
+                )}
+              </View>
+              <Text style={[styles.actionText, { color: theme.text }]}>
+                {currentTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              </Text>
             </View>
             <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
