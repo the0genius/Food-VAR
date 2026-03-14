@@ -40,7 +40,7 @@ interface ScoreData {
   isAllergenAlert: boolean;
   matchedAllergens: string[];
   inferredAllergenWarnings?: string[];
-  allergenDisplayState?: string;
+  allergenDisplayState?: "hard_alert" | "product_contains_nonmatching" | "possible_risk" | "none";
   productDeclaredAllergens?: string[];
   productInferredAllergens?: string[];
   advice: string;
