@@ -50,7 +50,6 @@ function getDateGroup(dateStr: string): string {
 }
 
 function getTierLabel(score: number): string {
-  if (score === 0) return "Alert";
   if (score <= 35) return "Poor";
   if (score <= 50) return "Fair";
   if (score <= 74) return "Good";
@@ -126,7 +125,7 @@ export default function HistoryScreen() {
       minute: "2-digit",
     });
 
-    const isScanned = item.accessMethod === "scanned" || item.barcode;
+    const isScanned = item.accessMethod === "scan" || item.accessMethod === "scanned" || item.barcode;
 
     return (
       <MotiView
