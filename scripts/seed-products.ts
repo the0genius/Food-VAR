@@ -876,7 +876,7 @@ async function seed() {
       ...product,
       allergens: product.declaredAllergens,
       inferredAllergens: [],
-      source: "seed",
+      source: "seed_reference",
       moderationStatus: "approved",
       verifiedAt: new Date(),
     });

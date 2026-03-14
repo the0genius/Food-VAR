@@ -11,6 +11,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -172,7 +173,7 @@ export const dailyScanTracker = pgTable(
     productId: integer("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
-    scanDate: text("scan_date").notNull(),
+    scanDate: date("scan_date", { mode: "string" }).notNull(),
   },
   (table) => [
     index("daily_scan_tracker_user_date_idx").on(table.userId, table.scanDate),
@@ -181,6 +182,38 @@ export const dailyScanTracker = pgTable(
       table.productId,
       table.scanDate
     ),
+  ]
+);
+
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New Chat"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index("conversations_user_idx").on(table.userId),
+  ]
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  },
+  (table) => [
+    index("messages_conversation_idx").on(table.conversationId),
   ]
 );
 
@@ -203,3 +236,5 @@ export type ScanHistory = typeof scanHistory.$inferSelect;
 export type AdviceCache = typeof adviceCache.$inferSelect;
 export type ScoringRule = typeof scoringRules.$inferSelect;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type Message = typeof messages.$inferSelect;

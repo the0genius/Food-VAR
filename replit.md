@@ -74,6 +74,13 @@ Preferred communication style: Simple, everyday language.
 - `SESSION_SECRET`
 - See `.env.example` for feature flags
 
+## Database & Migrations
+- **Migration strategy**: Drizzle Kit generates migration files in `./migrations/`. Use `npm run db:migrate` for production deployments. `npm run db:push` is for development only.
+- **Schema tables**: users, refresh_tokens, products, scan_history, advice_cache, scoring_rules, daily_scan_tracker, conversations, messages
+- **Chat ownership**: Conversations and messages tables have `userId` foreign key with cascade delete. All chat storage functions and routes enforce user ownership — no user can access another user's data.
+- **scanDate**: Uses PostgreSQL `date` type (not text), with `mode: "string"` for YYYY-MM-DD string comparisons in application code.
+- **Seed data provenance**: Seed products use `source: "seed_reference"` to distinguish from user-contributed data.
+
 ## Production Hardening (All 10 Phases Complete)
 1. Feature flags for risky capabilities (chat, image gen, unverified products)
 2. JWT auth with bcrypt, refresh token rotation, SecureStore
@@ -83,9 +90,9 @@ Preferred communication style: Simple, everyday language.
 6. Query production defaults, focusManager/onlineManager, accessibility, error states
 7. Privacy policy, terms of service, consent capture, data export, account deletion
 8. 50-product seed catalog with real nutritional data
-9. 26 unit tests (vitest): scoring, AI advice, feature flags
+9. 34 unit tests (vitest): scoring, AI advice, feature flags, schema ownership
 10. Deployment configured (autoscale), health check endpoint
 
 ## Testing
-- Unit tests: `npx vitest run` (26 tests across 3 files)
+- Unit tests: `npx vitest run` (34 tests across 4 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)
