@@ -1,22 +1,33 @@
+import pino from "pino";
 import type { Request } from "express";
 
-export type LogLevel = "info" | "warn" | "error" | "debug";
-
-interface LogEntry {
-  level: LogLevel;
-  msg: string;
-  requestId?: string;
-  method?: string;
-  path?: string;
-  statusCode?: number;
-  durationMs?: number;
-  userId?: number;
-  [key: string]: unknown;
-}
-
-function formatLog(entry: LogEntry): string {
-  return JSON.stringify(entry);
-}
+const pinoLogger = pino({
+  level: process.env.LOG_LEVEL || "info",
+  redact: {
+    paths: [
+      "password",
+      "passwordHash",
+      "token",
+      "tokenHash",
+      "refreshToken",
+      "accessToken",
+      "authorization",
+      "req.headers.authorization",
+      "healthConditions",
+      "chatContent",
+      "imagePayload",
+      "*.password",
+      "*.passwordHash",
+      "*.token",
+      "*.refreshToken",
+      "*.accessToken",
+    ],
+    censor: "[REDACTED]",
+  },
+  serializers: {
+    err: pino.stdSerializers.err,
+  },
+});
 
 function getRequestId(req?: Request): string | undefined {
   return req?.headers?.["x-request-id"] as string | undefined;
@@ -24,51 +35,40 @@ function getRequestId(req?: Request): string | undefined {
 
 export const logger = {
   info(msg: string, meta?: Record<string, unknown>, req?: Request) {
-    const entry: LogEntry = { level: "info", msg, ...meta };
-    if (req) entry.requestId = getRequestId(req);
-    console.log(formatLog(entry));
+    const child = req ? pinoLogger.child({ requestId: getRequestId(req) }) : pinoLogger;
+    child.info(meta || {}, msg);
   },
 
   warn(msg: string, meta?: Record<string, unknown>, req?: Request) {
-    const entry: LogEntry = { level: "warn", msg, ...meta };
-    if (req) entry.requestId = getRequestId(req);
-    console.warn(formatLog(entry));
+    const child = req ? pinoLogger.child({ requestId: getRequestId(req) }) : pinoLogger;
+    child.warn(meta || {}, msg);
   },
 
   error(msg: string, error?: unknown, meta?: Record<string, unknown>, req?: Request) {
-    const entry: LogEntry = { level: "error", msg, ...meta };
-    if (req) entry.requestId = getRequestId(req);
+    const child = req ? pinoLogger.child({ requestId: getRequestId(req) }) : pinoLogger;
     if (error instanceof Error) {
-      entry.errorMessage = error.message;
-      entry.stack = error.stack;
+      child.error({ ...meta, err: error }, msg);
     } else if (error) {
-      entry.errorMessage = String(error);
+      child.error({ ...meta, errorMessage: String(error) }, msg);
+    } else {
+      child.error(meta || {}, msg);
     }
-    console.error(formatLog(entry));
   },
 
   debug(msg: string, meta?: Record<string, unknown>, req?: Request) {
-    if (process.env.LOG_LEVEL === "debug") {
-      const entry: LogEntry = { level: "debug", msg, ...meta };
-      if (req) entry.requestId = getRequestId(req);
-      console.log(formatLog(entry));
-    }
+    const child = req ? pinoLogger.child({ requestId: getRequestId(req) }) : pinoLogger;
+    child.debug(meta || {}, msg);
   },
 
   request(req: Request, statusCode: number, durationMs: number, extra?: Record<string, unknown>) {
-    const entry: LogEntry = {
-      level: "info",
-      msg: "request",
+    const child = pinoLogger.child({ requestId: getRequestId(req) });
+    child.info({
       method: req.method,
       path: req.path,
       statusCode,
       durationMs,
-      requestId: getRequestId(req),
+      userId: (req as any).auth?.userId,
       ...extra,
-    };
-    if ((req as any).auth?.userId) {
-      entry.userId = (req as any).auth.userId;
-    }
-    console.log(formatLog(entry));
+    }, "request");
   },
 };

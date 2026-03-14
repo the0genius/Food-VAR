@@ -22,7 +22,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema**: Shared `shared/schema.ts` for type consistency between frontend and backend, using Drizzle's `pgTable` and Zod for validation.
 - **Core Features**: Personalized health scoring, AI-powered dietary advice and nutrition extraction, user authentication, and product contribution/moderation.
 - **Security**: Implements JWT-based authentication, bcrypt hashing, `requireAuth` middleware, Helmet security headers, and rate limiting.
-- **Logging**: Structured JSON logging with `server/logger.ts`, including request IDs and redaction of sensitive data.
+- **Logging**: Structured JSON logging via pino (`server/logger.ts`), with request IDs and redaction of passwords, tokens, health data, and chat content.
 - **Error Handling**: Centralized error handler returning request IDs.
 
 ### Scoring Engine
@@ -76,7 +76,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Database & Migrations
 - **Migration strategy**: Drizzle Kit generates migration files in `./migrations/`. Use `npm run db:migrate` for production deployments. `npm run db:push` is for development only. Migration 0000 is a full baseline for fresh DBs; migrations 0001/0002 are incremental for existing environments (idempotent with IF NOT EXISTS/type guards). For pre-existing databases, baseline the drizzle journal before running incremental migrations.
-- **Schema tables**: users, refresh_tokens, products, scan_history, advice_cache, scoring_rules, daily_scan_tracker, conversations, messages
+- **Schema tables**: users, refresh_tokens, products, scan_history, advice_cache, scoring_rules, daily_scan_tracker, conversations, messages, email_verification_tokens, password_reset_tokens
 - **Chat ownership**: Conversations and messages tables have `userId` foreign key with cascade delete. All chat storage functions and routes enforce user ownership — no user can access another user's data.
 - **scanDate**: Uses PostgreSQL `date` type (not text), with `mode: "string"` for YYYY-MM-DD string comparisons in application code.
 - **Seed data provenance**: Seed products use `source: "seed_reference"` to distinguish from user-contributed data.
@@ -96,15 +96,26 @@ Preferred communication style: Simple, everyday language.
 ## Second-Round Hardening (Tasks #1-5)
 - Task #1: Schema, migrations & data ownership fixes (conversations/messages userId FK, scanDate date type, migration chain)
 - Task #2: Allergen safety (declaredAllergens-only scoring, inferredAllergenWarnings, getApprovedProductFilter)
-- Task #3: AI cache & history integrity (daily scan tracker error logging, extraction safety verified)
-- Task #4: Auth security (refresh token reuse detection with global revocation, password complexity enforcement)
+- Task #3: AI cache & history integrity (version-aware cache, extraction confidence, history preservation, medical disclaimer)
+- Task #4: Auth flows & operational readiness (email verification, password reset, pino logger, health/readiness endpoints, env validation, ALLOWED_ORIGINS CORS)
 - Task #5: UX quality (pending)
 
 ## Auth Security
 - **Password policy**: Min 8 chars, at least one number, at least one special character
 - **Refresh token reuse detection**: If a revoked refresh token is replayed, all sessions for that user are invalidated
+- **Email verification**: Token generated on register, hashed at rest, 24h expiry. POST /api/auth/verify-email, POST /api/auth/resend-verification. No email provider integrated (dev-only token logging).
+- **Password reset**: POST /api/auth/password-reset/request (always success to prevent enumeration), POST /api/auth/password-reset/confirm (validates token, updates password, revokes all sessions). Tokens hashed, 1h expiry.
 - **Rate limiting**: Auth endpoints 20 req/15min, refresh 30 req/15min, AI routes 20 req/min
+- **Web auth storage**: AsyncStorage (localStorage) on web — documented tradeoff in HARDENING_STATUS.md. SecureStore on native.
+
+## Operational
+- **Logger**: pino with structured JSON, redaction of sensitive fields (passwords, tokens, health data, chat content)
+- **Health check**: GET /api/health — checks DB connectivity, returns version
+- **Readiness**: GET /api/readiness — checks DB, SESSION_SECRET, AI key
+- **Startup validation**: Required env vars (DATABASE_URL, SESSION_SECRET) validated at boot; optional vars logged as warnings
+- **CORS**: Supports REPLIT_DOMAINS, REPLIT_DEV_DOMAIN, localhost, and ALLOWED_ORIGINS env var
+- **Typecheck**: `npm run typecheck` (tsc --noEmit)
 
 ## Testing
-- Unit tests: `npx vitest run` (69 tests across 6 files)
+- Unit tests: `npx vitest run` (78 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

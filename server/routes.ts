@@ -22,6 +22,10 @@ import {
   revokeAllRefreshTokens,
   requireAuth,
   stripSensitiveFields,
+  createEmailVerificationToken,
+  verifyEmailToken,
+  createPasswordResetToken,
+  verifyPasswordResetToken,
   type AuthPayload,
 } from "./auth";
 import { z } from "zod";
@@ -186,6 +190,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const accessToken = generateAccessToken(payload);
       const refreshToken = await createRefreshToken(user.id);
 
+      await createEmailVerificationToken(user.id);
+
       res.status(201).json({
         user: stripSensitiveFields(user),
         accessToken,
@@ -341,6 +347,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stripSensitiveFields(user));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch user" });
+    }
+  });
+
+  app.post("/api/auth/verify-email", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({ token: z.string().min(1) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Token is required" });
+      }
+
+      const userId = await verifyEmailToken(parsed.data.token);
+      if (!userId) {
+        return res.status(400).json({ error: "Invalid or expired verification token" });
+      }
+
+      res.json({ success: true, message: "Email verified successfully" });
+    } catch (error) {
+      logger.error("Email verification failed", error, {}, req);
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.auth!.userId;
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.emailVerifiedAt) {
+        return res.json({ success: true, message: "Email already verified" });
+      }
+
+      await createEmailVerificationToken(userId);
+
+      res.json({ success: true, message: "Verification email sent" });
+    } catch (error) {
+      logger.error("Resend verification failed", error, {}, req);
+      res.status(500).json({ error: "Failed to resend verification" });
+    }
+  });
+
+  app.post("/api/auth/password-reset/request", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({ email: z.string().email() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Valid email is required" });
+      }
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.email, parsed.data.email.toLowerCase()),
+            isNull(users.deletedAt)
+          )
+        )
+        .limit(1);
+
+      if (user) {
+        await createPasswordResetToken(user.id);
+      }
+
+      res.json({ success: true, message: "If an account exists with that email, a reset link has been sent" });
+    } catch (error) {
+      logger.error("Password reset request failed", error, {}, req);
+      res.json({ success: true, message: "If an account exists with that email, a reset link has been sent" });
+    }
+  });
+
+  app.post("/api/auth/password-reset/confirm", async (req: Request, res: Response) => {
+    try {
+      const passwordPolicy = z.string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/[0-9]/, "Password must contain at least one number")
+        .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character");
+
+      const schema = z.object({
+        token: z.string().min(1),
+        newPassword: passwordPolicy,
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten().fieldErrors,
+        });
+      }
+
+      const userId = await verifyPasswordResetToken(parsed.data.token);
+      if (!userId) {
+        return res.status(400).json({ error: "Invalid or expired reset token" });
+      }
+
+      const newHash = await hashPassword(parsed.data.newPassword);
+      await db
+        .update(users)
+        .set({ passwordHash: newHash, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      await revokeAllRefreshTokens(userId);
+
+      res.json({ success: true, message: "Password reset successfully" });
+    } catch (error) {
+      logger.error("Password reset confirm failed", error, {}, req);
+      res.status(500).json({ error: "Password reset failed" });
     }
   });
 
@@ -1227,11 +1350,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // ========== HEALTH CHECK ==========
-  app.get("/api/health", (req: Request, res: Response) => {
-    res.json({
-      status: "ok",
+  app.get("/api/health", async (req: Request, res: Response) => {
+    try {
+      await db.execute(sql`SELECT 1`);
+      res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        version: SCORING_VERSION,
+        db: "connected",
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "degraded",
+        timestamp: new Date().toISOString(),
+        version: SCORING_VERSION,
+        db: "disconnected",
+      });
+    }
+  });
+
+  app.get("/api/readiness", async (req: Request, res: Response) => {
+    const checks: Record<string, string> = {};
+    let ready = true;
+
+    try {
+      await db.execute(sql`SELECT 1`);
+      checks.database = "ok";
+    } catch {
+      checks.database = "failed";
+      ready = false;
+    }
+
+    checks.session_secret = process.env.SESSION_SECRET ? "ok" : "missing";
+    if (!process.env.SESSION_SECRET) ready = false;
+
+    checks.ai_integrations = process.env.AI_INTEGRATIONS_GEMINI_API_KEY ? "ok" : "missing";
+
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ready" : "not_ready",
+      checks,
       timestamp: new Date().toISOString(),
-      version: SCORING_VERSION,
     });
   });
 

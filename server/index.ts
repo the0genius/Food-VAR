@@ -8,6 +8,27 @@ import * as fs from "fs";
 import * as path from "path";
 import crypto from "crypto";
 
+function validateEnvironment() {
+  const required = ["DATABASE_URL", "SESSION_SECRET"];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    logger.error("Missing required environment variables", null, { missing });
+    process.exit(1);
+  }
+
+  const optional = [
+    { key: "AI_INTEGRATIONS_GEMINI_API_KEY", label: "Gemini AI" },
+    { key: "AI_INTEGRATIONS_GEMINI_BASE_URL", label: "Gemini base URL" },
+  ];
+  for (const { key, label } of optional) {
+    if (!process.env[key]) {
+      logger.warn(`Optional env var ${key} not set — ${label} features may be unavailable`);
+    }
+  }
+}
+
+validateEnvironment();
+
 const app = express();
 
 declare module "http" {
@@ -36,6 +57,13 @@ function setupCors(app: express.Application) {
     if (process.env.REPLIT_DOMAINS) {
       process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
         origins.add(`https://${d.trim()}`);
+      });
+    }
+
+    if (process.env.ALLOWED_ORIGINS) {
+      process.env.ALLOWED_ORIGINS.split(",").forEach((o) => {
+        const trimmed = o.trim();
+        if (trimmed) origins.add(trimmed);
       });
     }
 
@@ -267,6 +295,9 @@ function setupErrorHandler(app: express.Application) {
 
   app.use("/api/auth/login", authLimiter);
   app.use("/api/auth/register", authLimiter);
+  app.use("/api/auth/verify-email", authLimiter);
+  app.use("/api/auth/resend-verification", authLimiter);
+  app.use("/api/auth/password-reset", authLimiter);
   app.use("/api/auth/refresh", refreshLimiter);
   app.use("/api/auth/logout", refreshLimiter);
   app.use("/api/score", aiLimiter);

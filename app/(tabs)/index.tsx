@@ -27,6 +27,7 @@ import {
   Crown,
   Info,
 } from "phosphor-react-native";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 function SkeletonBlock({ width, height, borderRadius = 12, style }: { width: number | string; height: number; borderRadius?: number; style?: any }) {
   return (
@@ -402,6 +403,10 @@ export default function HomeScreen() {
                 <AnimatedProgressBar used={scansToday} total={10} />
               )}
             </View>
+
+            {user && !user.emailVerifiedAt && (
+              <EmailVerificationBanner />
+            )}
 
             <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
               <MotiView

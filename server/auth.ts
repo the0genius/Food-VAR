@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import type { Request, Response, NextFunction } from "express";
 import { db } from "./db";
-import { users, refreshTokens } from "@shared/schema";
+import { users, refreshTokens, emailVerificationTokens, passwordResetTokens } from "@shared/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
+import { logger } from "./logger";
 
 const JWT_SECRET = process.env.SESSION_SECRET;
 if (!JWT_SECRET) {
@@ -130,4 +131,92 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function stripSensitiveFields(user: Record<string, unknown>) {
   const { passwordHash, ...safe } = user;
   return safe;
+}
+
+const VERIFICATION_TOKEN_EXPIRY_HOURS = 24;
+const RESET_TOKEN_EXPIRY_HOURS = 1;
+
+export async function createEmailVerificationToken(userId: number): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + VERIFICATION_TOKEN_EXPIRY_HOURS);
+
+  await db.insert(emailVerificationTokens).values({
+    userId,
+    tokenHash,
+    expiresAt,
+  });
+
+  if (process.env.NODE_ENV === "development") {
+    logger.info("Email verification token (dev only)", { userId, token });
+  }
+
+  return token;
+}
+
+export async function verifyEmailToken(token: string): Promise<number | null> {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const [record] = await db
+    .select()
+    .from(emailVerificationTokens)
+    .where(eq(emailVerificationTokens.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    return null;
+  }
+
+  await db
+    .update(emailVerificationTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(emailVerificationTokens.id, record.id));
+
+  await db
+    .update(users)
+    .set({ emailVerifiedAt: new Date() })
+    .where(eq(users.id, record.userId));
+
+  return record.userId;
+}
+
+export async function createPasswordResetToken(userId: number): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + RESET_TOKEN_EXPIRY_HOURS);
+
+  await db.insert(passwordResetTokens).values({
+    userId,
+    tokenHash,
+    expiresAt,
+  });
+
+  if (process.env.NODE_ENV === "development") {
+    logger.info("Password reset token (dev only)", { userId, token });
+  }
+
+  return token;
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<number | null> {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const [record] = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.tokenHash, tokenHash))
+    .limit(1);
+
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    return null;
+  }
+
+  await db
+    .update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.id, record.id));
+
+  return record.userId;
 }

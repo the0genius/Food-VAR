@@ -33,6 +33,7 @@ interface UserProfile {
   isPro: boolean;
   role: string;
   contributionCount: number;
+  emailVerifiedAt: string | null;
 }
 
 interface UserContextValue {
