@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
+import { pool } from "./db";
 import { logger } from "./logger";
 import * as fs from "fs";
 import * as path from "path";
@@ -326,4 +327,22 @@ function setupErrorHandler(app: express.Application) {
       logger.info("Server started", { port });
     },
   );
+
+  const shutdown = async (signal: string) => {
+    logger.info(`${signal} received. Starting graceful shutdown...`);
+    server.close(() => {
+      logger.info("HTTP server closed");
+      pool.end().then(() => {
+        logger.info("DB pool drained");
+        process.exit(0);
+      }).catch(() => process.exit(1));
+    });
+    setTimeout(() => {
+      logger.error("Forced shutdown after timeout");
+      process.exit(1);
+    }, 15000);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 })();
