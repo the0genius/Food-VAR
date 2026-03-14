@@ -321,6 +321,11 @@ export default function ProfileScreen() {
                 {user.email?.includes("@") && (
                   <Text style={styles.identityEmail} numberOfLines={1}>{user.email}</Text>
                 )}
+                {user.authProvider && (
+                  <Text style={styles.identityAge}>
+                    Signed in with {user.authProvider === "google" ? "Google" : user.authProvider === "apple" ? "Apple" : user.authProvider}
+                  </Text>
+                )}
                 {user.age && (
                   <Text style={styles.identityAge}>Age {user.age}</Text>
                 )}

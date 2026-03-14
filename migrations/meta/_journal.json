@@ -43,6 +43,13 @@
       "when": 1773487500000,
       "tag": "0005_advice_cache_headline_coachtip",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773492000000,
+      "tag": "0006_social_auth_migration",
+      "breakpoints": true
     }
   ]
 }

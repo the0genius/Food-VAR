@@ -45,7 +45,9 @@ export const users = pgTable("users", {
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
-});
+}, (table) => [
+  uniqueIndex("users_auth_provider_id_idx").on(table.authProvider, table.authProviderId),
+]);
 
 export const refreshTokens = pgTable(
   "refresh_tokens",

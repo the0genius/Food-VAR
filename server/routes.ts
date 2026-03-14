@@ -164,6 +164,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               consentAcceptedAt: new Date(),
             })
             .returning();
+        } else if (!user.authProvider) {
+          [user] = await db
+            .update(users)
+            .set({ authProvider: "dev", authProviderId: "dev-tester-001", updatedAt: new Date() })
+            .where(eq(users.id, user.id))
+            .returning();
         }
 
         const payload: AuthPayload = {
@@ -222,8 +228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken,
         refreshToken,
       });
-    } catch (error: any) {
-      if (error?.message === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
         return res.status(409).json({ error: "This email is already linked to a different sign-in method" });
       }
       logger.error("Google auth failed", error, {}, req);
@@ -266,9 +273,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         accessToken,
         refreshToken,
       });
-    } catch (error: any) {
-      if (error?.message === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg === "ACCOUNT_LINKED_DIFFERENT_PROVIDER") {
         return res.status(409).json({ error: "This email is already linked to a different sign-in method" });
+      }
+      if (msg === "EMAIL_REQUIRED_FOR_NEW_ACCOUNT") {
+        return res.status(400).json({ error: "Email is required to create a new account. Please allow email access when signing in with Apple." });
       }
       logger.error("Apple auth failed", error, {}, req);
       res.status(500).json({ error: "Authentication failed" });

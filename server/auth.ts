@@ -131,13 +131,18 @@ interface GoogleTokenPayload {
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenPayload | null> {
+  if (!GOOGLE_CLIENT_ID) {
+    logger.error("EXPO_PUBLIC_GOOGLE_CLIENT_ID not configured; Google auth disabled");
+    return null;
+  }
+
   try {
     const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
     if (!res.ok) return null;
     const data = await res.json() as Record<string, unknown>;
     if (!data.sub || !data.email) return null;
 
-    if (GOOGLE_CLIENT_ID && data.aud !== GOOGLE_CLIENT_ID) {
+    if (data.aud !== GOOGLE_CLIENT_ID) {
       logger.error("Google token aud mismatch", { expected: GOOGLE_CLIENT_ID, got: data.aud });
       return null;
     }
@@ -149,9 +154,9 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenP
     }
 
     return {
-      sub: data.sub as string,
-      email: data.email as string,
-      name: (data.name as string) || undefined,
+      sub: String(data.sub),
+      email: String(data.email),
+      name: typeof data.name === "string" ? data.name : undefined,
       email_verified: emailVerified,
     };
   } catch (err) {
@@ -162,7 +167,7 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleTokenP
 
 interface AppleTokenPayload {
   sub: string;
-  email: string;
+  email: string | undefined;
   email_verified?: boolean;
 }
 
@@ -170,25 +175,30 @@ const APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
 const APPLE_BUNDLE_ID = process.env.EXPO_PUBLIC_APPLE_BUNDLE_ID || "";
 
 export async function verifyAppleIdToken(idToken: string): Promise<AppleTokenPayload | null> {
+  if (!APPLE_BUNDLE_ID) {
+    logger.error("EXPO_PUBLIC_APPLE_BUNDLE_ID not configured; Apple auth disabled");
+    return null;
+  }
+
   try {
-    const { createRemoteJWKSet, jwtVerify } = await import("jose");
-    const JWKS = createRemoteJWKSet(new URL(APPLE_JWKS_URL));
+    const jose = await import("jose");
+    const JWKS = jose.createRemoteJWKSet(new URL(APPLE_JWKS_URL));
 
-    const verifyOptions: Record<string, unknown> = {
+    const jwtOptions: Parameters<typeof jose.jwtVerify>[2] = {
       issuer: "https://appleid.apple.com",
+      audience: APPLE_BUNDLE_ID,
     };
-    if (APPLE_BUNDLE_ID) {
-      verifyOptions.audience = APPLE_BUNDLE_ID;
-    }
 
-    const { payload } = await jwtVerify(idToken, JWKS, verifyOptions as any);
+    const { payload } = await jose.jwtVerify(idToken, JWKS, jwtOptions);
 
-    if (!payload.sub || !payload.email) return null;
+    if (!payload.sub) return null;
+
+    const claims = payload as Record<string, unknown>;
 
     return {
-      sub: payload.sub as string,
-      email: (payload as any).email as string,
-      email_verified: (payload as any).email_verified === true || (payload as any).email_verified === "true",
+      sub: payload.sub,
+      email: typeof claims.email === "string" ? claims.email : undefined,
+      email_verified: claims.email_verified === true || claims.email_verified === "true",
     };
   } catch (err) {
     logger.error("Apple token verification failed", err);
@@ -199,7 +209,7 @@ export async function verifyAppleIdToken(idToken: string): Promise<AppleTokenPay
 export async function findOrCreateSocialUser(
   provider: string,
   providerId: string,
-  email: string,
+  email: string | undefined,
   name?: string,
 ): Promise<typeof users.$inferSelect> {
   const [existingByProvider] = await db
@@ -215,6 +225,10 @@ export async function findOrCreateSocialUser(
     .limit(1);
 
   if (existingByProvider) return existingByProvider;
+
+  if (!email) {
+    throw new Error("EMAIL_REQUIRED_FOR_NEW_ACCOUNT");
+  }
 
   const [existingByEmail] = await db
     .select()
