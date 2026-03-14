@@ -90,7 +90,7 @@ Preferred communication style: Simple, everyday language.
 6. Query production defaults, focusManager/onlineManager, accessibility, error states
 7. Privacy policy, terms of service, consent capture, data export, account deletion
 8. 50-product seed catalog with real nutritional data
-9. 61 unit tests (vitest): scoring, AI advice, feature flags, schema ownership, allergen safety, product visibility
+9. 70 unit tests (vitest): scoring, AI advice, feature flags, schema ownership, allergen safety, product visibility
 10. Deployment configured (autoscale), health check endpoint
 
 ## Second-Round Hardening (Tasks #1-5)
@@ -106,5 +106,5 @@ Preferred communication style: Simple, everyday language.
 - **Rate limiting**: Auth endpoints 20 req/15min, refresh 30 req/15min, AI routes 20 req/min
 
 ## Testing
-- Unit tests: `npx vitest run` (61 tests across 6 files)
+- Unit tests: `npx vitest run` (70 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

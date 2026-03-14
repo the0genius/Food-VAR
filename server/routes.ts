@@ -34,9 +34,6 @@ function paramId(req: Request, name: string = "id"): string {
 import { logger } from "./logger";
 
 function getApprovedProductFilter() {
-  if (isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")) {
-    return undefined;
-  }
   return eq(products.moderationStatus, "approved");
 }
 
