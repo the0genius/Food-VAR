@@ -110,6 +110,7 @@ export default function ProfileScreen() {
   const { user, updateProfile, logout } = useUser();
   const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
   const theme = useThemeColors();
+  const isDark = theme.bg === '#121212';
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
@@ -220,7 +221,7 @@ export default function ProfileScreen() {
     >
       {/* 1. Minimal Top Bar */}
       <LinearGradient
-        colors={["#F0FAF4", theme.bg]}
+        colors={isDark ? ['#1B3A1D', theme.bg] : ["#F0FAF4", theme.bg]}
         style={[styles.topBar, { paddingTop: (insets.top || webTopInset) + 12 }]}
       >
         <Animated.Text
@@ -328,7 +329,7 @@ export default function ProfileScreen() {
           </Animated.View>
         )}
 
-        {/* 3. Stat Widgets Row */}
+        {/* 3. Stat Widgets Row — Centered with icon on top */}
         {statsLoading ? (
           <View style={styles.statRow}>
             <SkeletonBlock width="31%" height={100} style={{ borderRadius: 24 }} color={theme.skeleton} />
@@ -338,47 +339,41 @@ export default function ProfileScreen() {
         ) : (
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.statRow}>
             <View style={styles.statWidget}>
-              <View style={styles.statWidgetIconWrap}>
-                <Scan size={14} color={theme.green} />
+              <View style={[styles.statIconCircle, { backgroundColor: theme.greenBg }]}>
+                <Scan size={16} color={theme.green} />
               </View>
-              <View style={styles.statWidgetBottom}>
-                <Text style={styles.statWidgetValue}>{stats?.totalScans ?? 0}</Text>
-                <Text style={styles.statWidgetLabel}>Total Scans</Text>
-              </View>
+              <Text style={styles.statWidgetValue}>{stats?.totalScans ?? 0}</Text>
+              <Text style={styles.statWidgetLabel}>Total Scans</Text>
             </View>
 
             <View style={styles.statWidget}>
-              <View style={styles.statWidgetIconWrap}>
+              <View style={[styles.statIconCircle, { backgroundColor: theme.tealBg }]}>
                 <Speedometer
-                  size={14}
-                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore, theme) : theme.text}
+                  size={16}
+                  color={stats?.avgScore != null ? getScoreColor(stats.avgScore, theme) : theme.tealScore}
                 />
               </View>
-              <View style={styles.statWidgetBottom}>
-                <Text
-                  style={[
-                    styles.statWidgetValue,
-                    {
-                      color: stats?.avgScore != null
-                        ? getScoreColor(stats.avgScore, theme)
-                        : theme.text,
-                    },
-                  ]}
-                >
-                  {stats?.avgScore != null ? Math.round(stats.avgScore) : "--"}
-                </Text>
-                <Text style={styles.statWidgetLabel}>Avg Score</Text>
-              </View>
+              <Text
+                style={[
+                  styles.statWidgetValue,
+                  {
+                    color: stats?.avgScore != null
+                      ? getScoreColor(stats.avgScore, theme)
+                      : theme.tealScore,
+                  },
+                ]}
+              >
+                {stats?.avgScore != null ? Math.round(stats.avgScore) : "--"}
+              </Text>
+              <Text style={styles.statWidgetLabel}>Avg Score</Text>
             </View>
 
             <View style={styles.statWidget}>
-              <View style={styles.statWidgetIconWrap}>
-                <CalendarBlank size={14} color={theme.tealScore} />
+              <View style={[styles.statIconCircle, { backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7' }]}>
+                <CalendarBlank size={16} color={theme.muted} />
               </View>
-              <View style={styles.statWidgetBottom}>
-                <Text style={styles.statWidgetValue}>{stats?.weeklyScans ?? 0}</Text>
-                <Text style={styles.statWidgetLabel}>This Week</Text>
-              </View>
+              <Text style={styles.statWidgetValue}>{stats?.weeklyScans ?? 0}</Text>
+              <Text style={styles.statWidgetLabel}>This Week</Text>
             </View>
           </Animated.View>
         )}
@@ -386,15 +381,20 @@ export default function ProfileScreen() {
         {/* 4. Health Passport Card */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.passportCard}>
           <View style={styles.passportHeader}>
-            <Shield size={18} color={theme.primary} weight="fill" />
+            <ShieldCheck size={20} color={theme.primary} weight="fill" />
             <Text style={styles.passportTitle}>Health Passport</Text>
-            <View style={styles.accentDot} />
+            <MotiView
+              from={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
+              transition={{ loop: true, type: "timing" as const, duration: 1200 }}
+              style={styles.pulsingDot}
+            />
           </View>
 
           <View style={styles.passportRow}>
-            <LinearGradient colors={["#FFEBEE", "#FFCDD2"]} style={styles.passportIcon}>
+            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#3D1515' : '#FFEBEE' }]}>
               <Heartbeat size={16} color={theme.danger} weight="fill" />
-            </LinearGradient>
+            </View>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>CONDITIONS</Text>
               <Text style={styles.passportValue}>{conditions || "None"}</Text>
@@ -403,9 +403,9 @@ export default function ProfileScreen() {
           <View style={styles.passportDivider} />
 
           <View style={styles.passportRow}>
-            <LinearGradient colors={["#FFF3E0", "#FFE0B2"]} style={styles.passportIcon}>
+            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#3D2E15' : '#FFF3E0' }]}>
               <WarningCircle size={16} color={theme.amber} weight="fill" />
-            </LinearGradient>
+            </View>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>ALLERGIES</Text>
               <Text style={styles.passportValue}>{allergies || "None"}</Text>
@@ -414,9 +414,9 @@ export default function ProfileScreen() {
           <View style={styles.passportDivider} />
 
           <View style={styles.passportRow}>
-            <LinearGradient colors={["#E8F5E9", "#C8E6C9"]} style={styles.passportIcon}>
+            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#1B3A1D' : '#E8F5E9' }]}>
               <Flag size={16} color={theme.green} weight="fill" />
-            </LinearGradient>
+            </View>
             <View style={styles.passportTextWrap}>
               <Text style={styles.passportLabel}>GOAL</Text>
               <Text style={styles.passportValue}>{goal}</Text>
@@ -427,9 +427,9 @@ export default function ProfileScreen() {
             <>
               <View style={styles.passportDivider} />
               <View style={styles.passportRow}>
-                <LinearGradient colors={["#E0F7FA", "#B2EBF2"]} style={styles.passportIcon}>
+                <View style={[styles.passportIcon, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
                   <Leaf size={16} color={theme.tealScore} weight="fill" />
-                </LinearGradient>
+                </View>
                 <View style={styles.passportTextWrap}>
                   <Text style={styles.passportLabel}>DIET</Text>
                   <Text style={styles.passportValue}>
@@ -577,13 +577,13 @@ export default function ProfileScreen() {
             accessibilityLabel={currentTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             accessibilityRole="button"
           >
-            <View style={[styles.actionLeftBorder, { backgroundColor: currentTheme === "dark" ? "#FFA726" : "#5C6BC0" }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: '#7C4DFF' }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: currentTheme === "dark" ? theme.amberBg : theme.infoBg }]}>
+              <View style={[styles.actionIconCircle, { backgroundColor: isDark ? 'rgba(124,77,255,0.15)' : '#F3E8FF' }]}>
                 {currentTheme === "dark" ? (
-                  <Sun size={16} color="#FFA726" weight="fill" />
+                  <Sun size={16} color="#7C4DFF" weight="fill" />
                 ) : (
-                  <Moon size={16} color="#5C6BC0" weight="fill" />
+                  <Moon size={16} color="#7C4DFF" weight="fill" />
                 )}
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>
@@ -593,13 +593,13 @@ export default function ProfileScreen() {
             <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionCard} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
-            <View style={[styles.actionLeftBorder, { backgroundColor: theme.amber }]} />
+          <TouchableOpacity style={[styles.actionCard, { marginTop: 10 }]} onPress={handleLogout} activeOpacity={0.8} accessibilityLabel="Log out" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.danger }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: theme.amberBg }]}>
-                <SignOut size={16} color={theme.amber} />
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.dangerBg }]}>
+                <SignOut size={16} color={theme.danger} />
               </View>
-              <Text style={[styles.actionText, { color: theme.text }]}>Log Out</Text>
+              <Text style={[styles.actionText, { color: theme.danger }]}>Log Out</Text>
             </View>
           </TouchableOpacity>
 
@@ -626,7 +626,7 @@ export default function ProfileScreen() {
             >
               <View style={[styles.actionLeftBorder, { backgroundColor: theme.muted }]} />
               <View style={styles.actionContent}>
-                <View style={[styles.actionIconCircle, { backgroundColor: theme.cardBg }]}>
+                <View style={[styles.actionIconCircle, { backgroundColor: theme.card }]}>
                   <WarningCircle size={16} color={theme.muted} />
                 </View>
                 <Text style={[styles.actionText, { color: theme.muted }]}>Send Test Error to Sentry</Text>
@@ -661,7 +661,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.5)",
+    backgroundColor: theme.bg === '#121212' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)',
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -728,32 +728,36 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   statWidget: {
     flex: 1,
-    aspectRatio: 1,
     backgroundColor: theme.card,
-    borderRadius: 24,
-    padding: 12,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: theme.border,
-    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
     ...cardShadow("medium"),
   },
-  statWidgetIconWrap: {
-    alignSelf: "flex-end" as const,
-  },
-  statWidgetBottom: {
-    marginTop: "auto" as any,
+  statIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   statWidgetValue: {
-    fontSize: 24,
-    fontWeight: "900" as const,
+    fontSize: 20,
+    fontWeight: "800" as const,
     color: theme.text,
-    letterSpacing: -1,
+    letterSpacing: -0.5,
   },
   statWidgetLabel: {
-    fontSize: 11,
-    fontWeight: "500" as const,
-    color: theme.muted,
-    marginTop: 2,
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: theme.placeholder,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.8,
   },
   passportCard: {
     backgroundColor: theme.card,
@@ -768,33 +772,35 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     alignItems: "center" as const,
     gap: 8,
     marginBottom: 14,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.divider,
   },
   passportTitle: {
     fontSize: 16,
-    fontWeight: "800" as const,
+    fontWeight: "700" as const,
     color: theme.text,
-    letterSpacing: -0.3,
+    flex: 1,
   },
-  accentDot: {
-    width: 4,
-    height: 14,
-    borderRadius: 2,
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: theme.mint,
-    opacity: 0.7,
-    marginLeft: 2,
   },
   passportRow: {
     flexDirection: "row" as const,
-    alignItems: "center" as const,
+    alignItems: "flex-start" as const,
     gap: 12,
     paddingVertical: 12,
   },
   passportIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center" as const,
     justifyContent: "center" as const,
+    marginTop: 2,
   },
   passportTextWrap: {
     flex: 1,

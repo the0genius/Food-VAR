@@ -11,7 +11,7 @@ import {
   Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { X, ShareNetwork, ArrowLeft, Lock, WarningCircle, Warning, ShieldWarning, Robot, Barcode, ArrowsClockwise, CaretRight } from "phosphor-react-native";
+import { X, ShareNetwork, ArrowLeft, Lock, WarningCircle, Warning, ShieldWarning, Robot, Barcode, ArrowsClockwise, CaretRight, ShieldCheck, CheckCircle } from "phosphor-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -749,7 +749,7 @@ export default function ResultScreen() {
             </Animated.View>
           ) : null}
 
-          <Animated.View entering={FadeInDown.delay(350).duration(300)} style={styles.disclaimerWrap}>
+          <Animated.View entering={FadeInDown.delay(350).duration(300)} style={{ marginHorizontal: 20, marginTop: 4, marginBottom: 8 }}>
             <Text style={styles.disclaimerText}>
               Scores and advice are for informational purposes only and do not constitute medical advice.
             </Text>
@@ -775,22 +775,44 @@ export default function ResultScreen() {
     );
   }
 
+  const isDark = theme.bg === '#121212';
+
+  const filteredHighlights = useMemo(() => {
+    if (!data.highlights || data.highlights.length === 0) return [];
+    const vaguePatterns = [
+      /^contains\s/i, /^critical\s?allergen/i, /^not\s?suitable/i,
+      /^check\s?allergen/i, /^allergen/i, /^avoid/i, /^warning/i,
+      /^caution/i, /^unsafe/i, /^dangerous/i,
+    ];
+    return data.highlights.filter((h: string) =>
+      !vaguePatterns.some(p => p.test(h.trim()))
+    );
+  }, [data.highlights]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <View
         style={[styles.header, { paddingTop: (insets.top || webTopInset) + 8 }]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} accessibilityLabel="Close result" accessibilityRole="button">
-          <X size={24} color={theme.text} />
+        <TouchableOpacity onPress={() => router.back()} style={[styles.closeBtn, styles.headerBtn]} accessibilityLabel="Close result" accessibilityRole="button">
+          <X size={20} color={theme.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share result" accessibilityRole="button">
-          <ShareNetwork size={22} color={theme.text} />
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerProductName, { color: theme.text }]} numberOfLines={1}>{product.name}</Text>
+          <Text style={[styles.headerProductSub, { color: theme.muted }]} numberOfLines={1}>
+            {[product.brand, product.category].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={handleShare} style={[styles.shareBtn, styles.headerBtn]} accessibilityLabel="Share result" accessibilityRole="button">
+          <ShareNetwork size={18} color={theme.text} />
         </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={{
           paddingBottom: Math.max(insets.bottom, Platform.OS === "web" ? 34 : 0) + 20,
+          gap: 16,
+          paddingHorizontal: 20,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -814,112 +836,108 @@ export default function ResultScreen() {
         )}
 
         <Animated.View entering={FadeInDown.duration(500)}>
-          <View style={[styles.scoreRingContainer, { ...cardShadow("medium") }]}>
+          <LinearGradient
+            colors={isDark ? ['#1B3A1D', theme.card] : ['#eafaf1', '#FFFFFF']}
+            style={styles.scoreGradientCard}
+          >
             <ScoreRing
               score={data.score}
               isAllergenAlert={data.isAllergenAlert}
             />
-          </View>
+            <Text style={[styles.scoreHeadline, { color: headlineColor }]}>{headlineText}</Text>
+            {data.advice ? (
+              <Text style={styles.scoreSubline} numberOfLines={2}>
+                {data.advice.split('.')[0]}.
+              </Text>
+            ) : null}
+          </LinearGradient>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.productInfoSection}>
-          <Text style={[styles.productName, { color: theme.text }]}>{product.name}</Text>
-          {product.brand ? <Text style={[styles.productBrand, { color: theme.muted }]}>{product.brand}</Text> : null}
-          <View style={styles.chipRow}>
-            {product.category ? (
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>{product.category}</Text>
-              </View>
-            ) : null}
-            {params.accessMethod ? (
-              <View style={styles.chipNeutral}>
-                <Text style={styles.chipNeutralText}>
-                  {params.accessMethod === "scan" ? "Scanned" : "Searched"}
-                </Text>
-              </View>
-            ) : null}
-          </View>
+        <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+          {!data.isAllergenAlert ? (
+            <View style={[styles.allergenPill, { backgroundColor: isDark ? '#1B3A1D' : '#E8F5E9', borderColor: isDark ? 'rgba(46,125,50,0.3)' : '#C8E6C9' }]}>
+              <ShieldCheck size={18} color={isDark ? '#66BB6A' : '#2E7D32'} weight="fill" />
+              <Text style={[styles.allergenPillText, { color: isDark ? '#66BB6A' : '#2E7D32' }]}>No allergens detected</Text>
+            </View>
+          ) : null}
+          {product.allergens && product.allergens.length > 0 && !data.isAllergenAlert && (
+            <View style={[styles.allergenPill, { backgroundColor: theme.dangerBg, borderColor: isDark ? 'rgba(239,83,80,0.3)' : '#FFCDD2', marginTop: 8 }]}>
+              <Warning size={18} color={theme.danger} weight="fill" />
+              <Text style={[styles.allergenPillText, { color: theme.danger }]}>Contains: {product.allergens.join(', ')}</Text>
+            </View>
+          )}
         </Animated.View>
 
         {data.advice ? (
           <Animated.View
             entering={FadeInDown.delay(250).duration(400)}
-            style={[styles.adviceCard, { backgroundColor: theme.card }]}
+            style={styles.aiCoachCard}
           >
-            <View style={styles.adviceHeader}>
-              <LinearGradient
-                colors={[theme.tinted, "#D4EDDA"]}
-                style={styles.adviceIconBox}
-              >
-                <Robot size={16} color={theme.primary} weight="fill" />
-              </LinearGradient>
-              <Text style={[styles.adviceLabel, { color: theme.muted }]}>FOODVAR VERDICT</Text>
-            </View>
-            <View style={[styles.adviceDivider, { backgroundColor: theme.divider }]} />
-            <Text style={[styles.adviceHeadline, { color: headlineColor }]}>{headlineText}</Text>
-            <Text style={[styles.adviceText, { color: theme.text }]}>{data.advice}</Text>
-
-            {data.coachTip ? (
-              <View style={styles.coachTipRow}>
-                <View style={styles.coachTipDot} />
-                <Text style={styles.coachTipText}>{data.coachTip}</Text>
-              </View>
-            ) : null}
-
-            {data.highlights && data.highlights.length > 0 && (() => {
-              const vaguePatterns = [
-                /^contains\s/i,
-                /^critical\s?allergen/i,
-                /^not\s?suitable/i,
-                /^check\s?allergen/i,
-                /^allergen/i,
-                /^avoid/i,
-                /^warning/i,
-                /^caution/i,
-                /^unsafe/i,
-                /^dangerous/i,
-              ];
-              const filtered = data.highlights.filter((h: string) =>
-                !vaguePatterns.some(p => p.test(h.trim()))
-              );
-              return filtered.length > 0 ? (
-                <View style={styles.highlightsInAdvice}>
-                  {filtered.map((h: string, i: number) => (
-                    <HighlightItem key={i} text={h} index={i} tierColor={scoreColor} />
-                  ))}
+            <View style={[styles.aiCoachAccent, { backgroundColor: theme.tealScore }]} />
+            <View style={styles.aiCoachContent}>
+              <View style={styles.aiCoachHeader}>
+                <View style={[styles.aiCoachIconCircle, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
+                  <Robot size={18} color={isDark ? '#4DD0C8' : '#2EC4B6'} weight="fill" />
                 </View>
-              ) : null;
-            })()}
+                <Text style={[styles.aiCoachTitle, { color: theme.text }]}>AI Coach</Text>
+              </View>
+              <Text style={[styles.adviceText, { color: theme.text }]}>{data.advice}</Text>
+
+              {data.coachTip ? (
+                <View style={[styles.coachTipBox, { backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7' }]}>
+                  <Text style={{ fontSize: 18, lineHeight: 22 }}>💡</Text>
+                  <Text style={styles.coachTipBoxText}>
+                    <Text style={{ fontWeight: '600' as const, color: theme.text }}>Tip: </Text>
+                    {data.coachTip}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(350).duration(300)} style={styles.disclaimerWrap}>
-          <Text style={styles.disclaimerText}>
-            Scores and advice are for informational purposes only and do not constitute medical advice.
-          </Text>
-        </Animated.View>
+        {filteredHighlights.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.highlightsCard}>
+            <Text style={[styles.highlightsCardTitle, { color: theme.text }]}>Key Highlights</Text>
+            <View style={styles.highlightsList}>
+              {filteredHighlights.map((h: string, i: number) => {
+                const severity = getHighlightSeverity(h);
+                return (
+                  <View key={i} style={styles.highlightRow}>
+                    {severity === 'positive' ? (
+                      <CheckCircle size={18} color={isDark ? '#66BB6A' : '#43A047'} weight="fill" />
+                    ) : severity === 'warning' ? (
+                      <WarningCircle size={18} color={isDark ? '#FFB74D' : '#FB8C00'} weight="fill" />
+                    ) : (
+                      <CheckCircle size={18} color={scoreColor} weight="fill" />
+                    )}
+                    <Text style={[styles.highlightRowText, { color: isDark ? '#D0D0D0' : '#333333' }]}>{h}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </Animated.View>
+        )}
 
         <Animated.View
-          entering={FadeInDown.delay(450).duration(400)}
-          style={styles.nutritionSection}
+          entering={FadeInDown.delay(400).duration(400)}
         >
           <View style={[styles.nutritionCard, { backgroundColor: theme.card }]}>
             <View style={styles.nutritionHeader}>
               <Text style={[styles.nutritionTitle, { color: theme.text }]}>Nutrition Facts</Text>
               {product.servingSize ? (
-                <Text style={styles.servingLabel}>Per {product.servingSize}</Text>
+                <Text style={styles.servingLabel}>per serving ({product.servingSize})</Text>
               ) : null}
             </View>
             <View style={styles.nutritionTable}>
-              <NutrientRow label="Calories" value={product.calories} unit="" index={0} nutrientKey="calories" />
-              <NutrientRow label="Total Fat" value={product.fat} unit="g" index={1} nutrientKey="fat" />
-              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={2} isIndented nutrientKey="saturatedFat" />
-              <NutrientRow label="Cholesterol" value={product.nutritionFacts?.cholesterol ?? null} unit="mg" index={3} />
-              <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={4} nutrientKey="sodium" />
-              <NutrientRow label="Total Carbohydrate" value={product.carbohydrates} unit="g" index={5} nutrientKey="carbohydrates" />
-              <NutrientRow label="Dietary Fiber" value={product.fiber} unit="g" index={6} isIndented nutrientKey="fiber" />
-              <NutrientRow label="Total Sugars" value={product.sugar} unit="g" index={7} isIndented nutrientKey="sugar" />
-              <NutrientRow label="Protein" value={product.protein} unit="g" index={8} nutrientKey="protein" />
+              <NutrientRow label="Calories" value={product.calories} unit="kcal" index={0} nutrientKey="calories" />
+              <NutrientRow label="Protein" value={product.protein} unit="g" index={1} nutrientKey="protein" />
+              <NutrientRow label="Carbs" value={product.carbohydrates} unit="g" index={2} nutrientKey="carbohydrates" />
+              <NutrientRow label="Sugar" value={product.sugar} unit="g" index={3} nutrientKey="sugar" />
+              <NutrientRow label="Fat" value={product.fat} unit="g" index={4} nutrientKey="fat" />
+              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={5} isIndented nutrientKey="saturatedFat" />
+              <NutrientRow label="Fiber" value={product.fiber} unit="g" index={6} nutrientKey="fiber" />
+              <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={7} nutrientKey="sodium" />
             </View>
 
             {hasAdditionalNutrition && (
@@ -957,28 +975,9 @@ export default function ResultScreen() {
           </View>
         </Animated.View>
 
-        {product.allergens && product.allergens.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(500).duration(400)}
-            style={styles.allergensSection}
-          >
-            <View style={styles.allergensSectionHeader}>
-              <Warning size={16} color={theme.danger} weight="fill" />
-              <Text style={styles.allergensSectionTitle}>Allergens</Text>
-            </View>
-            <View style={styles.allergenChips}>
-              {product.allergens.map((a: string, i: number) => (
-                <View key={i} style={styles.allergenChip}>
-                  <Text style={styles.allergenChipText}>{a}</Text>
-                </View>
-              ))}
-            </View>
-          </Animated.View>
-        )}
-
         {product.ingredients ? (
           <Animated.View
-            entering={FadeInDown.delay(550).duration(400)}
+            entering={FadeInDown.delay(450).duration(400)}
             style={styles.ingredientsSection}
           >
             <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ingredients</Text>
@@ -986,27 +985,10 @@ export default function ResultScreen() {
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.scanAnotherWrap}>
-          <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.scanAnotherGradient}
-          >
-            <TouchableOpacity
-              style={styles.scanAnotherInner}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.replace("/(tabs)/scan");
-              }}
-              activeOpacity={0.85}
-              accessibilityLabel="Scan another product"
-              accessibilityRole="button"
-            >
-              <Barcode size={20} color="white" weight="bold" />
-              <Text style={styles.scanAnotherText}>Scan Another</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+        <Animated.View entering={FadeInDown.delay(500).duration(300)}>
+          <Text style={styles.disclaimerText}>
+            This is not medical advice.{'\n'}Always consult your healthcare provider.
+          </Text>
         </Animated.View>
       </ScrollView>
     </View>
@@ -1027,6 +1009,26 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 4,
+  },
+  headerBtn: {
+    backgroundColor: theme.card,
+    ...cardShadow("subtle"),
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: "center" as const,
+    paddingHorizontal: 8,
+  },
+  headerProductName: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    letterSpacing: -0.3,
+    textAlign: "center" as const,
+  },
+  headerProductSub: {
+    fontSize: 13,
+    marginTop: 2,
+    textAlign: "center" as const,
   },
   closeBtn: {
     width: 40,
@@ -1139,8 +1141,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 8,
-    marginHorizontal: 20,
-    marginBottom: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
@@ -1156,43 +1156,121 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.muted,
     marginTop: 2,
   },
-  disclaimerWrap: {
-    marginHorizontal: 20,
-    marginTop: 4,
-    marginBottom: 8,
-  },
   disclaimerText: {
-    fontSize: 11,
-    color: theme.muted,
+    fontSize: 12,
+    color: theme.placeholder,
     textAlign: "center" as const,
-    lineHeight: 16,
-    fontStyle: "italic" as const,
+    lineHeight: 18,
+    marginTop: 4,
   },
-  scoreRingContainer: {
-    backgroundColor: theme.card,
-    borderRadius: 28,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 24,
+  scoreGradientCard: {
+    borderRadius: 24,
+    padding: 24,
     alignItems: "center" as const,
     borderWidth: 0.5,
     borderColor: theme.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    ...cardShadow("medium"),
   },
-  productInfoSection: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    padding: 16,
+  scoreHeadline: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    textAlign: "center" as const,
+    marginTop: 4,
+  },
+  scoreSubline: {
+    fontSize: 15,
+    color: theme.muted,
+    textAlign: "center" as const,
+    marginTop: 4,
+    lineHeight: 22,
+  },
+  allergenPill: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  allergenPillText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  aiCoachCard: {
     backgroundColor: theme.card,
     borderRadius: 24,
+    overflow: "hidden" as const,
     borderWidth: 0.5,
     borderColor: theme.border,
-    ...cardShadow("subtle"),
+    flexDirection: "row" as const,
+    ...cardShadow("medium"),
+  },
+  aiCoachAccent: {
+    width: 4,
+  },
+  aiCoachContent: {
+    flex: 1,
+    padding: 20,
+    paddingLeft: 16,
+  },
+  aiCoachHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    marginBottom: 12,
+  },
+  aiCoachIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  aiCoachTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+  },
+  coachTipBox: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 10,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 14,
+  },
+  coachTipBoxText: {
+    flex: 1,
+    fontSize: 14,
+    color: theme.muted,
+    lineHeight: 20,
+  },
+  highlightsCard: {
+    backgroundColor: theme.card,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 0.5,
+    borderColor: theme.border,
+    ...cardShadow("medium"),
+  },
+  highlightsCardTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    marginBottom: 16,
+  },
+  highlightsList: {
+    gap: 14,
+  },
+  highlightRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    gap: 10,
+  },
+  highlightRowText: {
+    fontSize: 15,
+    lineHeight: 22,
+    flex: 1,
   },
   productName: {
     fontSize: 22,
@@ -1233,8 +1311,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontWeight: "600" as const,
   },
   adviceCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
     padding: 18,
     borderRadius: 24,
     backgroundColor: theme.card,
@@ -1330,10 +1406,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     letterSpacing: -0.3,
     marginBottom: 16,
   },
-  nutritionSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
   nutritionCard: {
     borderRadius: 24,
     overflow: "hidden" as const,
@@ -1344,13 +1416,14 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   nutritionHeader: {
     paddingVertical: 16,
     paddingHorizontal: 16,
+    flexDirection: "row" as const,
+    alignItems: "baseline" as const,
+    justifyContent: "space-between" as const,
   },
   nutritionTitle: {
-    fontSize: 12,
-    fontWeight: "800" as const,
-    letterSpacing: 1.5,
-    color: theme.placeholder,
-    textTransform: "uppercase" as const,
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: theme.text,
   },
   servingLabel: {
     fontSize: 12,
@@ -1394,8 +1467,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     letterSpacing: 0.5,
   },
   allergensSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 8,
   },
   allergensSectionHeader: {
     flexDirection: "row" as const,
@@ -1428,8 +1500,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     textTransform: "capitalize" as const,
   },
   ingredientsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 8,
   },
   ingredientsText: {
     fontSize: 14,
@@ -1437,9 +1508,8 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   scanAnotherWrap: {
-    paddingHorizontal: 20,
     marginBottom: 8,
-    marginTop: 20,
+    marginTop: 4,
   },
   scanAnotherGradient: {
     borderRadius: 999,
