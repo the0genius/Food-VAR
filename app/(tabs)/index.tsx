@@ -4,10 +4,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors, { C, cardShadow, coloredShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
+import { getScoreColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
 import { useUser } from "@/contexts/UserContext";
-import { getApiUrl } from "@/lib/query-client";
-import { fetch } from "expo/fetch";
 import Animated, {
   FadeInDown,
   useSharedValue,
@@ -593,18 +591,30 @@ function getGreeting() {
   return "Good evening";
 }
 
-const bentoShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.05,
-  shadowRadius: 6,
-  elevation: 3,
-};
-
 const createStyles = (theme: ThemeColors) => {
+  const isDark = theme.bg === '#121212';
+
+  const bentoShadow = isDark
+    ? {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 6,
+      }
+    : {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 3,
+      };
+
   const BENTO_CARD = {
     backgroundColor: theme.card,
     borderRadius: 24,
+    borderWidth: isDark ? 1 : 0,
+    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'transparent',
     ...bentoShadow,
   } as const;
 
