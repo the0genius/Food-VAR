@@ -1119,78 +1119,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!entry) return res.status(404).json({ error: "Entry not found" });
 
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      const declaredAllergens = (entry.productDeclaredAllergens || []) as string[];
+      const inferredAllergens = (entry.productInferredAllergens || []) as string[];
+      const userAllergies = user ? ((user.allergies || []) as string[]).map((a: string) => a.toLowerCase()) : [];
+
+      let allergenFields: {
+        isAllergenAlert: boolean;
+        matchedAllergens: string[];
+        inferredAllergenWarnings: string[];
+        allergenDisplayState: string;
+        productDeclaredAllergens: string[];
+        productInferredAllergens: string[];
+      };
+
       const checkProfile = req.query.checkProfile === "true";
-      if (checkProfile) {
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, userId));
+      let reAnalyzedResponse: Record<string, any> | null = null;
 
-        if (user) {
-          const currentClusterId =
-            user.profileClusterId || computeClusterId(user);
-          const entryClusterId = entry.profileClusterId || "";
+      if (checkProfile && user) {
+        const currentClusterId =
+          user.profileClusterId || computeClusterId(user);
+        const entryClusterId = entry.profileClusterId || "";
 
-          if (currentClusterId !== entryClusterId) {
-            const [product] = await db
-              .select()
-              .from(products)
-              .where(eq(products.id, entry.productId));
+        if (currentClusterId !== entryClusterId) {
+          const [product] = await db
+            .select()
+            .from(products)
+            .where(eq(products.id, entry.productId));
 
-            if (product) {
-              const scoreResult = await computeScore(product, user);
-              let adviceResult;
-              if (isFeatureEnabled("ENABLE_AI_ADVICE")) {
-                adviceResult = await getAdvice(
-                  product,
-                  user,
-                  scoreResult.score,
-                  scoreResult.label,
-                  currentClusterId,
-                  scoreResult.isAllergenAlert,
-                  scoreResult.matchedAllergens,
-                  scoreResult.deductions
-                );
-              } else {
-                adviceResult = getDeterministicAdvice(
-                  scoreResult.score,
-                  scoreResult.label,
-                  scoreResult.isAllergenAlert,
-                  scoreResult.matchedAllergens,
-                  scoreResult.deductions
-                );
-              }
-
-              return res.json({
-                ...entry,
-                reAnalyzed: true,
-                original: {
-                  score: entry.score,
-                  adviceText: entry.adviceText,
-                  headline: entry.headline,
-                  coachTip: entry.coachTip,
-                  highlights: entry.highlights,
-                  profileClusterId: entry.profileClusterId,
-                },
-                score: scoreResult.score,
-                adviceText: adviceResult.advice,
-                headline: adviceResult.headline || "",
-                coachTip: adviceResult.coachTip || "",
-                highlights: adviceResult.highlights,
-                profileClusterId: currentClusterId,
-                matchedAllergens: scoreResult.matchedAllergens,
-                isAllergenAlert: scoreResult.isAllergenAlert,
-                inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
-                allergenDisplayState: scoreResult.allergenDisplayState,
-                productDeclaredAllergens: scoreResult.productDeclaredAllergens,
-                productInferredAllergens: scoreResult.productInferredAllergens,
-              });
+          if (product) {
+            const scoreResult = await computeScore(product, user);
+            let adviceResult;
+            if (isFeatureEnabled("ENABLE_AI_ADVICE")) {
+              adviceResult = await getAdvice(
+                product,
+                user,
+                scoreResult.score,
+                scoreResult.label,
+                currentClusterId,
+                scoreResult.isAllergenAlert,
+                scoreResult.matchedAllergens,
+                scoreResult.deductions
+              );
+            } else {
+              adviceResult = getDeterministicAdvice(
+                scoreResult.score,
+                scoreResult.label,
+                scoreResult.isAllergenAlert,
+                scoreResult.matchedAllergens,
+                scoreResult.deductions
+              );
             }
+
+            allergenFields = {
+              isAllergenAlert: scoreResult.isAllergenAlert,
+              matchedAllergens: scoreResult.matchedAllergens,
+              inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
+              allergenDisplayState: scoreResult.allergenDisplayState,
+              productDeclaredAllergens: scoreResult.productDeclaredAllergens,
+              productInferredAllergens: scoreResult.productInferredAllergens,
+            };
+
+            reAnalyzedResponse = {
+              reAnalyzed: true,
+              original: {
+                score: entry.score,
+                adviceText: entry.adviceText,
+                headline: entry.headline,
+                coachTip: entry.coachTip,
+                highlights: entry.highlights,
+                profileClusterId: entry.profileClusterId,
+              },
+              score: scoreResult.score,
+              adviceText: adviceResult.advice,
+              headline: adviceResult.headline || "",
+              coachTip: adviceResult.coachTip || "",
+              highlights: adviceResult.highlights,
+              profileClusterId: currentClusterId,
+            };
           }
         }
       }
 
-      res.json(entry);
+      if (!reAnalyzedResponse) {
+        const ALLERGEN_GROUPS: Record<string, string[]> = {
+          gluten: ["gluten", "wheat", "barley", "rye", "oats"],
+          wheat: ["wheat", "gluten"],
+          milk: ["milk", "dairy", "lactose", "whey", "casein"],
+          lactose: ["lactose", "milk", "dairy"],
+          nuts: ["nuts", "tree nuts", "almonds", "cashews", "walnuts", "hazelnuts", "pecans", "pistachios", "macadamia"],
+          peanuts: ["peanuts", "peanut"],
+          soy: ["soy", "soya", "soybean"],
+          eggs: ["eggs", "egg"],
+          fish: ["fish"],
+          shellfish: ["shellfish", "crustaceans", "shrimp", "crab", "lobster"],
+          sesame: ["sesame"],
+        };
+
+        const prodDeclared = declaredAllergens.map((a: string) => a.toLowerCase());
+        const prodInferred = inferredAllergens.map((a: string) => a.toLowerCase());
+
+        const matchedAllergens = userAllergies.filter((allergy: string) => {
+          const related = ALLERGEN_GROUPS[allergy] || [allergy];
+          return prodDeclared.some(
+            (pa: string) => related.includes(pa) || pa === allergy || (ALLERGEN_GROUPS[pa] || []).includes(allergy)
+          );
+        });
+
+        const inferredWarnings = userAllergies.filter((allergy: string) => {
+          const related = ALLERGEN_GROUPS[allergy] || [allergy];
+          return prodInferred.some(
+            (ia: string) => related.includes(ia) || ia === allergy || (ALLERGEN_GROUPS[ia] || []).includes(allergy)
+          );
+        });
+
+        let displayState: string;
+        if (matchedAllergens.length > 0) {
+          displayState = "hard_alert";
+        } else if (inferredWarnings.length > 0) {
+          displayState = "possible_risk";
+        } else if (prodDeclared.length > 0 || prodInferred.length > 0) {
+          displayState = "product_contains_nonmatching";
+        } else {
+          displayState = "none";
+        }
+
+        allergenFields = {
+          isAllergenAlert: matchedAllergens.length > 0,
+          matchedAllergens,
+          inferredAllergenWarnings: inferredWarnings,
+          allergenDisplayState: displayState,
+          productDeclaredAllergens: prodDeclared,
+          productInferredAllergens: prodInferred,
+        };
+      }
+
+      res.json({
+        ...entry,
+        ...allergenFields!,
+        ...(reAnalyzedResponse || {}),
+      });
     } catch (error) {
       logger.error("History entry fetch failed", error, {}, req);
       res.status(500).json({ error: "Failed to fetch history entry" });

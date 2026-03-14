@@ -510,34 +510,15 @@ export default function ResultScreen() {
           const entry = await res.json();
           const wasReAnalyzed = entry.reAnalyzed === true;
           setReAnalyzed(wasReAnalyzed);
-          const isAlert = entry.isAllergenAlert ?? entry.score === 0;
-          const declaredAllergens = entry.productDeclaredAllergens || [];
-          const inferredAllergens = entry.productInferredAllergens || [];
-          const inferredWarnings = entry.inferredAllergenWarnings || [];
-          const matched = entry.matchedAllergens || [];
-
-          let allergenDisplayState = entry.allergenDisplayState;
-          if (!allergenDisplayState) {
-            if (isAlert && matched.length > 0) {
-              allergenDisplayState = "hard_alert";
-            } else if (inferredWarnings.length > 0) {
-              allergenDisplayState = "possible_risk";
-            } else if (declaredAllergens.length > 0 || inferredAllergens.length > 0) {
-              allergenDisplayState = "product_contains_nonmatching";
-            } else {
-              allergenDisplayState = "none";
-            }
-          }
-
           setData({
             score: entry.score,
-            label: getScoreLabelFull(entry.score, isAlert),
-            isAllergenAlert: isAlert,
-            matchedAllergens: matched,
-            inferredAllergenWarnings: inferredWarnings,
-            allergenDisplayState,
-            productDeclaredAllergens: declaredAllergens,
-            productInferredAllergens: inferredAllergens,
+            label: getScoreLabelFull(entry.score, entry.isAllergenAlert ?? false),
+            isAllergenAlert: entry.isAllergenAlert ?? false,
+            matchedAllergens: entry.matchedAllergens || [],
+            inferredAllergenWarnings: entry.inferredAllergenWarnings || [],
+            allergenDisplayState: entry.allergenDisplayState || "none",
+            productDeclaredAllergens: entry.productDeclaredAllergens || [],
+            productInferredAllergens: entry.productInferredAllergens || [],
             advice: entry.adviceText || "",
             headline: entry.headline || "",
             coachTip: entry.coachTip || "",
