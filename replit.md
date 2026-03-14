@@ -33,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 
 ### AI Advice & Integrations
 - Leverages Google Gemini via Replit AI Integrations for personalized dietary advice, nutrition extraction from images, and optionally chat/image generation (features are behind feature flags).
-- AI advice is cached per product and profile cluster with TTL for performance and cost efficiency.
+- AI advice is cached per product and profile cluster with TTL for performance and cost efficiency. Cache stores headline, coachTip, highlights, and adviceText so cache hits render identically to fresh AI responses. Pre-existing cache entries without headline/coachTip gracefully fall back to deterministic advice values.
 - Employs strict AI safety rules, including prompt hardening, injection defense, schema validation, and deterministic fallbacks.
 
 ### Key Architectural Decisions
@@ -129,5 +129,5 @@ Preferred communication style: Simple, everyday language.
 - **Typecheck**: `npm run typecheck` (tsc --noEmit)
 
 ## Testing
-- Unit tests: `npx vitest run` (90 tests across 6 files)
+- Unit tests: `npx vitest run` (94 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

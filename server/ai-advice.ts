@@ -134,10 +134,13 @@ export async function getAdvice(
     .limit(1);
 
   if (cached.length > 0) {
+    const cachedFallback = getDeterministicAdvice(
+      score, scoreLabel, isAllergenAlert, matchedAllergens, deductions
+    );
     return {
       advice: cached[0].adviceText,
-      headline: "",
-      coachTip: "",
+      headline: cached[0].headline || cachedFallback.headline,
+      coachTip: cached[0].coachTip || cachedFallback.coachTip,
       highlights: (cached[0].highlights || []) as string[],
       fromCache: true,
     };
@@ -192,6 +195,8 @@ export async function getAdvice(
       productId: product.id,
       profileClusterId,
       adviceText: validated.whyText,
+      headline: validated.headline,
+      coachTip: validated.coachTip,
       highlights: validated.highlights,
       promptVersion: PROMPT_VERSION,
       modelVersion: MODEL_VERSION,

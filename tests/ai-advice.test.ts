@@ -111,6 +111,53 @@ describe("advice cache version awareness", () => {
     expect(cacheInsert).toBeTruthy();
     expect(cacheInsert![0]).toContain("scoringVersion: SCORING_VERSION");
   });
+
+  it("cache write persists headline and coachTip", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheInsert = source.match(
+      /db\.insert\(adviceCache\)\.values\([\s\S]*?\}\)/
+    );
+    expect(cacheInsert).toBeTruthy();
+    expect(cacheInsert![0]).toContain("headline: validated.headline");
+    expect(cacheInsert![0]).toContain("coachTip: validated.coachTip");
+  });
+
+  it("cache hit returns stored headline and coachTip, not empty strings", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheHit = source.match(
+      /if \(cached\.length > 0\)[\s\S]*?fromCache: true[\s\S]*?\}/
+    );
+    expect(cacheHit).toBeTruthy();
+    expect(cacheHit![0]).toContain("cached[0].headline");
+    expect(cacheHit![0]).toContain("cached[0].coachTip");
+    expect(cacheHit![0]).not.toMatch(/headline:\s*""/);
+    expect(cacheHit![0]).not.toMatch(/coachTip:\s*""/);
+  });
+
+  it("cache hit falls back to deterministic advice when stored fields are null", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheHit = source.match(
+      /if \(cached\.length > 0\)[\s\S]*?fromCache: true[\s\S]*?\}/
+    );
+    expect(cacheHit).toBeTruthy();
+    expect(cacheHit![0]).toContain("getDeterministicAdvice");
+    expect(cacheHit![0]).toContain("cachedFallback.headline");
+    expect(cacheHit![0]).toContain("cachedFallback.coachTip");
+  });
+
+  it("advice_cache schema includes headline and coachTip columns", async () => {
+    const { adviceCache } = await import("../shared/schema");
+    expect(adviceCache.headline).toBeDefined();
+    expect(adviceCache.headline.name).toBe("headline");
+    expect(adviceCache.coachTip).toBeDefined();
+    expect(adviceCache.coachTip.name).toBe("coach_tip");
+  });
 });
 
 describe("extraction safety", () => {

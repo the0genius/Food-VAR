@@ -144,6 +144,8 @@ export const adviceCache = pgTable(
       .references(() => products.id, { onDelete: "cascade" }),
     profileClusterId: text("profile_cluster_id").notNull(),
     adviceText: text("advice_text").notNull(),
+    headline: text("headline"),
+    coachTip: text("coach_tip"),
     highlights: jsonb("highlights").$type<string[]>().default([]),
     promptVersion: text("prompt_version"),
     modelVersion: text("model_version"),

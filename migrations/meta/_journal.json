@@ -36,6 +36,13 @@
       "when": 1773452200000,
       "tag": "0004_email_verification_password_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773487500000,
+      "tag": "0005_advice_cache_headline_coachtip",
+      "breakpoints": true
     }
   ]
 }
