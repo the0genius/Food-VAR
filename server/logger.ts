@@ -67,7 +67,7 @@ export const logger = {
       path: req.path,
       statusCode,
       durationMs,
-      userId: (req as any).auth?.userId,
+      userId: req.auth?.userId,
       ...extra,
     }, "request");
   },

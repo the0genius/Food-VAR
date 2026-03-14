@@ -149,7 +149,7 @@ export async function createEmailVerificationToken(userId: number): Promise<stri
   });
 
   if (process.env.NODE_ENV === "development") {
-    logger.info("Email verification token (dev only)", { userId, token });
+    logger.info(`[DEV] Email verification token for user ${userId}: ${token}`);
   }
 
   return token;
@@ -194,7 +194,7 @@ export async function createPasswordResetToken(userId: number): Promise<string> 
   });
 
   if (process.env.NODE_ENV === "development") {
-    logger.info("Password reset token (dev only)", { userId, token });
+    logger.info(`[DEV] Password reset token for user ${userId}: ${token}`);
   }
 
   return token;

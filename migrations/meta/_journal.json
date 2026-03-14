@@ -29,6 +29,13 @@
       "when": 1773451400000,
       "tag": "0003_advice_cache_scoring_version",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773452200000,
+      "tag": "0004_email_verification_password_reset",
+      "breakpoints": true
     }
   ]
 }
