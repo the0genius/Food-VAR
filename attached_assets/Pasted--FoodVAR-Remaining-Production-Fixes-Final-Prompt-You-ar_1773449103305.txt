@@ -1,0 +1,690 @@
+# FoodVAR - Remaining Production Fixes Final Prompt
+
+You are taking over the current FoodVAR repository for the final production-hardening pass.
+
+Repository:
+- Repo: the0genius/Food-VAR
+- Branch: main
+
+Context:
+A major hardening pass has already been completed. Auth, validation, feature flags, route ownership, and core security are partially in place. This prompt is for the final round that fixes the remaining production blockers, safety issues, schema issues, and quality gaps.
+
+Your job:
+Read the actual repo, verify all assumptions in code, and implement the remaining production fixes without breaking working features.
+
+Non-negotiable rules:
+- Do not break any existing working feature.
+- Do not change the visual design language or color palette unless a task explicitly requires theme support.
+- Do not rewrite the app architecture unless absolutely necessary.
+- Complete sections in order.
+- After each section, run `npm run typecheck` and `npm test`.
+- If a listed issue is already fixed, verify it carefully and mark it as verified, then move on.
+- If you discover additional real production blockers during implementation, add them to the plan and fix them in the same pass.
+- Do not only write docs or TODOs. Make the code changes.
+
+Priority order:
+1. Data ownership and authorization
+2. Allergen safety
+3. Public product visibility and moderation correctness
+4. History integrity
+5. AI safety and cache correctness
+6. Schema and migrations
+7. Operational readiness
+8. UX quality improvements
+
+==================================================
+FIRST: RE-AUDIT BEFORE EDITING
+==================================================
+
+Before changing code, re-audit the current repo for any still-open production blockers in:
+- public product visibility and moderation filtering
+- advice cache version-awareness
+- score label consistency across backend and UI
+- logging and redaction quality
+- web refresh-token handling and session exposure
+- chat data ownership and schema correctness
+- daily scan date storage type
+- extraction safety and extraction confidence model
+- history snapshot preservation
+
+Create or update:
+- `replit.md`
+- `HARDENING_STATUS.md`
+
+`HARDENING_STATUS.md` must include:
+- current phase
+- completed fixes
+- blocked items
+- newly discovered blockers
+- feature flags currently off
+- remaining manual tasks
+- production readiness summary
+
+After the audit, start implementing the sections below in order.
+
+==================================================
+1. FIX: conversations table ownership is incomplete or missing (BLOCKER)
+==================================================
+
+Chat is feature-flagged OFF, but the schema and storage must still be correct before production.
+
+Tasks:
+- Find the actual chat schema file in this repo. It may not match the exact path from earlier notes. Inspect the repo and locate:
+  - conversations table definition
+  - messages table definition
+  - chat storage functions
+  - chat routes
+- Verify whether `conversations` has a `userId` column.
+- If it does not, add:
+  - `userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" })`
+- Add an index on `userId`.
+- Update all chat storage functions so they are scoped by authenticated user ownership:
+  - list conversations by userId only
+  - create conversation with userId
+  - get conversation only if it belongs to that user
+  - delete conversation only if it belongs to that user
+- Update chat routes to pass `req.auth!.userId` to storage functions.
+- Never return a conversation that belongs to another user.
+- If old pre-production conversations/messages exist with no attributable user ownership, delete them safely in a migration or cleanup script.
+
+Acceptance criteria:
+- conversations belong to authenticated users
+- chat storage and routes enforce ownership
+- chat remains feature-flagged OFF by default unless already hardened
+
+==================================================
+2. FIX: scanDate must be a real date type, not text (BLOCKER)
+==================================================
+
+Audit the actual schema and routes.
+
+Tasks:
+- In the schema, change `dailyScanTracker.scanDate` from text to a proper date type.
+- Prefer a true date-only column if supported cleanly by the repo and current Drizzle setup.
+- Update all write paths to insert a real Date-compatible value, not a string comparison artifact.
+- Update all read queries and comparisons to use proper date handling.
+- Add migration(s) to convert existing values safely.
+
+Requirements:
+- day-based scan limits must keep working
+- no string-based date comparisons remain for this table
+
+Acceptance criteria:
+- `scanDate` is stored as a real date-like DB type
+- daily scan count logic still works correctly
+- tests added for same-day and cross-day behavior
+
+==================================================
+3. FIX: Create proper database migrations and baseline strategy (BLOCKER)
+==================================================
+
+The repo must stop treating schema push as the production migration strategy.
+
+Tasks:
+- Audit whether a migrations directory already exists.
+- If no proper migrations exist:
+  - create a baseline migration from the current verified schema state
+  - inspect and correct the SQL before accepting it
+- Then create incremental migrations for the remaining fixes in this prompt.
+- Update package scripts so production uses migrations, not push.
+- Keep any push command only as a clearly labeled development-only helper if truly needed.
+- Document in `replit.md` and `docs/migration-runbook.md`:
+  - production uses `db:migrate`
+  - `db:push` is not a production deployment strategy
+
+Acceptance criteria:
+- repo contains real migration files
+- package scripts support migration-based deploys
+- production migration path is documented clearly
+
+==================================================
+4. FIX: Hard allergen alerts must only use declared or verified allergens (BLOCKER)
+==================================================
+
+This is the most important product safety fix.
+
+Current risk to eliminate:
+Any legacy or generic allergen field must NOT be able to force score = 0 unless it represents declared or manually verified allergen data.
+
+Tasks in scoring engine:
+- Inspect `server/scoring-engine.ts`
+- Locate all hard allergen matching logic
+- For hard allergen alerts:
+  - use only declared allergens and/or moderator-verified allergen data
+  - do NOT fall back to a generic `allergens` field
+  - do NOT use inferred allergens for hard allergen alerts
+- Add separate soft warning logic for inferred allergens:
+  - `inferredAllergenWarnings`
+  - these warnings must not force score = 0
+  - they may be returned in score result payload for frontend display
+- If the schema still has a legacy `allergens` field, treat it as legacy/non-authoritative for hard alerts
+- Preserve deterministic scoring as source of truth
+
+Return shape changes:
+- extend score result to include:
+  - `matchedAllergens` for hard declared/verified matches
+  - `inferredAllergenWarnings` for soft inferred warnings
+  - clear distinction between hard alert and soft warning
+
+Tests to add:
+- declared allergens matching user allergy => score = 0
+- verified allergens matching user allergy => score = 0
+- inferred allergens matching user allergy => score is NOT 0, warning only
+- legacy generic allergens with no declared/verified support => score is NOT 0
+
+Acceptance criteria:
+- score 0 only comes from declared or verified allergen data
+- inferred allergens can only produce warnings
+- tests prove this behavior
+
+==================================================
+5. FIX: Public product visibility must only expose approved products (BLOCKER)
+==================================================
+
+Current issue:
+Public product visibility is too loose and may expose pending, flagged, or rejected items depending on route.
+
+Audit all public product routes, including:
+- GET /api/products/search
+- GET /api/products/popular
+- GET /api/products/:id
+- GET /api/products/barcode/:barcode
+- any other route that returns product data publicly
+
+Rules:
+- Public users should only see approved products
+- Pending, flagged, and rejected products must not be publicly visible
+- Contributor may view their own pending product only if explicitly intended
+- Admins/moderators may view all
+- Public barcode lookup must not reveal pending/flagged/rejected products
+
+Tasks:
+- centralize visibility logic in one shared helper/service
+- apply it consistently across all public product retrieval routes
+- ensure moderation status is not inconsistently handled by different routes
+
+Tests to add:
+- pending product hidden publicly
+- flagged product hidden publicly
+- rejected product hidden publicly
+- approved product visible publicly
+- contributor can see own pending item only if intended
+- admin can access all statuses
+
+Acceptance criteria:
+- all public product surfaces consistently expose only approved products
+- moderation visibility logic is centralized and tested
+
+==================================================
+6. FIX: Add email verification flow (BLOCKER)
+==================================================
+
+The schema may already contain `emailVerifiedAt`, but the flow must exist.
+
+Tasks:
+- implement email verification support if not already present
+- create storage for verification tokens or codes:
+  - hashed token/code
+  - userId
+  - expiresAt
+  - createdAt
+  - usedAt if applicable
+- create:
+  - POST `/api/auth/verify-email`
+  - POST `/api/auth/resend-verification`
+- after registration, generate a verification token
+- in development or preview only, log the verification code/token for testing
+- never log raw verification tokens in production
+- add a soft reminder banner if user remains unverified after a grace period
+- do not fully block app usage solely because email is unverified unless the current product policy explicitly requires it
+
+DEV SAFETY RULE:
+Verification tokens may only be logged in local development or preview environments. Never log raw verification tokens in production.
+
+Docs:
+- update `.env.example`
+- update `replit.md`
+- document that a real email provider is required before production launch
+
+Acceptance criteria:
+- verification flow works end-to-end
+- tokens are hashed at rest
+- production does not log raw verification tokens
+
+==================================================
+7. FIX: Add password reset flow (BLOCKER)
+==================================================
+
+Tasks:
+- create password reset token storage:
+  - userId
+  - tokenHash
+  - expiresAt
+  - usedAt
+  - createdAt
+- create:
+  - POST `/api/auth/password-reset/request`
+  - POST `/api/auth/password-reset/confirm`
+- request endpoint:
+  - accepts email
+  - always returns success-style response to avoid enumeration
+  - generates token if user exists
+  - hashes token before storing
+  - logs token only in dev/preview, never in production
+- confirm endpoint:
+  - accepts token + newPassword
+  - validates expiry
+  - validates password length
+  - updates password hash
+  - revokes refresh tokens for that user
+  - marks token used or deletes it
+
+DEV SAFETY RULE:
+Password reset tokens may only be logged in local development or preview environments. Never log raw reset tokens in production.
+
+Acceptance criteria:
+- password reset works end-to-end
+- enumeration is minimized
+- password reset revokes existing sessions
+
+==================================================
+8. FIX: AI extraction prompt must not force guessed product names (SAFETY)
+==================================================
+
+Current issue:
+The extraction flow still risks guessing product names when unreadable.
+
+Tasks in extraction code:
+- inspect the actual extraction prompt in `server/ai-advice.ts` or wherever it now lives
+- remove any instruction that forces the model to always guess the product name
+- replace with:
+  - if product name is unreadable, return null
+  - do not guess from ambiguous visual clues
+- update post-extraction validation so null name does not automatically fail the extraction
+- extraction should still return success when meaningful data was extracted, but mark record/review flow appropriately
+- require contributor review or manual entry when name is null
+
+Acceptance criteria:
+- extraction no longer guesses unreadable product names
+- null name does not crash or hard-fail the whole flow
+- human review or manual completion path exists
+
+==================================================
+9. FIX: Add extraction confidence and data quality handling (SAFETY)
+==================================================
+
+Current issue:
+Extraction returns values without sufficient confidence handling.
+
+Tasks:
+- update extraction prompt to return confidence signals
+- confidence model should include:
+  - overall
+  - per-field confidence for core fields
+- use a controlled enum like:
+  - high
+  - medium
+  - low
+
+Important wording:
+- high = clearly readable
+- medium = partially readable with some uncertainty
+- low = unreadable or unreliable
+- do NOT estimate or invent nutrition values
+- if unreadable, return null
+
+Update backend validation:
+- parse and validate confidence object
+- store it in product extraction metadata or a dedicated column
+- add `extractionConfidence` or equivalent JSONB field if needed
+- if overall confidence is low:
+  - require review
+  - keep moderationStatus pending
+  - warn contributor in UI
+
+Acceptance criteria:
+- extraction output includes validated confidence data
+- low-confidence extraction is clearly flagged for review
+- unreadable fields become null instead of guesses
+
+==================================================
+10. FIX: Advice cache must be version-aware (BLOCKER)
+==================================================
+
+Current issue:
+Advice cache stores version metadata but may still read entries too loosely.
+
+Tasks:
+- inspect `server/ai-advice.ts`
+- make cache lookup depend on:
+  - productId
+  - profileClusterId
+  - promptVersion
+  - modelVersion
+  - scoringVersion or rulesVersion
+  - non-expired entry
+- ensure old entries are not reused after scoring, prompt, or model changes
+- ensure cached responses preserve all fields expected by UI:
+  - headline
+  - why/advice text
+  - coach tip
+  - highlights
+  - any deterministic fallback structure the UI needs
+
+Tests to add:
+- promptVersion change invalidates cache reuse
+- modelVersion change invalidates cache reuse
+- scoringVersion/rulesVersion change invalidates cache reuse
+
+Acceptance criteria:
+- advice cache is version-aware
+- cache cannot silently serve old logic after model/prompt/scoring changes
+
+==================================================
+11. FIX: Result screen must show medical disclaimer and support re-analysis without overwriting history (SAFETY + QUALITY)
+==================================================
+
+Tasks in `app/result.tsx` and related route:
+- add a muted medical disclaimer below advice and above nutrition facts:
+  - "Scores and advice are for informational purposes only and do not constitute medical advice."
+- if chat is enabled later, add similar muted disclaimer below chat input
+
+Re-analysis integrity:
+- inspect `GET /api/history/entry/:id?checkProfile=true`
+- do NOT overwrite original scan history row during re-analysis
+- preserve original stored result
+- return both:
+  - original historical data
+  - refreshed re-analysis data
+- frontend must display refreshed result with a note like:
+  - "Updated for your current profile"
+- optionally show prior score as:
+  - "Previously scored: X"
+
+Acceptance criteria:
+- original scan history stays immutable
+- re-analysis returns comparison data
+- result screen shows disclaimer and refreshed/original states properly
+
+==================================================
+12. FIX: Unify score labels across backend and UI (QUALITY)
+==================================================
+
+Current issue:
+Score labels are inconsistent across scoring engine, UI helpers, and result rendering.
+
+Audit:
+- `server/scoring-engine.ts`
+- `constants/colors.ts`
+- `app/result.tsx`
+- any helper that derives display labels from score
+
+Tasks:
+- create one central score label mapping
+- use it everywhere
+- do not allow backend to say one tier while UI says another
+- keep the distinction clear for:
+  - Allergen Alert
+  - Strongly Avoid
+  - High Risk
+  - Caution
+  - Moderate Fit / Generally Good (choose one final taxonomy)
+  - Good Fit / Excellent Fit if still intended
+- update accessibility labels to use the unified label set
+
+Acceptance criteria:
+- one shared label system across backend and frontend
+- tests or assertions cover label mapping consistency
+
+==================================================
+13. FIX: Add dark mode support without changing brand design (QUALITY)
+==================================================
+
+Tasks:
+- inspect `constants/colors.ts`
+- add dark theme colors while preserving FoodVAR brand colors for primary actions and score signals
+- create a theme hook such as `useThemeColors()`
+- migrate priority screens first:
+  - home
+  - scan
+  - history
+  - profile
+  - result
+  - onboarding
+  - contribute
+  - edit profile
+- update tab bar background/border
+- preserve readability and contrast
+- do not change score-tier semantic colors unnecessarily
+
+Acceptance criteria:
+- dark mode works across core screens
+- brand identity remains intact
+- score semantics remain readable
+
+==================================================
+14. FIX: Add accessibility labels and non-color-only score meaning (QUALITY)
+==================================================
+
+Tasks:
+- audit interactive elements across app
+- add accessibilityLabel and role where missing
+- priority targets:
+  - score badges
+  - score ring
+  - tab bar items
+  - icon-only buttons
+  - text inputs
+  - scan/search mode toggle
+  - product cards
+  - pull-to-refresh controls
+- ensure score text always includes a visible label, not color only
+- improve important surfaces first:
+  - result
+  - home
+  - scan
+  - history
+  - profile
+  - onboarding
+
+Acceptance criteria:
+- accessibility coverage added to core screens
+- critical score information is never color-only
+
+==================================================
+15. FIX: Replace console-based logger wrapper with real structured logging (QUALITY)
+==================================================
+
+Current issue:
+The current logger may still wrap console methods instead of using a production-grade structured logger.
+
+Tasks:
+- inspect `server/logger.ts`
+- replace current logger with a real structured logger, preferably pino
+- update request logging and error logging to use it consistently
+
+Redaction rules:
+Never log:
+- access tokens
+- refresh tokens
+- password hashes
+- raw health profile values
+- raw chat contents
+- raw image payloads
+- raw OCR text in normal logs
+- raw verification tokens
+- raw password reset tokens
+
+Safe fields to log:
+- requestId
+- endpoint
+- statusCode
+- durationMs
+- userId
+- productId
+- cache hit/miss
+- moderation status
+- model version
+- high-level validation failures in redacted form
+
+Acceptance criteria:
+- structured logger in place
+- sensitive fields redacted
+- console-style logging removed from normal server paths
+
+==================================================
+16. FIX: Replace Replit-only CORS assumptions with environment-driven config (QUALITY)
+==================================================
+
+Tasks:
+- inspect `server/index.ts`
+- support `ALLOWED_ORIGINS` as the standard config
+- keep Replit compatibility if running on Replit
+- keep localhost support for development
+- do not rely on Replit-only env vars as the sole production path
+- if app is using bearer tokens and not cookie auth, do not force credentials semantics unless needed
+- update `.env.example`
+
+Acceptance criteria:
+- CORS works on Replit and non-Replit deployments
+- origin policy is environment-driven
+- docs updated
+
+==================================================
+17. FIX: Seed data integrity
+==================================================
+
+Tasks:
+- inspect seed script(s)
+- if branded products are used:
+  - verify whether nutrition values are actually intended as reference seed data
+  - mark provenance clearly, such as `source: "seed_reference"`
+- if data is approximate or invented:
+  - convert to generic/demo catalog instead
+- do not pretend fake or approximate branded data is production-grade verified data
+- ensure seed script is idempotent
+
+Acceptance criteria:
+- seed data provenance is explicit
+- no misleading fake production-grade branding/data combination remains
+
+==================================================
+18. FIX: Health and readiness endpoints, env validation, and operational checks
+==================================================
+
+Tasks:
+- improve health endpoint
+- add readiness endpoint if missing
+- verify DB connectivity if feasible
+- validate required env vars at startup
+- gracefully disable optional features when optional secrets are missing
+- update `.env.example`
+- update `replit.md`
+
+Acceptance criteria:
+- meaningful health/readiness endpoints exist
+- required env vars validated
+- optional services fail gracefully
+
+==================================================
+19. WEB SESSION HANDLING REVIEW
+==================================================
+
+This is not optional. Review the current auth storage and refresh flow carefully.
+
+Tasks:
+- inspect `lib/auth-storage.ts` and `lib/query-client.ts`
+- verify how refresh tokens behave on:
+  - native
+  - web
+- if web fallback still stores long-lived refresh secrets in JS-readable storage:
+  - improve it if practical in this repo
+  - if not fully fixable in this pass, document exact remaining risk in `HARDENING_STATUS.md` and `replit.md`
+- do not ignore this issue silently
+
+Acceptance criteria:
+- native path remains secure with SecureStore
+- web auth tradeoffs are either improved or explicitly documented
+
+==================================================
+20. TESTING REQUIREMENTS
+==================================================
+
+Add or update tests for:
+- chat ownership
+- scanDate date behavior
+- allergen source handling
+- public moderation visibility rules
+- advice cache version invalidation
+- history snapshot preservation
+- extraction null-name handling
+- extraction confidence handling
+- auth verification/reset flows
+- label consistency if practical
+- build verification
+- typecheck
+- lint
+
+After each section:
+- run `npm run typecheck`
+- run `npm test`
+
+At the end also run:
+- any migration validation the repo supports
+- any seed validation the repo supports
+
+==================================================
+WHAT NOT TO DO
+==================================================
+
+- do not break existing working auth
+- do not reintroduce client-controlled ownership
+- do not let inferred allergens trigger score 0
+- do not expose pending/flagged/rejected products publicly
+- do not overwrite original scan history during re-analysis
+- do not keep cache version-blind
+- do not guess unreadable product names
+- do not invent nutrition values when unreadable
+- do not log raw tokens or secrets in production
+- do not leave legal/privacy claims inconsistent with real behavior
+- do not do a giant rewrite
+
+==================================================
+FINAL ACCEPTANCE CRITERIA
+==================================================
+
+1. Conversations are user-owned.
+2. Daily scan date uses a proper date type.
+3. Real migrations exist and production uses migrations.
+4. Only declared or verified allergens can cause score = 0.
+5. Inferred allergens can only create warnings.
+6. Public product routes expose only approved products.
+7. History re-analysis preserves original history.
+8. Result screen shows medical disclaimer.
+9. Extraction does not guess unreadable product names.
+10. Extraction includes confidence/data-quality handling.
+11. Advice cache is version-aware.
+12. Score labels are consistent across backend and UI.
+13. Dark mode works on core screens.
+14. Accessibility labels exist on core interactive elements.
+15. Structured logging with redaction is in place.
+16. CORS supports standard ALLOWED_ORIGINS.
+17. Seed data provenance is explicit.
+18. Health/readiness and env validation are solid.
+19. Native auth storage remains secure and web session tradeoffs are handled or documented.
+20. Typecheck and tests pass.
+
+==================================================
+WHEN FINISHED, RETURN
+==================================================
+
+Return:
+- concise summary of all implemented fixes
+- files changed
+- migrations added
+- tests added/updated
+- new env vars
+- feature flags and defaults
+- remaining manual steps
+- any residual risks
+- final production readiness verdict
