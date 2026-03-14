@@ -7,7 +7,7 @@ import {
   scanHistory,
   dailyScanTracker,
 } from "@shared/schema";
-import { eq, and, ilike, or, desc, sql, asc, ne, isNull } from "drizzle-orm";
+import { eq, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { isFeatureEnabled } from "./feature-flags";
@@ -33,9 +33,21 @@ function paramId(req: Request, name: string = "id"): string {
 
 import { logger } from "./logger";
 
+function getApprovedProductFilter() {
+  if (isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")) {
+    return undefined;
+  }
+  return eq(products.moderationStatus, "approved");
+}
+
 const registerSchema = z.object({
   email: z.string().email().max(255),
-  password: z.string().min(8).max(128),
+  password: z
+    .string()
+    .min(8)
+    .max(128)
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^a-zA-Z0-9]/, "Password must contain at least one special character"),
   name: z.string().max(100).optional().default(""),
 });
 
@@ -254,16 +266,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [tokenRecord] = await db
         .select()
         .from(refreshTokens)
-        .where(
-          and(
-            eq(refreshTokens.tokenHash, oldHash),
-            isNull(refreshTokens.revokedAt)
-          )
-        )
+        .where(eq(refreshTokens.tokenHash, oldHash))
         .limit(1);
 
       if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
         return res.status(401).json({ error: "Invalid or expired refresh token" });
+      }
+
+      if (tokenRecord.revokedAt) {
+        await revokeAllRefreshTokens(tokenRecord.userId);
+        logger.warn("Revoked refresh token reuse detected — all sessions invalidated", { userId: tokenRecord.userId });
+        return res.status(401).json({ error: "Token reuse detected. All sessions have been revoked." });
       }
 
       const [user] = await db
@@ -454,10 +467,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== PRODUCTS (PUBLIC) ==========
   app.get("/api/products/barcode/:barcode", async (req: Request, res: Response) => {
     try {
+      const approvedFilter = getApprovedProductFilter();
+      const conditions = [eq(products.barcode, paramId(req, "barcode"))];
+      if (approvedFilter) conditions.push(approvedFilter);
+
       const [product] = await db
         .select()
         .from(products)
-        .where(eq(products.barcode, paramId(req, "barcode")));
+        .where(and(...conditions));
       if (!product) return res.status(404).json({ error: "Product not found" });
       res.json(product);
     } catch (error) {
@@ -486,8 +503,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(ilike(products.category, category));
       }
 
-      if (!isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")) {
-        conditions.push(ne(products.moderationStatus, "pending"));
+      const approvedFilter = getApprovedProductFilter();
+      if (approvedFilter) {
+        conditions.push(approvedFilter);
       }
 
       const result = await db
@@ -505,14 +523,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/popular", async (req: Request, res: Response) => {
     try {
-      const where = isFeatureEnabled("EXPOSE_UNVERIFIED_PRODUCTS")
-        ? undefined
-        : ne(products.moderationStatus, "pending");
-
       const result = await db
         .select()
         .from(products)
-        .where(where)
+        .where(getApprovedProductFilter())
         .orderBy(desc(products.scanCount))
         .limit(10);
       res.json(result);
@@ -523,10 +537,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/products/categories", async (_req: Request, res: Response) => {
     try {
+      const approvedFilter = getApprovedProductFilter();
+      const conditions = [sql`${products.category} IS NOT NULL AND ${products.category} != ''`];
+      if (approvedFilter) conditions.push(approvedFilter);
+
       const result = await db
         .selectDistinct({ category: products.category })
         .from(products)
-        .where(sql`${products.category} IS NOT NULL AND ${products.category} != ''`);
+        .where(and(...conditions));
       res.json(result.map((r) => r.category).filter(Boolean));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch categories" });
@@ -536,7 +554,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(paramId(req));
-      const [product] = await db.select().from(products).where(eq(products.id, id));
+      const approvedFilter = getApprovedProductFilter();
+      const conditions = [eq(products.id, id)];
+      if (approvedFilter) conditions.push(approvedFilter);
+
+      const [product] = await db
+        .select()
+        .from(products)
+        .where(and(...conditions));
       if (!product) return res.status(404).json({ error: "Product not found" });
       res.json(product);
     } catch (error) {
@@ -635,7 +660,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             scanDate: today,
           })
           .onConflictDoNothing();
-      } catch {}
+      } catch (trackerError) {
+        logger.warn("Daily scan tracker insert failed", { error: String(trackerError) }, req);
+      }
 
       const [historyEntry] = await db
         .insert(scanHistory)
@@ -663,6 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         label: scoreResult.label,
         isAllergenAlert: scoreResult.isAllergenAlert,
         matchedAllergens: scoreResult.matchedAllergens,
+        inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
         advice: adviceResult.advice,
         headline: adviceResult.headline,
         coachTip: adviceResult.coachTip,
@@ -973,6 +1001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 reAnalyzed: true,
                 matchedAllergens: scoreResult.matchedAllergens,
                 isAllergenAlert: scoreResult.isAllergenAlert,
+                inferredAllergenWarnings: scoreResult.inferredAllergenWarnings,
               });
             }
           }

@@ -83,16 +83,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Production Hardening (All 10 Phases Complete)
 1. Feature flags for risky capabilities (chat, image gen, unverified products)
-2. JWT auth with bcrypt, refresh token rotation, SecureStore
+2. JWT auth with bcrypt, refresh token rotation with reuse detection, SecureStore
 3. AI safety: prompt hardening, schema validation, deterministic fallback
 4. Scoring engine versioning, declared vs inferred allergens, admin moderation
 5. Zod validation, structured logging, rate limiting, request IDs
 6. Query production defaults, focusManager/onlineManager, accessibility, error states
 7. Privacy policy, terms of service, consent capture, data export, account deletion
 8. 50-product seed catalog with real nutritional data
-9. 47 unit tests (vitest): scoring, AI advice, feature flags, schema ownership
+9. 61 unit tests (vitest): scoring, AI advice, feature flags, schema ownership, allergen safety, product visibility
 10. Deployment configured (autoscale), health check endpoint
 
+## Second-Round Hardening (Tasks #1-5)
+- Task #1: Schema, migrations & data ownership fixes (conversations/messages userId FK, scanDate date type, migration chain)
+- Task #2: Allergen safety (declaredAllergens-only scoring, inferredAllergenWarnings, getApprovedProductFilter)
+- Task #3: AI cache & history integrity (daily scan tracker error logging, extraction safety verified)
+- Task #4: Auth security (refresh token reuse detection with global revocation, password complexity enforcement)
+- Task #5: UX quality (pending)
+
+## Auth Security
+- **Password policy**: Min 8 chars, at least one number, at least one special character
+- **Refresh token reuse detection**: If a revoked refresh token is replayed, all sessions for that user are invalidated
+- **Rate limiting**: Auth endpoints 20 req/15min, refresh 30 req/15min, AI routes 20 req/min
+
 ## Testing
-- Unit tests: `npx vitest run` (47 tests across 4 files)
+- Unit tests: `npx vitest run` (61 tests across 6 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

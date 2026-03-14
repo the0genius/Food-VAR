@@ -14,11 +14,12 @@ export interface ScoreDeduction {
   category: string;
 }
 
-interface ScoreResult {
+export interface ScoreResult {
   score: number;
   label: string;
   isAllergenAlert: boolean;
   matchedAllergens: string[];
+  inferredAllergenWarnings: string[];
   deductions: ScoreDeduction[];
   scoringVersion: string;
 }
@@ -135,9 +136,28 @@ export function getScoreLabel(score: number, isAllergenAlert: boolean): string {
 }
 
 function getAllergenSources(product: Product): string[] {
-  const declared = (product.declaredAllergens || []).map((a: string) => a.toLowerCase());
-  if (declared.length > 0) return declared;
-  return (product.allergens || []).map((a: string) => a.toLowerCase());
+  return (product.declaredAllergens || []).map((a: string) => a.toLowerCase());
+}
+
+function getInferredAllergenWarnings(
+  product: Product,
+  user: User,
+  allergenGroups: Record<string, string[]>
+): string[] {
+  const userAllergies = (user.allergies || []).map((a: string) => a.toLowerCase());
+  const inferredAllergens = (product.inferredAllergens || []).map((a: string) => a.toLowerCase());
+
+  if (userAllergies.length === 0 || inferredAllergens.length === 0) return [];
+
+  return userAllergies.filter((allergy: string) => {
+    const relatedAllergens = allergenGroups[allergy] || [allergy];
+    return inferredAllergens.some(
+      (ia: string) =>
+        relatedAllergens.includes(ia) ||
+        ia === allergy ||
+        (allergenGroups[ia] || []).includes(allergy)
+    );
+  });
 }
 
 export async function computeScore(
@@ -173,12 +193,15 @@ export async function computeScore(
     );
   });
 
+  const inferredAllergenWarnings = getInferredAllergenWarnings(product, user, ALLERGEN_GROUPS);
+
   if (matchedAllergens.length > 0) {
     return {
       score: 0,
       label: SCORE_LABELS.ALLERGEN_ALERT,
       isAllergenAlert: true,
       matchedAllergens,
+      inferredAllergenWarnings,
       deductions: [],
       scoringVersion: SCORING_VERSION,
     };
@@ -319,6 +342,7 @@ export async function computeScore(
     label: getScoreLabel(score, false),
     isAllergenAlert: false,
     matchedAllergens: [],
+    inferredAllergenWarnings,
     deductions,
     scoringVersion: SCORING_VERSION,
   };

@@ -81,12 +81,16 @@ export async function rotateRefreshToken(
       and(
         eq(refreshTokens.tokenHash, oldHash),
         eq(refreshTokens.userId, userId),
-        isNull(refreshTokens.revokedAt)
       )
     )
     .limit(1);
 
   if (!existing || existing.expiresAt < new Date()) {
+    return null;
+  }
+
+  if (existing.revokedAt) {
+    await revokeAllRefreshTokens(userId);
     return null;
   }
 
