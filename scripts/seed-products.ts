@@ -1,6 +1,7 @@
 import { db } from "../server/db";
 import { products } from "../shared/schema";
 import { eq } from "drizzle-orm";
+import { inferAllergensFromIngredients } from "../server/allergen-inference";
 
 const SEED_PRODUCTS = [
   {
@@ -875,7 +876,7 @@ async function seed() {
     await db.insert(products).values({
       ...product,
       allergens: product.declaredAllergens,
-      inferredAllergens: [],
+      inferredAllergens: inferAllergensFromIngredients(product.ingredients),
       source: "seed_reference",
       moderationStatus: "approved",
       verifiedAt: new Date(),

@@ -10,6 +10,7 @@ import {
 import { eq, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
+import { inferAllergensFromIngredients } from "./allergen-inference";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -808,7 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sodium,
           allergens: allergens || declaredAllergens || [],
           declaredAllergens: declaredAllergens || [],
-          inferredAllergens: inferredAllergens || [],
+          inferredAllergens: inferAllergensFromIngredients(ingredients),
           ingredients: ingredients || null,
           nutritionFacts: nutritionFacts || null,
           extractionConfidence: extractionConfidence || null,

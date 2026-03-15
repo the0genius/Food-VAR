@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { scoringRules, type Product, type User } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { ALLERGEN_GROUPS } from "./allergen-inference";
 
 export const SCORING_VERSION = "1.0.0";
 export const PROMPT_VERSION = "1.0.0";
@@ -156,19 +157,6 @@ export async function computeScore(
   product: Product,
   user: User
 ): Promise<ScoreResult> {
-  const ALLERGEN_GROUPS: Record<string, string[]> = {
-    gluten: ["gluten", "wheat", "barley", "rye", "oats"],
-    wheat: ["wheat", "gluten"],
-    milk: ["milk", "dairy", "lactose", "whey", "casein"],
-    lactose: ["lactose", "milk", "dairy"],
-    nuts: ["nuts", "tree nuts", "almonds", "cashews", "walnuts", "hazelnuts", "pecans", "pistachios", "macadamia"],
-    peanuts: ["peanuts", "peanut"],
-    soy: ["soy", "soya", "soybean"],
-    eggs: ["eggs", "egg"],
-    fish: ["fish"],
-    shellfish: ["shellfish", "crustaceans", "shrimp", "crab", "lobster"],
-    sesame: ["sesame"],
-  };
 
   const userAllergies = (user.allergies || []).map((a: string) =>
     a.toLowerCase()

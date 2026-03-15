@@ -130,6 +130,11 @@ Preferred communication style: Simple, everyday language.
 - **CORS**: Supports REPLIT_DOMAINS, REPLIT_DEV_DOMAIN, localhost, and ALLOWED_ORIGINS env var
 - **Typecheck**: `npm run typecheck` (tsc --noEmit)
 
+### Allergen Inference
+- `server/allergen-inference.ts`: Shared `ALLERGEN_GROUPS` dictionary and `inferAllergensFromIngredients()` function — scans ingredient text for allergen keywords using word-boundary regex matching
+- Seed script and contribute endpoint both compute `inferredAllergens` server-side from ingredient text
+- Backfill script: `npx tsx scripts/backfill-inferred-allergens.ts` — recomputes `inferredAllergens` for all products with ingredients
+
 ## Testing
-- Unit tests: `npx vitest run` (94 tests across 6 files)
+- Unit tests: `npx vitest run` (108 tests across 7 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)
