@@ -760,13 +760,23 @@ export default function ResultScreen() {
             </Animated.View>
           ) : null}
 
-          <Animated.View entering={FadeInDown.delay(350).duration(300)}>
+          <Animated.View
+            entering={FadeInDown.delay(350).duration(400)}
+            style={styles.ingredientsSection}
+          >
+            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ingredients</Text>
+            <Text style={styles.ingredientsText}>
+              {product.ingredients || "No ingredients listed for this product."}
+            </Text>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(400).duration(300)}>
             <Text style={styles.disclaimerText}>
               This is not medical advice.{'\n'}Always consult your healthcare provider.
             </Text>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.scanAnotherWrap}>
+          <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.scanAnotherWrap}>
             <TouchableOpacity
               style={styles.allergenCta}
               onPress={() => {
@@ -1024,15 +1034,15 @@ export default function ResultScreen() {
           </View>
         </Animated.View>
 
-        {product.ingredients ? (
-          <Animated.View
-            entering={FadeInDown.delay(450).duration(400)}
-            style={styles.ingredientsSection}
-          >
-            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ingredients</Text>
-            <Text style={styles.ingredientsText}>{product.ingredients}</Text>
-          </Animated.View>
-        ) : null}
+        <Animated.View
+          entering={FadeInDown.delay(450).duration(400)}
+          style={styles.ingredientsSection}
+        >
+          <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Ingredients</Text>
+          <Text style={styles.ingredientsText}>
+            {product.ingredients || "No ingredients listed for this product."}
+          </Text>
+        </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(500).duration(300)}>
           <Text style={styles.disclaimerText}>

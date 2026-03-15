@@ -808,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fiber,
           sodium,
           allergens: allergens || declaredAllergens || [],
-          declaredAllergens: declaredAllergens || [],
+          declaredAllergens: declaredAllergens || allergens || [],
           inferredAllergens: inferAllergensFromIngredients(ingredients),
           ingredients: ingredients || null,
           nutritionFacts: nutritionFacts || null,
