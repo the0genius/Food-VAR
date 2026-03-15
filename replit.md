@@ -120,7 +120,7 @@ Preferred communication style: Simple, everyday language.
 - **Refresh token reuse detection**: If a revoked refresh token is replayed, all sessions for that user are invalidated.
 - **Rate limiting**: Auth endpoints 20 req/15min, refresh 30 req/15min, AI routes 20 req/min
 - **Web auth storage**: AsyncStorage (localStorage) on web — documented tradeoff in HARDENING_STATUS.md. SecureStore on native.
-- **Frontend**: expo-auth-session for Google, expo-apple-authentication for Apple. UserContext exposes `loginWithGoogle`, `loginWithApple`, `devLogin`.
+- **Frontend**: Google OAuth via expo-web-browser (manual auth session flow, no expo-auth-session dependency), expo-apple-authentication for Apple. UserContext exposes `loginWithGoogle`, `loginWithApple`, `devLogin`.
 
 ## Operational
 - **Logger**: pino with structured JSON, redaction of sensitive fields (passwords, tokens, health data, chat content)

@@ -42,9 +42,9 @@ import { MotiView } from "moti";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import * as AuthSession from "expo-auth-session";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 
 WebBrowser.maybeCompleteAuthSession();
 import Colors, { C, cardShadow, useThemeColors, type ThemeColors } from "@/constants/colors";
@@ -118,17 +118,28 @@ export default function OnboardingScreen() {
     width: `${progressWidth.value}%` as any,
   }));
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: "foodvar" });
+  const redirectUri = Linking.createURL("onboarding");
 
-  const [googleRequest, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      redirectUri,
-      scopes: ["openid", "email", "profile"],
-      responseType: AuthSession.ResponseType.IdToken,
-    },
-    { authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth" }
-  );
+  async function googlePromptAsync(): Promise<{ type: string; params?: { id_token?: string } }> {
+    const nonce = Date.now().toString(36) + Math.random().toString(36).substring(2);
+    const authUrl =
+      `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&response_type=id_token` +
+      `&scope=${encodeURIComponent("openid email profile")}` +
+      `&nonce=${nonce}`;
+
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+    if (result.type === "success" && result.url) {
+      const url = new URL(result.url.replace("#", "?"));
+      const idToken = url.searchParams.get("id_token");
+      if (idToken) {
+        return { type: "success", params: { id_token: idToken } };
+      }
+    }
+    return { type: "cancel" };
+  }
 
   function toggleItem(list: string[], setList: (v: string[]) => void, id: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
