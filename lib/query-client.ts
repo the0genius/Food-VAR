@@ -28,6 +28,12 @@ if (Platform.OS !== "web") {
   } catch {}
 }
 
+let sessionExpiredHandler: (() => void) | null = null;
+
+export function setOnSessionExpired(handler: () => void) {
+  sessionExpiredHandler = handler;
+}
+
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
@@ -110,6 +116,8 @@ export async function apiRequest(
         body: data ? JSON.stringify(data) : undefined,
         credentials: "include",
       });
+    } else {
+      sessionExpiredHandler?.();
     }
   }
 
@@ -140,6 +148,8 @@ export const getQueryFn: <T>(options: {
           credentials: "include",
           headers: newAuthHeaders,
         });
+      } else {
+        sessionExpiredHandler?.();
       }
     }
 

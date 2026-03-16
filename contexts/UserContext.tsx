@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { Platform } from "react-native";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest, getApiUrl, setOnSessionExpired } from "@/lib/query-client";
 import {
   getAccessToken,
   setTokens,
@@ -60,6 +60,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadUser();
+  }, []);
+
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      clearTokens();
+      setUser(null);
+    });
   }, []);
 
   async function loadUser() {
