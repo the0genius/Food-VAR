@@ -89,7 +89,7 @@ const contributeSchema = z.object({
   declaredAllergens: z.array(z.string().max(100)).max(50).optional(),
   inferredAllergens: z.array(z.string().max(100)).max(50).optional(),
   ingredients: z.string().max(5000).nullable().optional(),
-  nutritionFacts: z.string().max(5000).nullable().optional(),
+  nutritionFacts: z.record(z.union([z.number(), z.string(), z.null()])).nullable().optional(),
   extractionConfidence: z.object({
     overall: z.enum(["high", "medium", "low"]),
     fields: z.record(z.enum(["high", "medium", "low"])),
