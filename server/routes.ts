@@ -68,7 +68,7 @@ const profileSchema = z.object({
 
 const scoreSchema = z.object({
   productId: z.number().int().positive(),
-  accessMethod: z.enum(["scan", "browse", "search"]).optional().default("scan"),
+  accessMethod: z.enum(["scan", "browse", "search", "contribute"]).optional().default("scan"),
 });
 
 const contributeSchema = z.object({
