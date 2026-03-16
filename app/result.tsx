@@ -885,7 +885,7 @@ export default function ResultScreen() {
             />
             <Text style={[styles.scoreHeadline, { color: headlineColor }]}>{headlineText}</Text>
             {data.advice ? (
-              <Text style={styles.scoreSubline} numberOfLines={2}>
+              <Text style={styles.scoreSubline}>
                 {data.advice.split('.')[0]}.
               </Text>
             ) : null}
