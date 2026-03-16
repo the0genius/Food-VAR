@@ -963,7 +963,7 @@ export default function ResultScreen() {
               <NutrientRow label="Carbs" value={product.carbohydrates} unit="g" index={2} nutrientKey="carbohydrates" />
               <NutrientRow label="Sugar" value={product.sugar} unit="g" index={3} nutrientKey="sugar" />
               <NutrientRow label="Fat" value={product.fat} unit="g" index={4} nutrientKey="fat" />
-              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={5} isIndented nutrientKey="saturatedFat" />
+              <NutrientRow label="Saturated Fat" value={product.saturatedFat} unit="g" index={5} nutrientKey="saturatedFat" />
               <NutrientRow label="Fiber" value={product.fiber} unit="g" index={6} nutrientKey="fiber" />
               <NutrientRow label="Sodium" value={product.sodium} unit="mg" index={7} nutrientKey="sodium" />
             </View>
