@@ -806,27 +806,6 @@ export default function ResultScreen() {
   ];
 
   function renderAllergenSection() {
-    if (allergenState === "product_contains_nonmatching") {
-      return (
-        <View style={[styles.allergenPill, {
-          backgroundColor: isDark ? '#2D2510' : '#FFF8E1',
-          borderColor: isDark ? 'rgba(255,183,77,0.3)' : '#FFE0B2',
-        }]}>
-          <ShieldCheck size={18} color={isDark ? '#FFB74D' : '#F57C00'} weight="fill" />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.allergenPillText, { color: isDark ? '#FFB74D' : '#E65100' }]}>
-              No match with your saved allergies
-            </Text>
-            {allProductAllergens.length > 0 && (
-              <Text style={[styles.allergenPillSubtext, { color: isDark ? '#FFB74D' : '#E65100' }]}>
-                Product contains: {allProductAllergens.join(', ')}
-              </Text>
-            )}
-          </View>
-        </View>
-      );
-    }
-
     if (allergenState === "possible_risk") {
       return (
         <View style={[styles.allergenPill, {
@@ -846,17 +825,7 @@ export default function ResultScreen() {
       );
     }
 
-    return (
-      <View style={[styles.allergenPill, {
-        backgroundColor: isDark ? '#1E1E1E' : '#F5F5F5',
-        borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E0E0E0',
-      }]}>
-        <ShieldCheck size={18} color={theme.muted} weight="regular" />
-        <Text style={[styles.allergenPillText, { color: theme.muted }]}>
-          No allergen match found for your profile
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   return (
