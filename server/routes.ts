@@ -11,7 +11,7 @@ import { eq, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { inferAllergensFromIngredients } from "./allergen-inference";
-import { fetchByBarcode, getFoodDetails, isFatSecretConfigured, type FatSecretProduct } from "./fatsecret";
+import { fetchByBarcode, isFatSecretConfigured, type FatSecretProduct } from "./fatsecret";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -132,12 +132,11 @@ function zodError(res: Response, parsed: z.SafeParseError<unknown>) {
 }
 
 async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
-  const existingRows = await db
+  const [existing] = await db
     .select()
     .from(products)
-    .where(eq(products.barcode, barcode));
-
-  const existingFs = existingRows.find(r => r.source === "fatsecret");
+    .where(eq(products.barcode, barcode))
+    .limit(1);
 
   const fsValues = {
     name: fs.name,
@@ -159,11 +158,16 @@ async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
     fatsecretFoodId: fs.fatsecretFoodId,
   };
 
-  if (existingFs) {
+  if (existing) {
     const [updated] = await db
       .update(products)
-      .set({ ...fsValues, updatedAt: new Date() })
-      .where(eq(products.id, existingFs.id))
+      .set({
+        ...fsValues,
+        source: "fatsecret",
+        moderationStatus: "approved",
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, existing.id))
       .returning();
     return updated;
   }
