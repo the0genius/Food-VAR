@@ -20,7 +20,7 @@ Preferred communication style: Simple, everyday language.
 - **Server**: Express v5 on Node.js with TypeScript.
 - **Database**: PostgreSQL with Drizzle ORM for data persistence.
 - **Schema**: Shared `shared/schema.ts` for type consistency between frontend and backend, using Drizzle's `pgTable` and Zod for validation.
-- **Core Features**: Personalized health scoring, AI-powered dietary advice and nutrition extraction, user authentication, and product contribution/moderation.
+- **Core Features**: Personalized health scoring, AI-powered dietary advice and nutrition extraction, user authentication, product contribution/moderation, and FatSecret API integration for barcode product lookup.
 - **Security**: Implements JWT-based authentication, bcrypt hashing, `requireAuth` middleware, Helmet security headers, and rate limiting.
 - **Logging**: Structured JSON logging via pino (`server/logger.ts`), with request IDs and redaction of passwords, tokens, health data, and chat content.
 - **Error Handling**: Centralized error handler returning request IDs.
@@ -50,6 +50,16 @@ Preferred communication style: Simple, everyday language.
 - **PostgreSQL**: Primary data store.
 - **Drizzle ORM**: Type-safe ORM for database interactions.
 - **drizzle-kit**: Schema migration tooling.
+
+### FatSecret Platform API
+- **Purpose**: Primary food database for barcode product lookup.
+- **Auth**: OAuth 2.0 client credentials grant, token cached with TTL.
+- **Service**: `server/fatsecret.ts` — `fetchByBarcode()`, `lookupBarcode()`, `getFoodDetails()`.
+- **Barcode lookup waterfall**: FatSecret API → local DB (user-contributed) → contribute flow (404).
+- **Data mapping**: FatSecret serving format → our Product schema fields. Allergens inferred from ingredients via `inferAllergensFromIngredients()`.
+- **Upsert logic**: FatSecret products saved to products table with `source: "fatsecret"`, `moderationStatus: "approved"`, `fatsecretFoodId`. Existing user-contributed products are NOT overwritten.
+- **IP whitelisting**: FatSecret may require server IP to be added to the developer portal's allowed list.
+- **Env vars**: `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET`.
 
 ### AI Services
 - **Google Gemini via Replit AI Integrations**: Used for AI advice, nutrition extraction, chat, and image generation.
@@ -83,6 +93,8 @@ Preferred communication style: Simple, everyday language.
 - `EXPO_PUBLIC_DOMAIN`
 - `EXPO_PUBLIC_SENTRY_DSN`
 - `SESSION_SECRET`
+- `FATSECRET_CLIENT_ID`
+- `FATSECRET_CLIENT_SECRET`
 - See `.env.example` for feature flags
 
 ## Database & Migrations

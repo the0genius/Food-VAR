@@ -50,6 +50,13 @@
       "when": 1773492000000,
       "tag": "0006_social_auth_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773924600000,
+      "tag": "0007_add_fatsecret_food_id",
+      "breakpoints": true
     }
   ]
 }

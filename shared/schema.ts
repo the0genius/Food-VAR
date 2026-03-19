@@ -96,6 +96,7 @@ export const products = pgTable(
     frontImageUrl: text("front_image_url"),
     nutritionImageUrl: text("nutrition_image_url"),
     contributedBy: integer("contributed_by"),
+    fatsecretFoodId: text("fatsecret_food_id"),
     source: text("source").default("user"),
     moderationStatus: text("moderation_status").default("pending"),
     verifiedAt: timestamp("verified_at"),

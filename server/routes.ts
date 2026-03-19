@@ -11,6 +11,7 @@ import { eq, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { inferAllergensFromIngredients } from "./allergen-inference";
+import { fetchByBarcode, getFoodDetails, isFatSecretConfigured, type FatSecretProduct } from "./fatsecret";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -128,6 +129,76 @@ function zodError(res: Response, parsed: z.SafeParseError<unknown>) {
     error: "Validation failed",
     details: parsed.error.flatten().fieldErrors,
   });
+}
+
+async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
+  const [existing] = await db
+    .select()
+    .from(products)
+    .where(eq(products.barcode, barcode))
+    .limit(1);
+
+  if (existing && existing.source === "fatsecret") {
+    const [updated] = await db
+      .update(products)
+      .set({
+        name: fs.name,
+        brand: fs.brand,
+        category: fs.category,
+        servingSize: fs.servingSize,
+        calories: fs.calories,
+        protein: fs.protein,
+        carbohydrates: fs.carbohydrates,
+        sugar: fs.sugar,
+        fat: fs.fat,
+        saturatedFat: fs.saturatedFat,
+        fiber: fs.fiber,
+        sodium: fs.sodium,
+        ingredients: fs.ingredients,
+        declaredAllergens: fs.declaredAllergens,
+        inferredAllergens: fs.inferredAllergens,
+        nutritionFacts: fs.nutritionFacts,
+        fatsecretFoodId: fs.fatsecretFoodId,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, existing.id))
+      .returning();
+    return updated;
+  }
+
+  if (existing) {
+    if (existing.moderationStatus === "approved") {
+      return existing;
+    }
+    return null;
+  }
+
+  const [inserted] = await db
+    .insert(products)
+    .values({
+      barcode,
+      name: fs.name,
+      brand: fs.brand,
+      category: fs.category,
+      servingSize: fs.servingSize,
+      calories: fs.calories,
+      protein: fs.protein,
+      carbohydrates: fs.carbohydrates,
+      sugar: fs.sugar,
+      fat: fs.fat,
+      saturatedFat: fs.saturatedFat,
+      fiber: fs.fiber,
+      sodium: fs.sodium,
+      ingredients: fs.ingredients,
+      declaredAllergens: fs.declaredAllergens,
+      inferredAllergens: fs.inferredAllergens,
+      nutritionFacts: fs.nutritionFacts,
+      fatsecretFoodId: fs.fatsecretFoodId,
+      source: "fatsecret",
+      moderationStatus: "approved",
+    })
+    .returning();
+  return inserted;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -507,8 +578,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========== PRODUCTS (PUBLIC) ==========
   app.get("/api/products/barcode/:barcode", async (req: Request, res: Response) => {
     try {
+      const barcode = paramId(req, "barcode");
+
+      if (isFatSecretConfigured()) {
+        try {
+          const fsProduct = await fetchByBarcode(barcode);
+          if (fsProduct) {
+            const dbProduct = await upsertFatSecretProduct(barcode, fsProduct);
+            if (dbProduct) {
+              return res.json(dbProduct);
+            }
+          }
+        } catch (fsError) {
+          logger.warn("FatSecret lookup failed, falling back to local DB", { barcode, error: String(fsError) });
+        }
+      }
+
       const approvedFilter = getApprovedProductFilter();
-      const conditions = [eq(products.barcode, paramId(req, "barcode"))];
+      const conditions = [eq(products.barcode, barcode)];
       if (approvedFilter) conditions.push(approvedFilter);
 
       const [product] = await db
