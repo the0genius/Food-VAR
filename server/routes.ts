@@ -871,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [existing] = await db
         .select()
         .from(products)
-        .where(eq(products.barcode, barcode))
+        .where(and(eq(products.barcode, barcode), ne(products.source, "fatsecret")))
         .limit(1);
 
       if (existing) {
