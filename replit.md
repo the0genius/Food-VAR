@@ -57,6 +57,7 @@ Preferred communication style: Simple, everyday language.
 - **Service**: `server/fatsecret.ts` — `fetchByBarcode()`, `lookupBarcode()`, `getFoodDetails()`.
 - **Barcode lookup waterfall**: FatSecret API → local DB (user-contributed) → contribute flow (404).
 - **Data mapping**: FatSecret serving format → our Product schema fields. Allergens inferred from ingredients via `inferAllergensFromIngredients()`.
+- **Thin-reference architecture**: FatSecret products are stored as thin references in the products table (name, brand, category, fatsecretFoodId) with `source: "fatsecret"`, `moderationStatus: "approved"`. Full nutrition data is fetched fresh from FatSecret at request time (barcode lookup and scoring). Local DB fallback excludes FatSecret-sourced rows.
 - **Upsert logic**: FatSecret products saved to products table with `source: "fatsecret"`, `moderationStatus: "approved"`, `fatsecretFoodId`. Existing user-contributed products are NOT overwritten.
 - **IP whitelisting**: FatSecret may require server IP to be added to the developer portal's allowed list.
 - **Env vars**: `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET`.

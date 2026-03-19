@@ -7,11 +7,11 @@ import {
   scanHistory,
   dailyScanTracker,
 } from "@shared/schema";
-import { eq, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
+import { eq, ne, and, ilike, or, desc, sql, asc, isNull } from "drizzle-orm";
 import { computeScore, computeClusterId, getScoreLabel, SCORING_VERSION } from "./scoring-engine";
 import { getAdvice, getDeterministicAdvice, extractNutritionFromImages } from "./ai-advice";
 import { inferAllergensFromIngredients } from "./allergen-inference";
-import { fetchByBarcode, isFatSecretConfigured, type FatSecretProduct } from "./fatsecret";
+import { fetchByBarcode, getFoodDetails, isFatSecretConfigured, type FatSecretProduct } from "./fatsecret";
 import { isFeatureEnabled } from "./feature-flags";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
@@ -131,14 +131,72 @@ function zodError(res: Response, parsed: z.SafeParseError<unknown>) {
   });
 }
 
-async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
+async function upsertFatSecretReference(barcode: string, fs: FatSecretProduct) {
   const [existing] = await db
+    .select()
+    .from(products)
+    .where(and(eq(products.barcode, barcode), eq(products.source, "fatsecret")))
+    .limit(1);
+
+  if (existing) {
+    const [updated] = await db
+      .update(products)
+      .set({
+        name: fs.name,
+        brand: fs.brand,
+        category: fs.category,
+        fatsecretFoodId: fs.fatsecretFoodId,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, existing.id))
+      .returning();
+    return updated;
+  }
+
+  const [existingUser] = await db
     .select()
     .from(products)
     .where(eq(products.barcode, barcode))
     .limit(1);
 
-  const fsValues = {
+  if (existingUser) {
+    const [updated] = await db
+      .update(products)
+      .set({
+        name: fs.name,
+        brand: fs.brand,
+        category: fs.category,
+        fatsecretFoodId: fs.fatsecretFoodId,
+        source: "fatsecret",
+        moderationStatus: "approved",
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, existingUser.id))
+      .returning();
+    return updated;
+  }
+
+  const [inserted] = await db
+    .insert(products)
+    .values({
+      barcode,
+      name: fs.name,
+      brand: fs.brand,
+      category: fs.category,
+      fatsecretFoodId: fs.fatsecretFoodId,
+      source: "fatsecret",
+      moderationStatus: "approved",
+    })
+    .returning();
+  return inserted;
+}
+
+function mergeProductWithFatSecret(
+  dbProduct: typeof products.$inferSelect,
+  fs: FatSecretProduct
+): typeof products.$inferSelect {
+  return {
+    ...dbProduct,
     name: fs.name,
     brand: fs.brand,
     category: fs.category,
@@ -155,33 +213,7 @@ async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
     declaredAllergens: fs.declaredAllergens,
     inferredAllergens: fs.inferredAllergens,
     nutritionFacts: fs.nutritionFacts,
-    fatsecretFoodId: fs.fatsecretFoodId,
   };
-
-  if (existing) {
-    const [updated] = await db
-      .update(products)
-      .set({
-        ...fsValues,
-        source: "fatsecret",
-        moderationStatus: "approved",
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, existing.id))
-      .returning();
-    return updated;
-  }
-
-  const [inserted] = await db
-    .insert(products)
-    .values({
-      barcode,
-      ...fsValues,
-      source: "fatsecret",
-      moderationStatus: "approved",
-    })
-    .returning();
-  return inserted;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -567,10 +599,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const fsProduct = await fetchByBarcode(barcode);
           if (fsProduct) {
-            const dbProduct = await upsertFatSecretProduct(barcode, fsProduct);
-            if (dbProduct) {
-              return res.json(dbProduct);
-            }
+            const dbRef = await upsertFatSecretReference(barcode, fsProduct);
+            return res.json(mergeProductWithFatSecret(dbRef, fsProduct));
           }
         } catch (fsError) {
           logger.warn("FatSecret lookup failed, falling back to local DB", { barcode, error: String(fsError) });
@@ -578,7 +608,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const approvedFilter = getApprovedProductFilter();
-      const conditions = [eq(products.barcode, barcode)];
+      const conditions: any[] = [
+        eq(products.barcode, barcode),
+        ne(products.source, "fatsecret"),
+      ];
       if (approvedFilter) conditions.push(approvedFilter);
 
       const [product] = await db
@@ -699,12 +732,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (product.source === "fatsecret" && product.fatsecretFoodId && isFatSecretConfigured()) {
         try {
-          const freshData = await fetchByBarcode(product.barcode || "");
-          if (freshData && product.barcode) {
-            product = (await upsertFatSecretProduct(product.barcode, freshData)) || product;
+          const freshData = await getFoodDetails(product.fatsecretFoodId);
+          if (freshData) {
+            product = mergeProductWithFatSecret(product, freshData);
           }
         } catch (refreshErr) {
-          logger.warn("FatSecret refresh failed for scoring, using cached data", { productId, error: String(refreshErr) });
+          logger.warn("FatSecret refresh failed for scoring, using thin reference", { productId, error: String(refreshErr) });
         }
       }
 
