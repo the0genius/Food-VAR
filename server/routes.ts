@@ -1106,11 +1106,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(products.id, entry.productId));
 
           if (product) {
-            const scoreResult = await computeScore(product, user);
+            let scoringProduct = product;
+            if (product.source === "fatsecret" && product.fatsecretFoodId && isFatSecretConfigured()) {
+              try {
+                const freshData = await getFoodDetails(product.fatsecretFoodId);
+                if (freshData) {
+                  scoringProduct = mergeProductWithFatSecret(product, freshData);
+                }
+              } catch (refreshErr) {
+                logger.warn("FatSecret refresh failed for history re-analysis, using thin reference", { productId: product.id, error: String(refreshErr) });
+              }
+            }
+            const scoreResult = await computeScore(scoringProduct, user);
             let adviceResult;
             if (isFeatureEnabled("ENABLE_AI_ADVICE")) {
               adviceResult = await getAdvice(
-                product,
+                scoringProduct,
                 user,
                 scoreResult.score,
                 scoreResult.label,
