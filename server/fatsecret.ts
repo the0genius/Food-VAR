@@ -198,13 +198,6 @@ export async function getFoodDetails(foodId: string): Promise<FatSecretProduct |
       }
     }
 
-    const allServings = Array.isArray(food.servings?.serving) ? food.servings.serving : food.servings?.serving ? [food.servings.serving] : [];
-    for (const s of allServings) {
-      if (typeof s.serving_description === "string" && !ingredients) {
-        break;
-      }
-    }
-
     const inferredAllergens = ingredients
       ? inferAllergensFromIngredients(ingredients)
       : [];

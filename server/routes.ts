@@ -132,68 +132,47 @@ function zodError(res: Response, parsed: z.SafeParseError<unknown>) {
 }
 
 async function upsertFatSecretProduct(barcode: string, fs: FatSecretProduct) {
-  const [existing] = await db
+  const existingRows = await db
     .select()
     .from(products)
-    .where(eq(products.barcode, barcode))
-    .limit(1);
+    .where(eq(products.barcode, barcode));
 
-  if (existing && existing.source === "fatsecret") {
+  const existingFs = existingRows.find(r => r.source === "fatsecret");
+
+  const fsValues = {
+    name: fs.name,
+    brand: fs.brand,
+    category: fs.category,
+    servingSize: fs.servingSize,
+    calories: fs.calories,
+    protein: fs.protein,
+    carbohydrates: fs.carbohydrates,
+    sugar: fs.sugar,
+    fat: fs.fat,
+    saturatedFat: fs.saturatedFat,
+    fiber: fs.fiber,
+    sodium: fs.sodium,
+    ingredients: fs.ingredients,
+    declaredAllergens: fs.declaredAllergens,
+    inferredAllergens: fs.inferredAllergens,
+    nutritionFacts: fs.nutritionFacts,
+    fatsecretFoodId: fs.fatsecretFoodId,
+  };
+
+  if (existingFs) {
     const [updated] = await db
       .update(products)
-      .set({
-        name: fs.name,
-        brand: fs.brand,
-        category: fs.category,
-        servingSize: fs.servingSize,
-        calories: fs.calories,
-        protein: fs.protein,
-        carbohydrates: fs.carbohydrates,
-        sugar: fs.sugar,
-        fat: fs.fat,
-        saturatedFat: fs.saturatedFat,
-        fiber: fs.fiber,
-        sodium: fs.sodium,
-        ingredients: fs.ingredients,
-        declaredAllergens: fs.declaredAllergens,
-        inferredAllergens: fs.inferredAllergens,
-        nutritionFacts: fs.nutritionFacts,
-        fatsecretFoodId: fs.fatsecretFoodId,
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, existing.id))
+      .set({ ...fsValues, updatedAt: new Date() })
+      .where(eq(products.id, existingFs.id))
       .returning();
     return updated;
-  }
-
-  if (existing) {
-    if (existing.moderationStatus === "approved") {
-      return existing;
-    }
-    return null;
   }
 
   const [inserted] = await db
     .insert(products)
     .values({
       barcode,
-      name: fs.name,
-      brand: fs.brand,
-      category: fs.category,
-      servingSize: fs.servingSize,
-      calories: fs.calories,
-      protein: fs.protein,
-      carbohydrates: fs.carbohydrates,
-      sugar: fs.sugar,
-      fat: fs.fat,
-      saturatedFat: fs.saturatedFat,
-      fiber: fs.fiber,
-      sodium: fs.sodium,
-      ingredients: fs.ingredients,
-      declaredAllergens: fs.declaredAllergens,
-      inferredAllergens: fs.inferredAllergens,
-      nutritionFacts: fs.nutritionFacts,
-      fatsecretFoodId: fs.fatsecretFoodId,
+      ...fsValues,
       source: "fatsecret",
       moderationStatus: "approved",
     })
@@ -708,11 +687,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       if (!user) return res.status(404).json({ error: "User not found" });
 
-      const [product] = await db
+      let [product] = await db
         .select()
         .from(products)
         .where(eq(products.id, productId));
       if (!product) return res.status(404).json({ error: "Product not found" });
+
+      if (product.source === "fatsecret" && product.fatsecretFoodId && isFatSecretConfigured()) {
+        try {
+          const freshData = await fetchByBarcode(product.barcode || "");
+          if (freshData && product.barcode) {
+            product = (await upsertFatSecretProduct(product.barcode, freshData)) || product;
+          }
+        } catch (refreshErr) {
+          logger.warn("FatSecret refresh failed for scoring, using cached data", { productId, error: String(refreshErr) });
+        }
+      }
 
       const today = new Date().toISOString().split("T")[0];
 
