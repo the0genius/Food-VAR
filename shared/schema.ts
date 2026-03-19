@@ -71,7 +71,7 @@ export const products = pgTable(
   "products",
   {
     id: serial("id").primaryKey(),
-    barcode: text("barcode").notNull().unique(),
+    barcode: text("barcode").notNull(),
     name: text("name").notNull(),
     brand: text("brand").default(""),
     category: text("category").default(""),
@@ -110,7 +110,7 @@ export const products = pgTable(
     index("products_name_idx").on(table.name),
     index("products_brand_idx").on(table.brand),
     index("products_category_idx").on(table.category),
-    uniqueIndex("products_barcode_idx").on(table.barcode),
+    uniqueIndex("products_barcode_source_idx").on(table.barcode, table.source),
   ]
 );
 

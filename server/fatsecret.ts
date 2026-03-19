@@ -42,7 +42,29 @@ async function getAccessToken(): Promise<string> {
   return cachedToken.value;
 }
 
-async function apiCall(method: string, params: Record<string, string>): Promise<any> {
+interface FatSecretApiError {
+  error?: { code: number; message: string };
+}
+
+interface FatSecretBarcodeResponse extends FatSecretApiError {
+  food_id?: { value: string } | string;
+}
+
+interface FatSecretFoodResponse extends FatSecretApiError {
+  food?: {
+    food_id: string;
+    food_name: string;
+    brand_name?: string;
+    food_type?: string;
+    food_description?: string;
+    food_sub_categories?: { food_sub_category?: string[] };
+    servings?: {
+      serving: FatSecretServing | FatSecretServing[];
+    };
+  };
+}
+
+async function apiCall(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
   const token = await getAccessToken();
 
   const url = new URL(API_BASE);
@@ -67,11 +89,10 @@ async function apiCall(method: string, params: Record<string, string>): Promise<
 
 export async function lookupBarcode(barcode: string): Promise<string | null> {
   try {
-    const data = await apiCall("food.find_id_for_barcode", { barcode });
+    const data = await apiCall("food.find_id_for_barcode", { barcode }) as FatSecretBarcodeResponse;
 
-    if (data?.error) {
-      const code = data.error.code;
-      const msg = data.error.message || "";
+    if (data.error) {
+      const { code, message: msg } = data.error;
       if (code === 21) {
         logger.warn("FatSecret IP not whitelisted — add your server IP to the FatSecret developer portal", { message: msg });
       } else {
@@ -80,7 +101,8 @@ export async function lookupBarcode(barcode: string): Promise<string | null> {
       return null;
     }
 
-    const foodId = data?.food_id?.value ?? data?.food_id;
+    const rawId = data.food_id;
+    const foodId = typeof rawId === "object" && rawId !== null ? rawId.value : rawId;
     if (!foodId) return null;
     return String(foodId);
   } catch (err) {
@@ -91,6 +113,7 @@ export async function lookupBarcode(barcode: string): Promise<string | null> {
 
 interface FatSecretServing {
   serving_description?: string;
+  measurement_description?: string;
   metric_serving_amount?: string;
   metric_serving_unit?: string;
   calories?: string;
@@ -137,16 +160,17 @@ function parseNum(val?: string): number | null {
   return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
 }
 
-function pickServing(servings: any): FatSecretServing | null {
+interface FatSecretServings {
+  serving: FatSecretServing | FatSecretServing[];
+}
+
+function pickServing(servings: FatSecretServings | undefined): FatSecretServing | null {
   if (!servings) return null;
-  const list = Array.isArray(servings.serving)
-    ? servings.serving
-    : servings.serving
-      ? [servings.serving]
-      : [];
+  const raw = servings.serving;
+  const list: FatSecretServing[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
   if (list.length === 0) return null;
 
-  const per100g = list.find((s: any) =>
+  const per100g = list.find((s) =>
     s.measurement_description === "g" && s.metric_serving_amount === "100.000"
   );
   if (per100g) return per100g;
@@ -156,14 +180,14 @@ function pickServing(servings: any): FatSecretServing | null {
 
 export async function getFoodDetails(foodId: string): Promise<FatSecretProduct | null> {
   try {
-    const data = await apiCall("food.get.v4", { food_id: foodId });
+    const data = await apiCall("food.get.v4", { food_id: foodId }) as FatSecretFoodResponse;
 
-    if (data?.error) {
+    if (data.error) {
       logger.warn("FatSecret food details API error", { foodId, code: data.error.code, message: data.error.message });
       return null;
     }
 
-    const food = data?.food;
+    const food = data.food;
     if (!food) return null;
 
     const serving = pickServing(food.servings);
@@ -186,7 +210,7 @@ export async function getFoodDetails(foodId: string): Promise<FatSecretProduct |
       ["added_sugars", "addedSugars"],
     ];
     for (const [fsKey, ourKey] of extendedKeys) {
-      const v = parseNum((serving as any)[fsKey]);
+      const v = parseNum(serving[fsKey as keyof FatSecretServing]);
       if (v !== null) extendedFacts[ourKey] = v;
     }
 

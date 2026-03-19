@@ -138,40 +138,18 @@ async function upsertFatSecretReference(barcode: string, fs: FatSecretProduct) {
     .where(and(eq(products.barcode, barcode), eq(products.source, "fatsecret")))
     .limit(1);
 
+  const thinFields = {
+    name: fs.name,
+    brand: fs.brand,
+    category: fs.category,
+    fatsecretFoodId: fs.fatsecretFoodId,
+  };
+
   if (existing) {
     const [updated] = await db
       .update(products)
-      .set({
-        name: fs.name,
-        brand: fs.brand,
-        category: fs.category,
-        fatsecretFoodId: fs.fatsecretFoodId,
-        updatedAt: new Date(),
-      })
+      .set({ ...thinFields, updatedAt: new Date() })
       .where(eq(products.id, existing.id))
-      .returning();
-    return updated;
-  }
-
-  const [existingUser] = await db
-    .select()
-    .from(products)
-    .where(eq(products.barcode, barcode))
-    .limit(1);
-
-  if (existingUser) {
-    const [updated] = await db
-      .update(products)
-      .set({
-        name: fs.name,
-        brand: fs.brand,
-        category: fs.category,
-        fatsecretFoodId: fs.fatsecretFoodId,
-        source: "fatsecret",
-        moderationStatus: "approved",
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, existingUser.id))
       .returning();
     return updated;
   }
@@ -180,10 +158,7 @@ async function upsertFatSecretReference(barcode: string, fs: FatSecretProduct) {
     .insert(products)
     .values({
       barcode,
-      name: fs.name,
-      brand: fs.brand,
-      category: fs.category,
-      fatsecretFoodId: fs.fatsecretFoodId,
+      ...thinFields,
       source: "fatsecret",
       moderationStatus: "approved",
     })
