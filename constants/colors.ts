@@ -157,10 +157,12 @@ const darkTokens = {
 
 export type ThemeColors = typeof C & { isDark: boolean };
 
+const lightTheme: ThemeColors = { ...C, isDark: false };
+const darkTheme: ThemeColors = { ...darkTokens, isDark: true };
+
 export function useThemeColors(): ThemeColors {
   const { resolved } = useTheme();
-  if (resolved === 'dark') return { ...darkTokens, isDark: true };
-  return { ...C, isDark: false };
+  return resolved === 'dark' ? darkTheme : lightTheme;
 }
 
 const Colors = {
@@ -262,9 +264,7 @@ export function coloredShadow(color: string, intensity: "subtle" | "medium" | "s
   });
 }
 
-const defaultTheme: ThemeColors = { ...C, isDark: false };
-
-export function getScoreColor(score: number, t: ThemeColors = defaultTheme): string {
+export function getScoreColor(score: number, t: ThemeColors = lightTheme): string {
   if (score === 0) return t.danger;
   if (score <= 15) return t.darkRed;
   if (score <= 35) return t.danger;
@@ -273,7 +273,7 @@ export function getScoreColor(score: number, t: ThemeColors = defaultTheme): str
   return t.green;
 }
 
-export function getScoreBgColor(score: number, t: ThemeColors = defaultTheme): string {
+export function getScoreBgColor(score: number, t: ThemeColors = lightTheme): string {
   if (score === 0) return t.dangerBg;
   if (score <= 15) return t.dangerBg;
   if (score <= 35) return t.dangerBg;
