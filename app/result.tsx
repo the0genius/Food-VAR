@@ -117,7 +117,7 @@ const CAUTION_WORDS = [
   "tricky", "sneaky", "loaded", "packed", "high",
 ];
 
-function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string, t: ThemeColors): string {
+function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText: string | undefined, t: ThemeColors): string {
   if (isAllergenAlert) return t.danger;
   if (score <= 35) return t.danger;
   const headlineLower = (headline || "").toLowerCase();
@@ -1093,16 +1093,16 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     textAlign: "center" as const,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   shareBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
