@@ -40,6 +40,7 @@ import {
   ShieldCheck,
   Sun,
   Moon,
+  Database,
 } from "phosphor-react-native";
 import * as Sentry from "@sentry/react-native";
 import Colors, { C, cardShadow, getScoreColor, getScoreBgColor, getScoreShortLabel, useThemeColors, type ThemeColors } from "@/constants/colors";
@@ -579,6 +580,17 @@ export default function ProfileScreen() {
                 <FileText size={16} color={theme.tealScore} weight="fill" />
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>Terms of Service</Text>
+            </View>
+            <CaretRight size={18} color={theme.placeholder} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/data-sources")} activeOpacity={0.8} accessibilityLabel="Data sources and attribution" accessibilityRole="button">
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.info }]} />
+            <View style={styles.actionContent}>
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.infoBg }]}>
+                <Database size={16} color={theme.info} weight="fill" />
+              </View>
+              <Text style={[styles.actionText, { color: theme.text }]}>Data Sources</Text>
             </View>
             <CaretRight size={18} color={theme.placeholder} />
           </TouchableOpacity>

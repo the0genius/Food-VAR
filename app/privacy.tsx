@@ -70,7 +70,9 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={styles.sectionTitle}>7. Third-Party Services</Text>
         <Text style={styles.body}>
-          We use Google Gemini (via Replit AI Integrations) for AI advice generation. When AI advice is enabled, anonymized product and health profile data is sent to the AI service. No personally identifiable information (name, email) is included in AI requests.
+          We use the following third-party services:
+          {"\n"}{"\n"}• FatSecret Platform API (fatsecret.com) — provides nutritional data for food products. No personal user data is shared with FatSecret; only product barcode information is used to retrieve nutrition facts.
+          {"\n"}{"\n"}• Google Gemini (via Replit AI Integrations) — generates personalized dietary advice. When AI advice is enabled, anonymized product and health profile data is sent to the AI service. No personally identifiable information (name, email) is included in AI requests.
         </Text>
 
         <Text style={styles.sectionTitle}>8. Children's Privacy</Text>

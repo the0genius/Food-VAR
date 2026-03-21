@@ -924,7 +924,7 @@ export default function ResultScreen() {
             }]}>
               <WarningCircle size={16} color={theme.neutralIcon} weight="fill" />
               <Text style={[styles.allergenPillSubtext, { color: theme.neutralSubtext, flex: 1 }]}>
-                Nutrition data from third-party database — verify package label for allergen certainty.
+                Powered by FatSecret — verify package label for allergen certainty.
               </Text>
             </View>
           </Animated.View>
