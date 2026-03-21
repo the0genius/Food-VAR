@@ -80,7 +80,7 @@ async function run() {
   let refreshToken = "";
 
   if (process.env.NODE_ENV !== "production") {
-    await test("POST /api/auth/dev-login returns tokens", async () => {
+    await test("POST /api/auth/dev-login returns tokens and user", async () => {
       const { status, body } = await fetchJSON("/api/auth/dev-login", { method: "POST" });
       assert(status === 200, `Expected 200, got ${status}`);
       const data = body as Record<string, unknown>;
@@ -137,12 +137,10 @@ async function run() {
     assert(Array.isArray(body), "Expected array response");
   });
 
-  await test("GET /api/products returns paginated list", async () => {
-    const { status, body } = await fetchJSON("/api/products?limit=5");
+  await test("GET /api/products/search returns array for short query", async () => {
+    const { status, body } = await fetchJSON("/api/products/search?q=a&limit=5");
     assert(status === 200, `Expected 200, got ${status}`);
-    const data = body as Record<string, unknown>;
-    assert(Array.isArray(data.products), "Expected products array");
-    assert(typeof data.total === "number", "Expected total count");
+    assert(Array.isArray(body), "Expected array response");
   });
 
   if (accessToken) {
@@ -150,11 +148,10 @@ async function run() {
 
     let productId: number | null = null;
 
-    await test("Find a product to score", async () => {
-      const { status, body } = await fetchJSON("/api/products?limit=1");
+    await test("Find a product via search to score", async () => {
+      const { status, body } = await fetchJSON("/api/products/search?q=&limit=1");
       assert(status === 200, `Expected 200, got ${status}`);
-      const data = body as Record<string, unknown>;
-      const productList = data.products as Array<Record<string, unknown>>;
+      const productList = body as Array<Record<string, unknown>>;
       if (productList.length > 0) {
         productId = productList[0].id as number;
       }
@@ -186,17 +183,17 @@ async function run() {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       assert(status === 200, `Expected 200, got ${status}`);
-      const data = body as Record<string, unknown>;
-      assert(Array.isArray(data.history), "Expected history array");
+      assert(Array.isArray(body), "Expected array response");
     });
 
-    await test("GET /api/history/daily-count returns count", async () => {
-      const { status, body } = await fetchJSON("/api/history/daily-count", {
+    await test("GET /api/scans/today returns count and limit", async () => {
+      const { status, body } = await fetchJSON("/api/scans/today", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       assert(status === 200, `Expected 200, got ${status}`);
       const data = body as Record<string, unknown>;
       assert(typeof data.count === "number", "Expected count number");
+      assert(typeof data.limit === "number", "Expected limit number");
     });
 
     console.log("\n--- Account ---");
@@ -210,6 +207,11 @@ async function run() {
       assert(typeof data.exportedAt === "string", "Missing exportedAt");
       assert(data.profile !== undefined, "Missing profile");
       assert(Array.isArray(data.scanHistory), "Missing scanHistory array");
+    });
+
+    await test("DELETE /api/auth/account requires auth", async () => {
+      const { status } = await fetchJSON("/api/auth/account", { method: "DELETE" });
+      assert(status === 401, `Expected 401, got ${status}`);
     });
   }
 
@@ -231,6 +233,14 @@ async function run() {
     assert(status === 400, `Expected 400, got ${status}`);
   });
 
+  await test("POST /api/score without auth returns 401", async () => {
+    const { status } = await fetchJSON("/api/score", {
+      method: "POST",
+      body: JSON.stringify({ productId: 1 }),
+    });
+    assert(status === 401, `Expected 401, got ${status}`);
+  });
+
   console.log("\n=============================");
   const passed = results.filter((r) => r.passed).length;
   const failed = results.filter((r) => !r.passed).length;
@@ -243,7 +253,7 @@ async function run() {
     }
     process.exit(1);
   } else {
-    console.log("\nAll smoke tests passed! ✓");
+    console.log("\nAll smoke tests passed!");
     process.exit(0);
   }
 }

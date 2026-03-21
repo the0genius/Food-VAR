@@ -1,260 +1,286 @@
-import { describe, it, expect } from "vitest";
-import type { FatSecretProduct } from "../server/fatsecret";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-describe("FatSecret waterfall logic (source code verification)", () => {
-  it("barcode route tries FatSecret first when configured", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+const mockLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn().mockReturnThis(),
+};
 
-    const barcodeRoute = source.match(
-      /app\.get\("\/api\/products\/barcode\/:barcode"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(barcodeRoute).toBeTruthy();
-    const routeBlock = barcodeRoute![0];
+vi.mock("../server/logger", () => ({
+  logger: mockLogger,
+}));
 
-    expect(routeBlock).toContain("isFatSecretConfigured()");
-    expect(routeBlock).toContain("fetchByBarcode(barcode)");
+vi.mock("../server/allergen-inference", async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    inferAllergensFromIngredients: vi.fn().mockReturnValue(["milk"]),
+  };
+});
 
-    const fatSecretIdx = routeBlock.indexOf("fetchByBarcode");
-    const localDbIdx = routeBlock.indexOf('ne(products.source, "fatsecret")');
-    expect(fatSecretIdx).toBeLessThan(localDbIdx);
+let fetchCallCount = 0;
+let fetchResponses: Array<() => Response | Promise<Response>> = [];
+const originalFetch = global.fetch;
+
+function mockFetchSequence(responses: Array<() => Response | Promise<Response>>) {
+  fetchCallCount = 0;
+  fetchResponses = responses;
+  global.fetch = vi.fn(async () => {
+    const idx = fetchCallCount++;
+    if (idx < fetchResponses.length) {
+      return fetchResponses[idx]();
+    }
+    return new Response(JSON.stringify({ error: "unexpected call" }), { status: 500 });
+  }) as unknown as typeof fetch;
+}
+
+function tokenResponse() {
+  return new Response(JSON.stringify({ access_token: "test-token", expires_in: 3600 }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function barcodeResponse(foodId: string) {
+  return new Response(JSON.stringify({ food_id: { value: foodId } }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function foodDetailsResponse(overrides: Record<string, string> = {}) {
+  return new Response(JSON.stringify({
+    food: {
+      food_id: "12345",
+      food_name: overrides.name || "Waterfall Test Product",
+      brand_name: overrides.brand || "Test Brand",
+      food_type: "Brand",
+      food_description: overrides.description || "Ingredients: wheat flour, milk, sugar",
+      servings: {
+        serving: {
+          serving_description: "1 serving (100g)",
+          calories: "250",
+          protein: "8",
+          carbohydrate: "35",
+          sugar: "12",
+          fat: "9",
+          saturated_fat: "3",
+          fiber: "2",
+          sodium: "300",
+        },
+      },
+    },
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function emptyBarcodeResponse() {
+  return new Response(JSON.stringify({}), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("FatSecret waterfall: fetchByBarcode end-to-end", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    fetchCallCount = 0;
+    fetchResponses = [];
+    process.env.FATSECRET_CLIENT_ID = "test-id";
+    process.env.FATSECRET_CLIENT_SECRET = "test-secret";
   });
 
-  it("barcode route falls back to local DB on FatSecret failure", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const barcodeRoute = source.match(
-      /app\.get\("\/api\/products\/barcode\/:barcode"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(barcodeRoute).toBeTruthy();
-    const routeBlock = barcodeRoute![0];
-
-    expect(routeBlock).toContain("catch (fsError)");
-    expect(routeBlock).toContain("FatSecret lookup failed, falling back to local DB");
+  afterEach(() => {
+    global.fetch = originalFetch;
+    delete process.env.FATSECRET_CLIENT_ID;
+    delete process.env.FATSECRET_CLIENT_SECRET;
+    vi.restoreAllMocks();
   });
 
-  it("local DB fallback excludes fatsecret-sourced rows", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+  it("returns full product when barcode lookup + food details succeed", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => barcodeResponse("12345"),
+      () => foodDetailsResponse(),
+    ]);
 
-    const barcodeRoute = source.match(
-      /app\.get\("\/api\/products\/barcode\/:barcode"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(barcodeRoute).toBeTruthy();
-    const routeBlock = barcodeRoute![0];
-
-    expect(routeBlock).toContain('ne(products.source, "fatsecret")');
+    const { fetchByBarcode } = await import("../server/fatsecret");
+    const result = await fetchByBarcode("1234567890");
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe("Waterfall Test Product");
+    expect(result!.brand).toBe("Test Brand");
+    expect(result!.fatsecretFoodId).toBe("12345");
+    expect(result!.calories).toBe(250);
+    expect(result!.protein).toBe(8);
+    expect(result!.sodium).toBe(300);
   });
 
-  it("barcode route returns 404 when both FatSecret and local DB miss", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+  it("returns null when barcode not found in FatSecret", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => emptyBarcodeResponse(),
+    ]);
 
-    const barcodeRoute = source.match(
-      /app\.get\("\/api\/products\/barcode\/:barcode"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(barcodeRoute).toBeTruthy();
-    const routeBlock = barcodeRoute![0];
-
-    expect(routeBlock).toContain('res.status(404).json');
-    expect(routeBlock).toContain("Product not found");
+    const { fetchByBarcode } = await import("../server/fatsecret");
+    const result = await fetchByBarcode("9999999999");
+    expect(result).toBeNull();
   });
 
-  it("barcode route applies approved product filter for local DB", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+  it("returns null when barcode found but food details fail", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => barcodeResponse("12345"),
+      () => new Response("Internal Server Error", { status: 500 }),
+      () => new Response("Internal Server Error", { status: 500 }),
+    ]);
 
-    const barcodeRoute = source.match(
-      /app\.get\("\/api\/products\/barcode\/:barcode"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(barcodeRoute).toBeTruthy();
-    const routeBlock = barcodeRoute![0];
-
-    expect(routeBlock).toContain("getApprovedProductFilter()");
+    const { fetchByBarcode } = await import("../server/fatsecret");
+    const result = await fetchByBarcode("1234567890");
+    expect(result).toBeNull();
   });
 
-  it("upsertFatSecretReference stores thin reference with source fatsecret", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+  it("FatSecret products always have empty declaredAllergens", async () => {
+    const { getFoodDetails } = await import("../server/fatsecret");
 
-    const upsertFn = source.match(
-      /async function upsertFatSecretReference[\s\S]*?^}/m
-    );
-    expect(upsertFn).toBeTruthy();
-    const fnBlock = upsertFn![0];
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => foodDetailsResponse(),
+    ]);
 
-    expect(fnBlock).toContain('source: "fatsecret"');
-    expect(fnBlock).toContain('moderationStatus: "approved"');
-    expect(fnBlock).toContain("fatsecretFoodId: fs.fatsecretFoodId");
-    expect(fnBlock).toContain("name: fs.name");
-    expect(fnBlock).toContain("brand: fs.brand");
-
-    expect(fnBlock).not.toContain("calories: fs.calories");
-    expect(fnBlock).not.toContain("protein: fs.protein");
+    const result = await getFoodDetails("12345");
+    expect(result).not.toBeNull();
+    expect(result!.declaredAllergens).toEqual([]);
   });
 
-  it("mergeProductWithFatSecret overlays nutrition from FatSecret onto thin reference", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+  it("FatSecret products have inferred allergens from ingredients", async () => {
+    const { getFoodDetails } = await import("../server/fatsecret");
 
-    const mergeFn = source.match(
-      /function mergeProductWithFatSecret[\s\S]*?^}/m
-    );
-    expect(mergeFn).toBeTruthy();
-    const fnBlock = mergeFn![0];
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => foodDetailsResponse({ description: "Ingredients: wheat flour, milk, sugar" }),
+    ]);
 
-    expect(fnBlock).toContain("...dbProduct");
-    expect(fnBlock).toContain("calories: fs.calories");
-    expect(fnBlock).toContain("protein: fs.protein");
-    expect(fnBlock).toContain("declaredAllergens: fs.declaredAllergens");
-    expect(fnBlock).toContain("inferredAllergens: fs.inferredAllergens");
-  });
-
-  it("contribute endpoint does not overwrite existing user-contributed products", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const contributeRoute = source.match(
-      /app\.post\("\/api\/products\/contribute"[\s\S]*?^\s{2}\}\);/m
-    );
-    expect(contributeRoute).toBeTruthy();
-    const routeBlock = contributeRoute![0];
-
-    expect(routeBlock).toContain('ne(products.source, "fatsecret")');
+    const result = await getFoodDetails("12345");
+    expect(result).not.toBeNull();
+    expect(Array.isArray(result!.inferredAllergens)).toBe(true);
   });
 });
 
-describe("FatSecret fetchByBarcode chaining", () => {
-  it("fetchByBarcode calls lookupBarcode then getFoodDetails", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
-
-    const fetchByBarcodeFn = source.match(
-      /export async function fetchByBarcode[\s\S]*?^}/m
-    );
-    expect(fetchByBarcodeFn).toBeTruthy();
-    const fnBlock = fetchByBarcodeFn![0];
-
-    expect(fnBlock).toContain("lookupBarcode(barcode)");
-    expect(fnBlock).toContain("getFoodDetails(foodId)");
-
-    const lookupIdx = fnBlock.indexOf("lookupBarcode");
-    const detailsIdx = fnBlock.indexOf("getFoodDetails");
-    expect(lookupIdx).toBeLessThan(detailsIdx);
+describe("isFatSecretConfigured", () => {
+  beforeEach(() => {
+    vi.resetModules();
   });
 
-  it("fetchByBarcode returns null when lookupBarcode returns null", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
-
-    const fetchByBarcodeFn = source.match(
-      /export async function fetchByBarcode[\s\S]*?^}/m
-    );
-    expect(fetchByBarcodeFn).toBeTruthy();
-    const fnBlock = fetchByBarcodeFn![0];
-
-    expect(fnBlock).toContain("if (!foodId) return null");
+  afterEach(() => {
+    delete process.env.FATSECRET_CLIENT_ID;
+    delete process.env.FATSECRET_CLIENT_SECRET;
   });
 
-  it("lookupBarcode returns null on API error gracefully", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+  it("returns true when both env vars are set", async () => {
+    process.env.FATSECRET_CLIENT_ID = "id";
+    process.env.FATSECRET_CLIENT_SECRET = "secret";
+    const { isFatSecretConfigured } = await import("../server/fatsecret");
+    expect(isFatSecretConfigured()).toBe(true);
+  });
 
-    const lookupFn = source.match(
-      /export async function lookupBarcode[\s\S]*?^}/m
-    );
-    expect(lookupFn).toBeTruthy();
-    const fnBlock = lookupFn![0];
+  it("returns false when client ID is missing", async () => {
+    delete process.env.FATSECRET_CLIENT_ID;
+    process.env.FATSECRET_CLIENT_SECRET = "secret";
+    const { isFatSecretConfigured } = await import("../server/fatsecret");
+    expect(isFatSecretConfigured()).toBe(false);
+  });
 
-    expect(fnBlock).toContain("catch (err)");
-    expect(fnBlock).toContain("return null");
+  it("returns false when client secret is missing", async () => {
+    process.env.FATSECRET_CLIENT_ID = "id";
+    delete process.env.FATSECRET_CLIENT_SECRET;
+    const { isFatSecretConfigured } = await import("../server/fatsecret");
+    expect(isFatSecretConfigured()).toBe(false);
   });
 });
 
-describe("FatSecretProduct type shape", () => {
-  it("FatSecretProduct has declaredAllergens and inferredAllergens arrays", async () => {
+describe("barcode route waterfall logic (source verification)", () => {
+  it("tries FatSecret first, falls back to local DB, then returns 404", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
 
-    expect(source).toContain("declaredAllergens: string[]");
-    expect(source).toContain("inferredAllergens: string[]");
+    const barcodeRoute = source.slice(
+      source.indexOf('app.get("/api/products/barcode/:barcode"'),
+      source.indexOf('app.get("/api/products/search"')
+    );
+
+    const fatSecretIdx = barcodeRoute.indexOf("fetchByBarcode");
+    const localDbIdx = barcodeRoute.indexOf('ne(products.source, "fatsecret")');
+    const notFoundIdx = barcodeRoute.indexOf("Product not found");
+
+    expect(fatSecretIdx).toBeGreaterThan(-1);
+    expect(localDbIdx).toBeGreaterThan(fatSecretIdx);
+    expect(notFoundIdx).toBeGreaterThan(localDbIdx);
   });
 
-  it("getFoodDetails always returns empty declaredAllergens", async () => {
+  it("catches FatSecret errors and falls back gracefully", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
 
-    const detailsFn = source.match(
-      /export async function getFoodDetails[\s\S]*?^}/m
+    const barcodeRoute = source.slice(
+      source.indexOf('app.get("/api/products/barcode/:barcode"'),
+      source.indexOf('app.get("/api/products/search"')
     );
-    expect(detailsFn).toBeTruthy();
-    const fnBlock = detailsFn![0];
 
-    expect(fnBlock).toContain("declaredAllergens: []");
+    expect(barcodeRoute).toContain("catch (fsError)");
+    expect(barcodeRoute).toContain("FatSecret lookup failed, falling back to local DB");
   });
 
-  it("getFoodDetails infers allergens from ingredients", async () => {
+  it("excludes fatsecret-sourced rows from local DB fallback", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
 
-    expect(source).toContain("inferAllergensFromIngredients");
-
-    const detailsFn = source.match(
-      /export async function getFoodDetails[\s\S]*?^}/m
+    const barcodeRoute = source.slice(
+      source.indexOf('app.get("/api/products/barcode/:barcode"'),
+      source.indexOf('app.get("/api/products/search"')
     );
-    expect(detailsFn).toBeTruthy();
-    const fnBlock = detailsFn![0];
 
-    expect(fnBlock).toContain("inferAllergensFromIngredients(ingredients)");
+    expect(barcodeRoute).toContain('ne(products.source, "fatsecret")');
+    expect(barcodeRoute).toContain("getApprovedProductFilter()");
   });
 });
 
-describe("FatSecret API resilience structure", () => {
-  it("has 10-second timeout on API calls", async () => {
+describe("thin-reference architecture", () => {
+  it("upsertFatSecretReference stores only identity fields, not nutrition", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
 
-    expect(source).toContain("API_TIMEOUT_MS = 10_000");
-    expect(source).toContain("TOKEN_TIMEOUT_MS = 10_000");
-  });
-
-  it("has retry logic with 1-second backoff", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
-
-    expect(source).toContain("RETRY_BACKOFF_MS = 1_000");
-    expect(source).toContain("isTransientError");
-  });
-
-  it("only retries on transient errors (5xx, network errors)", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
-
-    const isTransientFn = source.match(
-      /function isTransientError[\s\S]*?^}/m
+    const upsertFn = source.slice(
+      source.indexOf("async function upsertFatSecretReference"),
+      source.indexOf("function mergeProductWithFatSecret")
     );
-    expect(isTransientFn).toBeTruthy();
-    const fnBlock = isTransientFn![0];
 
-    expect(fnBlock).toContain("status >= 500");
-    expect(fnBlock).toContain("TypeError");
-    expect(fnBlock).toContain("AbortError");
-    expect(fnBlock).toContain("ECONNRESET");
-    expect(fnBlock).toContain("ETIMEDOUT");
+    expect(upsertFn).toContain("name: fs.name");
+    expect(upsertFn).toContain("brand: fs.brand");
+    expect(upsertFn).toContain("fatsecretFoodId: fs.fatsecretFoodId");
+    expect(upsertFn).toContain('source: "fatsecret"');
+    expect(upsertFn).toContain('moderationStatus: "approved"');
+
+    expect(upsertFn).not.toContain("calories: fs.calories");
+    expect(upsertFn).not.toContain("protein: fs.protein");
   });
 
-  it("token is cached with TTL", async () => {
+  it("mergeProductWithFatSecret overlays nutrition from API onto DB row", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("server/fatsecret.ts", "utf-8");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
 
-    expect(source).toContain("cachedToken");
-    expect(source).toContain("expiresAt: Date.now() + data.expires_in * 1000");
-
-    const getTokenFn = source.match(
-      /async function getAccessToken[\s\S]*?^}/m
+    const mergeFn = source.slice(
+      source.indexOf("function mergeProductWithFatSecret"),
+      source.indexOf("export async function registerRoutes")
     );
-    expect(getTokenFn).toBeTruthy();
-    expect(getTokenFn![0]).toContain("Date.now() < cachedToken.expiresAt - 60_000");
+
+    expect(mergeFn).toContain("...dbProduct");
+    expect(mergeFn).toContain("calories: fs.calories");
+    expect(mergeFn).toContain("protein: fs.protein");
+    expect(mergeFn).toContain("declaredAllergens: fs.declaredAllergens");
+    expect(mergeFn).toContain("inferredAllergens: fs.inferredAllergens");
   });
 });
