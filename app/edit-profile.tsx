@@ -122,7 +122,7 @@ export default function EditProfileScreen() {
         <Text style={[styles.headerTitle, { color: theme.text }]}>Edit Health Profile</Text>
         <TouchableOpacity onPress={handleSave} style={styles.saveBtnWrapper} disabled={saving} accessibilityLabel="Save health profile" accessibilityRole="button">
           <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
+            colors={[theme.mint, theme.primary]}
             style={styles.saveBtn}
           >
             {saving ? (
@@ -325,7 +325,7 @@ export default function EditProfileScreen() {
           accessibilityRole="button"
         >
           <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
+            colors={[theme.mint, theme.primary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradientSaveBtn}

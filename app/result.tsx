@@ -56,7 +56,7 @@ const GLOW_STROKE_WIDTH = 32;
 const RADIUS = (GAUGE_SIZE - GLOW_STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function getScoreColor(score: number, isAllergenAlert: boolean, t: ThemeColors = C): string {
+function getScoreColor(score: number, isAllergenAlert: boolean, t: ThemeColors): string {
   if (isAllergenAlert) return t.danger;
   if (score <= 15) return t.darkRed;
   if (score <= 35) return t.danger;
@@ -65,13 +65,13 @@ function getScoreColor(score: number, isAllergenAlert: boolean, t: ThemeColors =
   return t.green;
 }
 
-function getScoreGradient(score: number, isAllergenAlert: boolean): [string, string] {
-  if (isAllergenAlert) return ["#E53935", "#C62828"];
-  if (score <= 15) return ["#D32F2F", "#B71C1C"];
-  if (score <= 35) return ["#EF5350", "#C62828"];
-  if (score <= 50) return ["#FFA726", "#EF6C00"];
-  if (score <= 74) return ["#2EC4B6", "#26A69A"];
-  return ["#3DD68C", "#2EC4B6"];
+function getScoreGradient(score: number, isAllergenAlert: boolean, t: ThemeColors): [string, string] {
+  if (isAllergenAlert) return t.gradAllergen;
+  if (score <= 15) return t.gradPoor;
+  if (score <= 35) return t.gradLow;
+  if (score <= 50) return t.gradCaution;
+  if (score <= 74) return t.gradModerate;
+  return t.gradGood;
 }
 
 function getScoreTrackColor(t: ThemeColors): string {
@@ -253,8 +253,8 @@ function ScoreRing({
   const opacity = useSharedValue(0);
 
   const t = useThemeColors();
-  const [gradientColors] = useState(getScoreGradient(score, isAllergenAlert));
-  const scoreColor = getScoreColor(score, isAllergenAlert);
+  const [gradientColors] = useState(getScoreGradient(score, isAllergenAlert, t));
+  const scoreColor = getScoreColor(score, isAllergenAlert, t);
   const trackColor = getScoreTrackColor(t);
 
   useEffect(() => {

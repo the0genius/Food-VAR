@@ -63,6 +63,12 @@ export const C = {
   onDark: '#FFFFFF',
   brandGold: '#FFD700',
   overlayBtn: 'rgba(255,255,255,0.5)',
+  gradAllergen: ['#E53935', '#C62828'] as [string, string],
+  gradPoor: ['#D32F2F', '#B71C1C'] as [string, string],
+  gradLow: ['#EF5350', '#C62828'] as [string, string],
+  gradCaution: ['#FFA726', '#EF6C00'] as [string, string],
+  gradModerate: ['#2EC4B6', '#26A69A'] as [string, string],
+  gradGood: ['#3DD68C', '#2EC4B6'] as [string, string],
 };
 
 const darkTokens = {
@@ -127,6 +133,12 @@ const darkTokens = {
   onDark: '#FFFFFF',
   brandGold: '#FFD700',
   overlayBtn: 'rgba(255,255,255,0.1)',
+  gradAllergen: ['#E53935', '#C62828'] as [string, string],
+  gradPoor: ['#D32F2F', '#B71C1C'] as [string, string],
+  gradLow: ['#EF5350', '#C62828'] as [string, string],
+  gradCaution: ['#FFA726', '#EF6C00'] as [string, string],
+  gradModerate: ['#2EC4B6', '#26A69A'] as [string, string],
+  gradGood: ['#3DD68C', '#2EC4B6'] as [string, string],
 };
 
 export type ThemeColors = typeof C & { isDark: boolean };
@@ -236,7 +248,9 @@ export function coloredShadow(color: string, intensity: "subtle" | "medium" | "s
   });
 }
 
-export function getScoreColor(score: number, t: ThemeColors = C): string {
+const defaultTheme: ThemeColors = { ...C, isDark: false };
+
+export function getScoreColor(score: number, t: ThemeColors = defaultTheme): string {
   if (score === 0) return t.danger;
   if (score <= 15) return t.darkRed;
   if (score <= 35) return t.danger;
@@ -245,7 +259,7 @@ export function getScoreColor(score: number, t: ThemeColors = C): string {
   return t.green;
 }
 
-export function getScoreBgColor(score: number, t: ThemeColors = C): string {
+export function getScoreBgColor(score: number, t: ThemeColors = defaultTheme): string {
   if (score === 0) return t.dangerBg;
   if (score <= 15) return t.dangerBg;
   if (score <= 35) return t.dangerBg;
