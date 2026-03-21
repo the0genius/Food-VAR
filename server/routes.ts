@@ -1060,12 +1060,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productSaturatedFat: products.saturatedFat,
           productFiber: products.fiber,
           productSodium: products.sodium,
-          productAllergens: products.allergens,
+          productAllergens: products.allergens, // LEGACY — not used for scoring or display; retained for data migration compatibility
           productDeclaredAllergens: products.declaredAllergens,
           productInferredAllergens: products.inferredAllergens,
           productServingSize: products.servingSize,
           productIngredients: products.ingredients,
           productNutritionFacts: products.nutritionFacts,
+          productSource: products.source,
         })
         .from(scanHistory)
         .innerJoin(products, eq(scanHistory.productId, products.id))

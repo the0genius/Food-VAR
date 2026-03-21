@@ -84,7 +84,7 @@ export const products = pgTable(
     saturatedFat: real("saturated_fat"),
     fiber: real("fiber"),
     sodium: real("sodium"),
-    allergens: jsonb("allergens").$type<string[]>().default([]),
+    allergens: jsonb("allergens").$type<string[]>().default([]), // LEGACY — retained for backwards compatibility; do NOT use for scoring, display, or safety logic. Use declaredAllergens / inferredAllergens instead.
     declaredAllergens: jsonb("declared_allergens").$type<string[]>().default([]),
     inferredAllergens: jsonb("inferred_allergens").$type<string[]>().default([]),
     ingredients: text("ingredients"),

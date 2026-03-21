@@ -59,6 +59,7 @@ Preferred communication style: Simple, everyday language.
 - **Data mapping**: FatSecret serving format → our Product schema fields. Allergens inferred from ingredients via `inferAllergensFromIngredients()`.
 - **Thin-reference architecture**: FatSecret products are stored as thin references in the products table (name, brand, category, fatsecretFoodId) with `source: "fatsecret"`, `moderationStatus: "approved"`. Full nutrition data is fetched fresh from FatSecret at request time (barcode lookup and scoring). Local DB fallback excludes FatSecret-sourced rows.
 - **Upsert logic**: FatSecret products saved to products table with `source: "fatsecret"`, `moderationStatus: "approved"`, `fatsecretFoodId`. Existing user-contributed products are NOT overwritten.
+- **API resilience**: All FatSecret API calls have a 10-second timeout (AbortController) and single retry with 1-second backoff on transient failures (5xx, network errors). Token endpoint uses standard fetch.
 - **IP whitelisting**: FatSecret may require server IP to be added to the developer portal's allowed list.
 - **Env vars**: `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET`.
 
@@ -149,5 +150,5 @@ Preferred communication style: Simple, everyday language.
 - Backfill script: `npx tsx scripts/backfill-inferred-allergens.ts` — recomputes `inferredAllergens` for all products with ingredients
 
 ## Testing
-- Unit tests: `npx vitest run` (108 tests across 7 files)
+- Unit tests: `npx vitest run` (117 tests across 8 files)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)

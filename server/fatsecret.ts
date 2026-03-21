@@ -64,7 +64,18 @@ interface FatSecretFoodResponse extends FatSecretApiError {
   };
 }
 
-async function apiCall(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
+const API_TIMEOUT_MS = 10_000;
+const RETRY_BACKOFF_MS = 1_000;
+
+function isTransientError(err: unknown, status?: number): boolean {
+  if (status && status >= 500) return true;
+  if (err instanceof TypeError) return true;
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  const msg = String(err);
+  return msg.includes("ECONNRESET") || msg.includes("ETIMEDOUT") || msg.includes("ENOTFOUND") || msg.includes("fetch failed");
+}
+
+async function apiCallOnce(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
   const token = await getAccessToken();
 
   const url = new URL(API_BASE);
@@ -74,17 +85,41 @@ async function apiCall(method: string, params: Record<string, string>): Promise<
     url.searchParams.set(k, v);
   }
 
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const text = await res.text();
-    logger.error("FatSecret API call failed", { method, status: res.status, body: text });
-    throw new Error(`FatSecret API error: ${res.status}`);
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      logger.error("FatSecret API call failed", { method, status: res.status, body: text });
+      const err = new Error(`FatSecret API error: ${res.status}`);
+      (err as any).status = res.status;
+      throw err;
+    }
+
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
   }
+}
 
-  return res.json();
+async function apiCall(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
+  try {
+    return await apiCallOnce(method, params);
+  } catch (err) {
+    const status = (err as any)?.status;
+    if (isTransientError(err, status)) {
+      logger.warn("FatSecret transient error, retrying once", { method, error: String(err) });
+      await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
+      return apiCallOnce(method, params);
+    }
+    throw err;
+  }
 }
 
 export async function lookupBarcode(barcode: string): Promise<string | null> {

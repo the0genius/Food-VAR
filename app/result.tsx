@@ -539,6 +539,7 @@ export default function ResultScreen() {
               servingSize: entry.productServingSize,
               ingredients: entry.productIngredients,
               nutritionFacts: entry.productNutritionFacts,
+              source: entry.productSource,
             },
           });
           if (wasReAnalyzed) {
@@ -825,6 +826,25 @@ export default function ResultScreen() {
       );
     }
 
+    if (allergenState === "product_contains_nonmatching") {
+      return (
+        <View style={[styles.allergenPill, {
+          backgroundColor: isDark ? '#1E2A35' : '#F0F4F8',
+          borderColor: isDark ? 'rgba(144,164,183,0.3)' : '#CFD8DC',
+        }]}>
+          <ShieldCheck size={18} color={isDark ? '#90A4AE' : '#546E7A'} weight="fill" />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.allergenPillText, { color: isDark ? '#B0BEC5' : '#37474F' }]}>
+              Contains allergens not in your profile
+            </Text>
+            <Text style={[styles.allergenPillSubtext, { color: isDark ? '#90A4AE' : '#546E7A' }]}>
+              This product contains: {allProductAllergens.join(', ')}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
     return null;
   }
 
@@ -895,6 +915,20 @@ export default function ResultScreen() {
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
           {renderAllergenSection()}
         </Animated.View>
+
+        {product.source === "fatsecret" && (
+          <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+            <View style={[styles.allergenPill, {
+              backgroundColor: isDark ? '#1A1F24' : '#FAFAFA',
+              borderColor: isDark ? 'rgba(100,116,139,0.2)' : '#E0E0E0',
+            }]}>
+              <WarningCircle size={16} color={isDark ? '#78909C' : '#90A4AE'} weight="fill" />
+              <Text style={[styles.allergenPillSubtext, { color: isDark ? '#78909C' : '#78909C', flex: 1 }]}>
+                Nutrition data from third-party database — verify package label for allergen certainty.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {data.advice ? (
           <Animated.View
