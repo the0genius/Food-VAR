@@ -524,7 +524,7 @@ const createStyles = (theme: ThemeColors) => {
       fontWeight: "500" as const,
       letterSpacing: 0.5,
       textTransform: "uppercase" as const,
-      color: "rgba(255,255,255,0.9)",
+      color: theme.onPrimaryMuted,
       marginTop: 0,
     },
     nameTimeRow: {
