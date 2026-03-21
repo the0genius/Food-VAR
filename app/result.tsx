@@ -773,7 +773,7 @@ export default function ResultScreen() {
 
           <Animated.View entering={FadeInDown.delay(400).duration(300)}>
             <Text style={styles.disclaimerText}>
-              This is not medical advice.{'\n'}Always consult your healthcare provider.
+              For informational purposes only — not medical advice.{'\n'}Always consult your healthcare provider.
             </Text>
           </Animated.View>
 

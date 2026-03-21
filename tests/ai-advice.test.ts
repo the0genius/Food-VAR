@@ -207,3 +207,137 @@ describe("history re-analysis preservation", () => {
     expect(reAnalysisResponse).toBeTruthy();
   });
 });
+
+describe("AI production hardening", () => {
+  it("getAdvice uses maxOutputTokens 2048, not 8192", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const adviceCall = source.match(
+      /async function getAdvice[\s\S]*?^}/m
+    );
+    expect(adviceCall).toBeTruthy();
+
+    const getAdviceSection = source.slice(
+      source.indexOf("export async function getAdvice"),
+      source.indexOf("function sanitizeForPrompt")
+    );
+    expect(getAdviceSection).toContain("maxOutputTokens: 2048");
+    expect(getAdviceSection).not.toContain("maxOutputTokens: 8192");
+  });
+
+  it("extractNutritionFromImages uses maxOutputTokens 4096, not 8192", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const extractionSection = source.slice(
+      source.indexOf("export async function extractNutritionFromImages")
+    );
+    expect(extractionSection).toContain("maxOutputTokens: 4096");
+    expect(extractionSection).not.toContain("maxOutputTokens: 8192");
+  });
+
+  it("uses structured logger instead of console.error", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).not.toContain("console.error");
+    expect(source).not.toContain("console.log");
+    expect(source).toContain('import { logger } from "./logger"');
+    expect(source).toContain('logger.error("Gemini advice generation failed"');
+    expect(source).toContain('logger.error("Gemini Vision extraction failed"');
+  });
+
+  it("has 30-second timeout on Gemini API calls via AbortController", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).toContain("GEMINI_TIMEOUT_MS = 30_000");
+
+    const getAdviceSection = source.slice(
+      source.indexOf("export async function getAdvice"),
+      source.indexOf("function sanitizeForPrompt")
+    );
+    expect(getAdviceSection).toContain("new AbortController()");
+    expect(getAdviceSection).toContain("controller.abort()");
+    expect(getAdviceSection).toContain("abortSignal: controller.signal");
+    expect(getAdviceSection).toContain("clearTimeout(timeout)");
+
+    const extractionSection = source.slice(
+      source.indexOf("export async function extractNutritionFromImages")
+    );
+    expect(extractionSection).toContain("new AbortController()");
+    expect(extractionSection).toContain("controller.abort()");
+    expect(extractionSection).toContain("abortSignal: controller.signal");
+    expect(extractionSection).toContain("clearTimeout(timeout)");
+  });
+});
+
+describe("cache-hit equivalency", () => {
+  it("cache-hit response contains all required AdviceResult fields", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const cacheHit = source.match(
+      /if \(cached\.length > 0\)[\s\S]*?fromCache: true[\s\S]*?\}/
+    );
+    expect(cacheHit).toBeTruthy();
+    const hitBlock = cacheHit![0];
+
+    expect(hitBlock).toContain("advice:");
+    expect(hitBlock).toContain("headline:");
+    expect(hitBlock).toContain("coachTip:");
+    expect(hitBlock).toContain("highlights:");
+    expect(hitBlock).toContain("fromCache: true");
+  });
+
+  it("fresh AI response contains the same AdviceResult fields as cache hit", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    const freshReturn = source.match(
+      /return \{[\s\S]*?advice: validated\.whyText[\s\S]*?fromCache: false[\s\S]*?\}/
+    );
+    expect(freshReturn).toBeTruthy();
+    const freshBlock = freshReturn![0];
+
+    expect(freshBlock).toContain("advice: validated.whyText");
+    expect(freshBlock).toContain("headline: validated.headline");
+    expect(freshBlock).toContain("coachTip: validated.coachTip");
+    expect(freshBlock).toContain("highlights: validated.highlights");
+    expect(freshBlock).toContain("fromCache: false");
+  });
+
+  it("deterministic fallback also returns all AdviceResult fields", () => {
+    const result = getDeterministicAdvice(60, "Generally Good", false, [], []);
+    expect(result).toHaveProperty("advice");
+    expect(result).toHaveProperty("headline");
+    expect(result).toHaveProperty("coachTip");
+    expect(result).toHaveProperty("highlights");
+    expect(result).toHaveProperty("fromCache");
+    expect(typeof result.advice).toBe("string");
+    expect(typeof result.headline).toBe("string");
+    expect(typeof result.coachTip).toBe("string");
+    expect(Array.isArray(result.highlights)).toBe(true);
+  });
+});
+
+describe("medical disclaimer language", () => {
+  it("AI prompt contains medical safety rules", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/ai-advice.ts", "utf-8");
+
+    expect(source).toContain("NEVER diagnose, prescribe, or claim");
+    expect(source).toContain("NEVER state a product is \"safe\"");
+    expect(source).toContain("You are NOT a doctor");
+  });
+
+  it("result screen shows informational-only disclaimer", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("app/result.tsx", "utf-8");
+
+    expect(source).toContain("For informational purposes only");
+    expect(source).toContain("not medical advice");
+    expect(source).toContain("Always consult your healthcare provider");
+  });
+});
