@@ -1,4 +1,77 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Product, User } from "../shared/schema";
+
+function makeProduct(overrides: Partial<Product> = {}): Product {
+  return {
+    id: 1,
+    barcode: "0000000000001",
+    name: "Test Product",
+    brand: "Test",
+    category: "Test",
+    servingSize: "100g",
+    calories: 100,
+    protein: 5,
+    carbohydrates: 20,
+    sugar: 5,
+    fat: 3,
+    saturatedFat: 1,
+    fiber: 2,
+    sodium: 100,
+    allergens: [],
+    declaredAllergens: [],
+    inferredAllergens: [],
+    ingredients: "test ingredients",
+    nutritionFacts: null,
+    frontImageUrl: null,
+    nutritionImageUrl: null,
+    contributedBy: null,
+    source: "test",
+    moderationStatus: "approved",
+    verifiedAt: null,
+    verifiedBy: null,
+    reportCount: 0,
+    scanCount: 0,
+    fatsecretFoodId: null,
+    extractionConfidence: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as Product;
+}
+
+function makeUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 1,
+    email: "test@test.com",
+    passwordHash: null,
+    authProvider: "google",
+    authProviderId: "test-provider-id",
+    name: "Test",
+    age: 30,
+    gender: "male",
+    heightCm: 175,
+    weightKg: 75,
+    conditions: [],
+    conditionsOther: null,
+    allergies: [],
+    allergiesOther: null,
+    dietaryPreference: null,
+    goal: "general_wellness",
+    profileClusterId: null,
+    onboardingCompleted: true,
+    isPro: false,
+    role: "user",
+    contributionCount: 0,
+    emailVerifiedAt: null,
+    consentPolicyVersion: null,
+    consentAiVersion: null,
+    consentAcceptedAt: null,
+    deletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as User;
+}
 
 const mockLogger = {
   info: vi.fn(),
@@ -233,28 +306,16 @@ describe("allergen display state rendering assertions", () => {
   it("product_contains_nonmatching state includes all product allergens", async () => {
     const { computeScore } = await import("../server/scoring-engine");
 
-    const product = {
-      id: 1, barcode: "0000000000001", name: "Test", brand: "Test",
-      category: "Test", servingSize: "100g", calories: 100, protein: 5,
-      carbohydrates: 20, sugar: 5, fat: 3, saturatedFat: 1, fiber: 2, sodium: 100,
-      allergens: [],
+    const product = makeProduct({
       declaredAllergens: ["gluten", "soy"],
       inferredAllergens: ["sesame"],
-      ingredients: null, nutritionFacts: null, frontImageUrl: null,
-      nutritionImageUrl: null, contributedBy: null, source: "fatsecret",
-      moderationStatus: "approved", scanCount: 0, fatsecretFoodId: "12345",
-      extractionConfidence: null, createdAt: new Date(), updatedAt: new Date(),
-    };
+      source: "fatsecret",
+      fatsecretFoodId: "12345",
+    });
 
-    const user = {
-      id: 1, username: "test", passwordHash: null, allergies: ["peanuts"],
-      healthConditions: [], dietaryPreferences: [], email: "t@t.com",
-      onboardingComplete: true, privacyConsent: false,
-      authProvider: null, authProviderId: null,
-      createdAt: new Date(), updatedAt: new Date(),
-    };
+    const user = makeUser({ allergies: ["peanuts"] });
 
-    const result = await computeScore(product as never, user as never);
+    const result = await computeScore(product, user);
     expect(result.allergenDisplayState).toBe("product_contains_nonmatching");
     expect(result.productDeclaredAllergens).toEqual(["gluten", "soy"]);
     expect(result.productInferredAllergens).toEqual(["sesame"]);
@@ -265,31 +326,17 @@ describe("allergen display state rendering assertions", () => {
   it("fatsecret source products include source field for trust note rendering", async () => {
     const { computeScore } = await import("../server/scoring-engine");
 
-    const product = {
-      id: 1, barcode: "0000000000001", name: "Test", brand: "Test",
-      category: "Test", servingSize: "100g", calories: 100, protein: 5,
-      carbohydrates: 20, sugar: 5, fat: 3, saturatedFat: 1, fiber: 2, sodium: 100,
-      allergens: [],
-      declaredAllergens: [],
-      inferredAllergens: [],
-      ingredients: null, nutritionFacts: null, frontImageUrl: null,
-      nutritionImageUrl: null, contributedBy: null, source: "fatsecret",
-      moderationStatus: "approved", scanCount: 0, fatsecretFoodId: "12345",
-      extractionConfidence: null, createdAt: new Date(), updatedAt: new Date(),
-    };
+    const product = makeProduct({
+      source: "fatsecret",
+      fatsecretFoodId: "12345",
+    });
 
     expect(product.source).toBe("fatsecret");
     expect(product.fatsecretFoodId).toBe("12345");
 
-    const user = {
-      id: 1, username: "test", passwordHash: null, allergies: [],
-      healthConditions: [], dietaryPreferences: [], email: "t@t.com",
-      onboardingComplete: true, privacyConsent: false,
-      authProvider: null, authProviderId: null,
-      createdAt: new Date(), updatedAt: new Date(),
-    };
+    const user = makeUser({ allergies: [] });
 
-    const result = await computeScore(product as never, user as never);
+    const result = await computeScore(product, user);
     expect(result.allergenDisplayState).toBe("none");
     expect(result.score).toBeGreaterThan(0);
   });
@@ -299,28 +346,15 @@ describe("legacy allergens field safety", () => {
   it("scoring engine does not use the generic allergens field", async () => {
     const { computeScore } = await import("../server/scoring-engine");
 
-    const product = {
-      id: 1, barcode: "0000000000001", name: "Test", brand: "Test",
-      category: "Test", servingSize: "100g", calories: 100, protein: 5,
-      carbohydrates: 20, sugar: 5, fat: 3, saturatedFat: 1, fiber: 2, sodium: 100,
+    const product = makeProduct({
       allergens: ["milk", "peanuts"],
-      declaredAllergens: [] as string[],
-      inferredAllergens: [] as string[],
-      ingredients: null, nutritionFacts: null, frontImageUrl: null,
-      nutritionImageUrl: null, contributedBy: null, source: "test",
-      moderationStatus: "approved", scanCount: 0, fatsecretFoodId: null,
-      extractionConfidence: null, createdAt: new Date(), updatedAt: new Date(),
-    };
+      declaredAllergens: [],
+      inferredAllergens: [],
+    });
 
-    const user = {
-      id: 1, username: "test", passwordHash: null, allergies: ["milk"],
-      healthConditions: [], dietaryPreferences: [], email: "t@t.com",
-      onboardingComplete: true, privacyConsent: false,
-      authProvider: null, authProviderId: null,
-      createdAt: new Date(), updatedAt: new Date(),
-    };
+    const user = makeUser({ allergies: ["milk"] });
 
-    const result = await computeScore(product as any, user as any);
+    const result = await computeScore(product, user);
     expect(result.isAllergenAlert).toBe(false);
     expect(result.score).not.toBe(0);
     expect(result.matchedAllergens).toEqual([]);
