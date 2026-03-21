@@ -130,6 +130,36 @@ describe("FatSecret API resilience", () => {
     expect(fetchCallCount).toBe(3);
   });
 
+  it("retries on AbortError (timeout simulation) and returns null if both fail", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => { throw new DOMException("The operation was aborted", "AbortError"); },
+      () => foodResponse("77777"),
+    ]);
+
+    const { lookupBarcode } = await import("../server/fatsecret");
+    const result = await lookupBarcode("1234567890");
+    expect(result).toBe("77777");
+    expect(fetchCallCount).toBe(3);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("transient error"),
+      expect.any(Object)
+    );
+  });
+
+  it("retries on network TypeError and returns null if retry also throws", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => { throw new TypeError("fetch failed"); },
+      () => { throw new TypeError("fetch failed"); },
+    ]);
+
+    const { lookupBarcode } = await import("../server/fatsecret");
+    const result = await lookupBarcode("1234567890");
+    expect(result).toBeNull();
+    expect(fetchCallCount).toBe(3);
+  });
+
   it("does not retry on 400 client error", async () => {
     mockFetchSequence([
       () => tokenResponse(),
@@ -196,6 +226,72 @@ describe("FatSecret API resilience", () => {
     delete process.env.FATSECRET_CLIENT_SECRET;
     const { isFatSecretConfigured } = await import("../server/fatsecret");
     expect(isFatSecretConfigured()).toBe(false);
+  });
+});
+
+describe("allergen display state rendering assertions", () => {
+  it("product_contains_nonmatching state includes all product allergens", async () => {
+    const { computeScore } = await import("../server/scoring-engine");
+
+    const product = {
+      id: 1, barcode: "0000000000001", name: "Test", brand: "Test",
+      category: "Test", servingSize: "100g", calories: 100, protein: 5,
+      carbohydrates: 20, sugar: 5, fat: 3, saturatedFat: 1, fiber: 2, sodium: 100,
+      allergens: [],
+      declaredAllergens: ["gluten", "soy"],
+      inferredAllergens: ["sesame"],
+      ingredients: null, nutritionFacts: null, frontImageUrl: null,
+      nutritionImageUrl: null, contributedBy: null, source: "fatsecret",
+      moderationStatus: "approved", scanCount: 0, fatsecretFoodId: "12345",
+      extractionConfidence: null, createdAt: new Date(), updatedAt: new Date(),
+    };
+
+    const user = {
+      id: 1, username: "test", passwordHash: null, allergies: ["peanuts"],
+      healthConditions: [], dietaryPreferences: [], email: "t@t.com",
+      onboardingComplete: true, privacyConsent: false,
+      authProvider: null, authProviderId: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    };
+
+    const result = await computeScore(product as never, user as never);
+    expect(result.allergenDisplayState).toBe("product_contains_nonmatching");
+    expect(result.productDeclaredAllergens).toEqual(["gluten", "soy"]);
+    expect(result.productInferredAllergens).toEqual(["sesame"]);
+    expect(result.isAllergenAlert).toBe(false);
+    expect(result.score).not.toBe(0);
+  });
+
+  it("fatsecret source products include source field for trust note rendering", async () => {
+    const { computeScore } = await import("../server/scoring-engine");
+
+    const product = {
+      id: 1, barcode: "0000000000001", name: "Test", brand: "Test",
+      category: "Test", servingSize: "100g", calories: 100, protein: 5,
+      carbohydrates: 20, sugar: 5, fat: 3, saturatedFat: 1, fiber: 2, sodium: 100,
+      allergens: [],
+      declaredAllergens: [],
+      inferredAllergens: [],
+      ingredients: null, nutritionFacts: null, frontImageUrl: null,
+      nutritionImageUrl: null, contributedBy: null, source: "fatsecret",
+      moderationStatus: "approved", scanCount: 0, fatsecretFoodId: "12345",
+      extractionConfidence: null, createdAt: new Date(), updatedAt: new Date(),
+    };
+
+    expect(product.source).toBe("fatsecret");
+    expect(product.fatsecretFoodId).toBe("12345");
+
+    const user = {
+      id: 1, username: "test", passwordHash: null, allergies: [],
+      healthConditions: [], dietaryPreferences: [], email: "t@t.com",
+      onboardingComplete: true, privacyConsent: false,
+      authProvider: null, authProviderId: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    };
+
+    const result = await computeScore(product as never, user as never);
+    expect(result.allergenDisplayState).toBe("none");
+    expect(result.score).toBeGreaterThan(0);
   });
 });
 

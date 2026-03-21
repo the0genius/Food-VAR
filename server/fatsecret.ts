@@ -4,6 +4,8 @@ import { inferAllergensFromIngredients } from "./allergen-inference";
 const TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 const API_BASE = "https://platform.fatsecret.com/rest/server.api";
 
+const TOKEN_TIMEOUT_MS = 10_000;
+
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
@@ -18,28 +20,36 @@ async function getAccessToken(): Promise<string> {
     throw new Error("FATSECRET_CLIENT_ID and FATSECRET_CLIENT_SECRET are required");
   }
 
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-    },
-    body: "grant_type=client_credentials&scope=basic",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const text = await res.text();
-    logger.error("FatSecret token request failed", { status: res.status, body: text });
-    throw new Error(`FatSecret OAuth failed: ${res.status}`);
+  try {
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+      },
+      body: "grant_type=client_credentials&scope=basic",
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      logger.error("FatSecret token request failed", { status: res.status, body: text });
+      throw new Error(`FatSecret OAuth failed: ${res.status}`);
+    }
+
+    const data = await res.json() as { access_token: string; expires_in: number };
+    cachedToken = {
+      value: data.access_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    };
+
+    return cachedToken.value;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const data = await res.json() as { access_token: string; expires_in: number };
-  cachedToken = {
-    value: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  };
-
-  return cachedToken.value;
 }
 
 interface FatSecretApiError {
@@ -67,8 +77,23 @@ interface FatSecretFoodResponse extends FatSecretApiError {
 const API_TIMEOUT_MS = 10_000;
 const RETRY_BACKOFF_MS = 1_000;
 
-function isTransientError(err: unknown, status?: number): boolean {
-  if (status && status >= 500) return true;
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
+function getHttpStatus(err: unknown): number | undefined {
+  if (err instanceof HttpError) return err.status;
+  return undefined;
+}
+
+function isTransientError(err: unknown): boolean {
+  const status = getHttpStatus(err);
+  if (status !== undefined && status >= 500) return true;
   if (err instanceof TypeError) return true;
   if (err instanceof DOMException && err.name === "AbortError") return true;
   const msg = String(err);
@@ -97,9 +122,7 @@ async function apiCallOnce(method: string, params: Record<string, string>): Prom
     if (!res.ok) {
       const text = await res.text();
       logger.error("FatSecret API call failed", { method, status: res.status, body: text });
-      const err = new Error(`FatSecret API error: ${res.status}`);
-      (err as any).status = res.status;
-      throw err;
+      throw new HttpError(`FatSecret API error: ${res.status}`, res.status);
     }
 
     return res.json();
@@ -112,8 +135,7 @@ async function apiCall(method: string, params: Record<string, string>): Promise<
   try {
     return await apiCallOnce(method, params);
   } catch (err) {
-    const status = (err as any)?.status;
-    if (isTransientError(err, status)) {
+    if (isTransientError(err)) {
       logger.warn("FatSecret transient error, retrying once", { method, error: String(err) });
       await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
       return apiCallOnce(method, params);
