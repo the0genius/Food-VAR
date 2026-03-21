@@ -751,8 +751,8 @@ export default function ResultScreen() {
               <View style={[styles.aiCoachAccent, { backgroundColor: theme.danger }]} />
               <View style={styles.aiCoachContent}>
                 <View style={styles.aiCoachHeader}>
-                  <View style={[styles.aiCoachIconCircle, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
-                    <Robot size={18} color={isDark ? '#4DD0C8' : '#2EC4B6'} weight="fill" />
+                  <View style={[styles.aiCoachIconCircle, { backgroundColor: theme.tealBg }]}>
+                    <Robot size={18} color={theme.tealScore} weight="fill" />
                   </View>
                   <Text style={[styles.aiCoachTitle, { color: theme.text }]}>AI Coach</Text>
                 </View>
@@ -938,15 +938,15 @@ export default function ResultScreen() {
             <View style={[styles.aiCoachAccent, { backgroundColor: theme.tealScore }]} />
             <View style={styles.aiCoachContent}>
               <View style={styles.aiCoachHeader}>
-                <View style={[styles.aiCoachIconCircle, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
-                  <Robot size={18} color={isDark ? '#4DD0C8' : '#2EC4B6'} weight="fill" />
+                <View style={[styles.aiCoachIconCircle, { backgroundColor: theme.tealBg }]}>
+                  <Robot size={18} color={theme.tealScore} weight="fill" />
                 </View>
                 <Text style={[styles.aiCoachTitle, { color: theme.text }]}>AI Coach</Text>
               </View>
               <Text style={[styles.adviceText, { color: theme.text }]}>{data.advice}</Text>
 
               {data.coachTip ? (
-                <View style={[styles.coachTipBox, { backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7' }]}>
+                <View style={[styles.coachTipBox, { backgroundColor: theme.bg }]}>
                   <Text style={{ fontSize: 18, lineHeight: 22 }}>💡</Text>
                   <Text style={styles.coachTipBoxText}>
                     <Text style={{ fontWeight: '600' as const, color: theme.text }}>Tip: </Text>
@@ -967,13 +967,13 @@ export default function ResultScreen() {
                 return (
                   <View key={i} style={styles.highlightRow}>
                     {severity === 'positive' ? (
-                      <CheckCircle size={18} color={isDark ? '#66BB6A' : '#43A047'} weight="fill" />
+                      <CheckCircle size={18} color={theme.green} weight="fill" />
                     ) : severity === 'warning' ? (
-                      <WarningCircle size={18} color={isDark ? '#FFB74D' : '#FB8C00'} weight="fill" />
+                      <WarningCircle size={18} color={theme.amber} weight="fill" />
                     ) : (
                       <CheckCircle size={18} color={scoreColor} weight="fill" />
                     )}
-                    <Text style={[styles.highlightRowText, { color: isDark ? '#D0D0D0' : '#333333' }]}>{h}</Text>
+                    <Text style={[styles.highlightRowText, { color: theme.text }]}>{h}</Text>
                   </View>
                 );
               })}

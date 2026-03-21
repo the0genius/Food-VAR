@@ -397,7 +397,7 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.statWidget}>
-              <View style={[styles.statIconCircle, { backgroundColor: isDark ? '#2C2C2C' : '#F5F5F7' }]}>
+              <View style={[styles.statIconCircle, { backgroundColor: theme.bg }]}>
                 <CalendarBlank size={16} color={theme.muted} />
               </View>
               <Text style={styles.statWidgetValue}>{stats?.weeklyScans ?? 0}</Text>
@@ -420,7 +420,7 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.passportRow}>
-            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#3D1515' : '#FFEBEE' }]}>
+            <View style={[styles.passportIcon, { backgroundColor: theme.dangerBg }]}>
               <Heartbeat size={16} color={theme.danger} weight="fill" />
             </View>
             <View style={styles.passportTextWrap}>
@@ -431,7 +431,7 @@ export default function ProfileScreen() {
           <View style={styles.passportDivider} />
 
           <View style={styles.passportRow}>
-            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#3D2E15' : '#FFF3E0' }]}>
+            <View style={[styles.passportIcon, { backgroundColor: theme.amberBg }]}>
               <WarningCircle size={16} color={theme.amber} weight="fill" />
             </View>
             <View style={styles.passportTextWrap}>
@@ -442,7 +442,7 @@ export default function ProfileScreen() {
           <View style={styles.passportDivider} />
 
           <View style={styles.passportRow}>
-            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#1B3A1D' : '#E8F5E9' }]}>
+            <View style={[styles.passportIcon, { backgroundColor: theme.greenBg }]}>
               <Flag size={16} color={theme.green} weight="fill" />
             </View>
             <View style={styles.passportTextWrap}>
@@ -453,7 +453,7 @@ export default function ProfileScreen() {
 
           <View style={styles.passportDivider} />
           <View style={styles.passportRow}>
-            <View style={[styles.passportIcon, { backgroundColor: isDark ? '#153D3A' : '#E0F2F1' }]}>
+            <View style={[styles.passportIcon, { backgroundColor: theme.tealBg }]}>
               <Leaf size={16} color={theme.tealScore} weight="fill" />
             </View>
             <View style={styles.passportTextWrap}>

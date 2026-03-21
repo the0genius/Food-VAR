@@ -488,33 +488,44 @@ export default function ContributeScreen() {
               <Text style={[styles.reviewExtractedTitle, { color: theme.text }]}>
                 What We Found
               </Text>
-              {[
-                { label: "Brand", value: extractedData.brand },
-                { label: "Category", value: extractedData.category },
-                { label: "Serving", value: extractedData.servingSize },
-                { label: "Calories", value: extractedData.calories != null ? `${extractedData.calories}` : null },
-                { label: "Protein", value: extractedData.protein != null ? `${extractedData.protein}g` : null },
-                { label: "Carbs", value: extractedData.carbohydrates != null ? `${extractedData.carbohydrates}g` : null },
-                { label: "Sugar", value: extractedData.sugar != null ? `${extractedData.sugar}g` : null },
-                { label: "Fat", value: extractedData.fat != null ? `${extractedData.fat}g` : null },
-                { label: "Sat. Fat", value: extractedData.saturatedFat != null ? `${extractedData.saturatedFat}g` : null },
-                { label: "Fiber", value: extractedData.fiber != null ? `${extractedData.fiber}g` : null },
-                { label: "Sodium", value: extractedData.sodium != null ? `${extractedData.sodium}mg` : null },
-              ].map(({ label, value }) => (
-                <View key={label} style={styles.reviewFieldRow} accessible={true} accessibilityLabel={`${label}: ${value || "not detected"}`}>
-                  {value ? (
-                    <CheckCircle size={14} color={theme.green} weight="fill" />
-                  ) : (
-                    <WarningCircle size={14} color={theme.placeholder} />
-                  )}
-                  <Text style={[styles.reviewFieldLabel, { color: value ? theme.text : theme.placeholder }]}>
-                    {label}
-                  </Text>
-                  <Text style={[styles.reviewFieldValue, { color: value ? theme.muted : theme.placeholder }]}>
-                    {value || "Not detected"}
-                  </Text>
-                </View>
-              ))}
+              {(() => {
+                const fieldConf = extractedData.confidence?.fields || {};
+                const fields = [
+                  { label: "Brand", key: "brand", value: extractedData.brand },
+                  { label: "Category", key: "category", value: extractedData.category },
+                  { label: "Serving", key: "servingSize", value: extractedData.servingSize },
+                  { label: "Calories", key: "calories", value: extractedData.calories != null ? `${extractedData.calories}` : null },
+                  { label: "Protein", key: "protein", value: extractedData.protein != null ? `${extractedData.protein}g` : null },
+                  { label: "Carbs", key: "carbohydrates", value: extractedData.carbohydrates != null ? `${extractedData.carbohydrates}g` : null },
+                  { label: "Sugar", key: "sugar", value: extractedData.sugar != null ? `${extractedData.sugar}g` : null },
+                  { label: "Fat", key: "fat", value: extractedData.fat != null ? `${extractedData.fat}g` : null },
+                  { label: "Sat. Fat", key: "saturatedFat", value: extractedData.saturatedFat != null ? `${extractedData.saturatedFat}g` : null },
+                  { label: "Fiber", key: "fiber", value: extractedData.fiber != null ? `${extractedData.fiber}g` : null },
+                  { label: "Sodium", key: "sodium", value: extractedData.sodium != null ? `${extractedData.sodium}mg` : null },
+                ];
+                return fields.map(({ label, key, value }) => {
+                  const conf = fieldConf[key];
+                  const needsReview = value && (conf === "low" || conf === "medium");
+                  const statusLabel = !value ? "not detected" : needsReview ? `${value} (needs review)` : value;
+                  return (
+                    <View key={label} style={styles.reviewFieldRow} accessible={true} accessibilityLabel={`${label}: ${statusLabel}`}>
+                      {!value ? (
+                        <WarningCircle size={14} color={theme.placeholder} />
+                      ) : needsReview ? (
+                        <PencilSimple size={14} color={theme.amber} />
+                      ) : (
+                        <CheckCircle size={14} color={theme.green} weight="fill" />
+                      )}
+                      <Text style={[styles.reviewFieldLabel, { color: !value ? theme.placeholder : theme.text }]}>
+                        {label}
+                      </Text>
+                      <Text style={[styles.reviewFieldValue, { color: !value ? theme.placeholder : needsReview ? theme.amber : theme.muted }]}>
+                        {!value ? "Not detected" : needsReview ? `${value} ⚠` : value}
+                      </Text>
+                    </View>
+                  );
+                });
+              })()}
               {extractedData.allergens?.length > 0 && (
                 <View style={styles.reviewFieldRow} accessible={true} accessibilityLabel={`Allergens: ${extractedData.allergens.join(", ")}`}>
                   <CheckCircle size={14} color={theme.green} weight="fill" />
