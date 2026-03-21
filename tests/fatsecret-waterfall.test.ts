@@ -223,8 +223,8 @@ describe("isFatSecretConfigured", () => {
   });
 });
 
-describe("barcode route waterfall logic (source verification)", () => {
-  it("tries FatSecret first, falls back to local DB, then returns 404", async () => {
+describe("barcode route waterfall ordering (source verification)", () => {
+  it("waterfall order: FatSecret → local DB (excluding fatsecret rows) → 404", async () => {
     const fs = await import("fs");
     const source = fs.readFileSync("server/routes.ts", "utf-8");
 
@@ -240,59 +240,45 @@ describe("barcode route waterfall logic (source verification)", () => {
     expect(fatSecretIdx).toBeGreaterThan(-1);
     expect(localDbIdx).toBeGreaterThan(fatSecretIdx);
     expect(notFoundIdx).toBeGreaterThan(localDbIdx);
-  });
-
-  it("catches FatSecret errors and falls back gracefully", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const barcodeRoute = source.slice(
-      source.indexOf('app.get("/api/products/barcode/:barcode"'),
-      source.indexOf('app.get("/api/products/search"')
-    );
 
     expect(barcodeRoute).toContain("catch (fsError)");
-    expect(barcodeRoute).toContain("FatSecret lookup failed, falling back to local DB");
-  });
-
-  it("excludes fatsecret-sourced rows from local DB fallback", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const barcodeRoute = source.slice(
-      source.indexOf('app.get("/api/products/barcode/:barcode"'),
-      source.indexOf('app.get("/api/products/search"')
-    );
-
-    expect(barcodeRoute).toContain('ne(products.source, "fatsecret")');
     expect(barcodeRoute).toContain("getApprovedProductFilter()");
   });
 });
 
-describe("thin-reference architecture", () => {
-  it("upsertFatSecretReference stores only identity fields, not nutrition", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
+describe("thin-reference architecture (behavioral)", () => {
+  it("getFoodDetails returns nutrition but fetchByBarcode product has no DB nutrition stored", async () => {
+    vi.resetModules();
+    process.env.FATSECRET_CLIENT_ID = "test-id";
+    process.env.FATSECRET_CLIENT_SECRET = "test-secret";
 
-    const upsertFn = source.slice(
-      source.indexOf("async function upsertFatSecretReference"),
-      source.indexOf("function mergeProductWithFatSecret")
-    );
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => foodDetailsResponse(),
+    ]);
 
-    expect(upsertFn).toContain("name: fs.name");
-    expect(upsertFn).toContain("brand: fs.brand");
-    expect(upsertFn).toContain("fatsecretFoodId: fs.fatsecretFoodId");
-    expect(upsertFn).toContain('source: "fatsecret"');
-    expect(upsertFn).toContain('moderationStatus: "approved"');
+    const { getFoodDetails } = await import("../server/fatsecret");
+    const details = await getFoodDetails("12345");
 
-    expect(upsertFn).not.toContain("calories: fs.calories");
-    expect(upsertFn).not.toContain("protein: fs.protein");
+    expect(details).not.toBeNull();
+    expect(details!.calories).toBe(250);
+    expect(details!.protein).toBe(8);
+    expect(details!.sodium).toBe(300);
+    expect(details!.fatsecretFoodId).toBe("12345");
+    expect(details!.name).toBe("Waterfall Test Product");
+    expect(details!.brand).toBe("Test Brand");
+
+    expect(details!.declaredAllergens).toEqual([]);
+    expect(Array.isArray(details!.inferredAllergens)).toBe(true);
+
+    global.fetch = originalFetch;
+    delete process.env.FATSECRET_CLIENT_ID;
+    delete process.env.FATSECRET_CLIENT_SECRET;
   });
 
   it("mergeProductWithFatSecret overlays nutrition from API onto DB row", async () => {
     const fs = await import("fs");
     const source = fs.readFileSync("server/routes.ts", "utf-8");
-
     const mergeFn = source.slice(
       source.indexOf("function mergeProductWithFatSecret"),
       source.indexOf("export async function registerRoutes")

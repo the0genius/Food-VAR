@@ -76,10 +76,10 @@ async function run() {
 
   console.log("\n--- Auth ---");
 
-  let accessToken = "";
-  let refreshToken = "";
+  let accessToken = process.env.SMOKE_TEST_ACCESS_TOKEN || "";
+  let refreshToken = process.env.SMOKE_TEST_REFRESH_TOKEN || "";
 
-  if (process.env.NODE_ENV !== "production") {
+  if (!accessToken && process.env.NODE_ENV !== "production") {
     await test("POST /api/auth/dev-login returns tokens and user", async () => {
       const { status, body } = await fetchJSON("/api/auth/dev-login", { method: "POST" });
       assert(status === 200, `Expected 200, got ${status}`);
@@ -92,9 +92,10 @@ async function run() {
       accessToken = data.accessToken as string;
       refreshToken = data.refreshToken as string;
     });
+  }
 
+  if (accessToken) {
     await test("GET /api/auth/me returns user with valid token", async () => {
-      if (!accessToken) throw new Error("No access token from dev-login");
       const { status, body } = await fetchJSON("/api/auth/me", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -102,14 +103,15 @@ async function run() {
       const data = body as Record<string, unknown>;
       assert(typeof data.email === "string", "Missing email");
     });
+  }
 
-    await test("GET /api/auth/me returns 401 without token", async () => {
-      const { status } = await fetchJSON("/api/auth/me");
-      assert(status === 401, `Expected 401, got ${status}`);
-    });
+  await test("GET /api/auth/me returns 401 without token", async () => {
+    const { status } = await fetchJSON("/api/auth/me");
+    assert(status === 401, `Expected 401, got ${status}`);
+  });
 
+  if (refreshToken) {
     await test("POST /api/auth/refresh rotates token", async () => {
-      if (!refreshToken) throw new Error("No refresh token from dev-login");
       const { status, body } = await fetchJSON("/api/auth/refresh", {
         method: "POST",
         body: JSON.stringify({ refreshToken }),

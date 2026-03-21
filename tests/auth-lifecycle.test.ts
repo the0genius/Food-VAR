@@ -1,7 +1,29 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import jwt from "jsonwebtoken";
-import { generateAccessToken, verifyAccessToken, stripSensitiveFields } from "../server/auth";
+import crypto from "crypto";
+import { generateAccessToken, verifyAccessToken, stripSensitiveFields, createRefreshToken, rotateRefreshToken, revokeAllRefreshTokens } from "../server/auth";
 import type { AuthPayload } from "../server/auth";
+import { db } from "../server/db";
+import { users, refreshTokens } from "../shared/schema";
+import { eq } from "drizzle-orm";
+
+let testUserId: number;
+
+beforeAll(async () => {
+  const [user] = await db.insert(users).values({
+    email: `auth-test-${Date.now()}@test.com`,
+    authProvider: "google",
+    authProviderId: `test-${Date.now()}`,
+    name: "Auth Test User",
+    role: "user",
+  }).returning();
+  testUserId = user.id;
+});
+
+afterAll(async () => {
+  await db.delete(refreshTokens).where(eq(refreshTokens.userId, testUserId));
+  await db.delete(users).where(eq(users.id, testUserId));
+});
 
 describe("access token lifecycle", () => {
   const testPayload: AuthPayload = {
@@ -105,154 +127,6 @@ describe("requireAuth middleware behavior", () => {
   });
 });
 
-describe("refresh token security (source verification)", () => {
-  it("refresh tokens are hashed with SHA-256 before storage", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-
-    const createFn = source.slice(
-      source.indexOf("export async function createRefreshToken"),
-      source.indexOf("export async function rotateRefreshToken")
-    );
-    expect(createFn).toContain('createHash("sha256")');
-    expect(createFn).toContain("tokenHash");
-  });
-
-  it("token rotation revokes the old token and issues a new one", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-
-    const rotateFn = source.slice(
-      source.indexOf("export async function rotateRefreshToken"),
-      source.indexOf("export async function revokeAllRefreshTokens")
-    );
-    expect(rotateFn).toContain("revokedAt: new Date()");
-    expect(rotateFn).toContain("createRefreshToken(userId)");
-  });
-
-  it("reuse detection revokes all user sessions", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-
-    const rotateFn = source.slice(
-      source.indexOf("export async function rotateRefreshToken"),
-      source.indexOf("export async function revokeAllRefreshTokens")
-    );
-    expect(rotateFn).toContain("existing.revokedAt");
-    expect(rotateFn).toContain("revokeAllRefreshTokens(userId)");
-    expect(rotateFn).toContain("return null");
-  });
-
-  it("refresh tokens expire after 30 days", () => {
-    const fs = require("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-    expect(source).toContain("REFRESH_TOKEN_EXPIRY_DAYS = 30");
-  });
-});
-
-describe("refresh route contract", () => {
-  it("validates input with Zod schema", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const refreshRoute = source.slice(
-      source.indexOf('app.post("/api/auth/refresh"'),
-      source.indexOf('app.post("/api/auth/logout"')
-    );
-    expect(refreshRoute).toContain("refreshSchema.safeParse");
-  });
-
-  it("detects revoked token reuse and invalidates all sessions", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const refreshRoute = source.slice(
-      source.indexOf('app.post("/api/auth/refresh"'),
-      source.indexOf('app.post("/api/auth/logout"')
-    );
-    expect(refreshRoute).toContain("tokenRecord.revokedAt");
-    expect(refreshRoute).toContain("revokeAllRefreshTokens");
-    expect(refreshRoute).toContain("Token reuse detected");
-  });
-
-  it("checks user is not soft-deleted before issuing tokens", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const refreshRoute = source.slice(
-      source.indexOf('app.post("/api/auth/refresh"'),
-      source.indexOf('app.post("/api/auth/logout"')
-    );
-    expect(refreshRoute).toContain("isNull(users.deletedAt)");
-  });
-});
-
-describe("social auth error handling", () => {
-  it("Google auth returns 409 for cross-provider conflict", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const googleRoute = source.slice(
-      source.indexOf('app.post("/api/auth/google"'),
-      source.indexOf('app.post("/api/auth/apple"')
-    );
-    expect(googleRoute).toContain("ACCOUNT_LINKED_DIFFERENT_PROVIDER");
-    expect(googleRoute).toContain("status(409)");
-  });
-
-  it("Apple auth returns 400 when email is not shared", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const appleRoute = source.slice(
-      source.indexOf('app.post("/api/auth/apple"'),
-      source.indexOf('app.post("/api/auth/refresh"')
-    );
-    expect(appleRoute).toContain("EMAIL_REQUIRED_FOR_NEW_ACCOUNT");
-    expect(appleRoute).toContain("status(400)");
-  });
-});
-
-describe("findOrCreateSocialUser safety", () => {
-  it("checks provider+providerId before email lookup", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-
-    const findFn = source.slice(
-      source.indexOf("export async function findOrCreateSocialUser")
-    );
-    const providerCheckIdx = findFn.indexOf("existingByProvider");
-    const emailCheckIdx = findFn.indexOf("existingByEmail");
-    expect(providerCheckIdx).toBeLessThan(emailCheckIdx);
-  });
-
-  it("excludes soft-deleted users from both lookups", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/auth.ts", "utf-8");
-
-    const findFn = source.slice(
-      source.indexOf("export async function findOrCreateSocialUser")
-    );
-    const deletedAtMatches = findFn.match(/isNull\(users\.deletedAt\)/g) || [];
-    expect(deletedAtMatches.length).toBeGreaterThanOrEqual(2);
-  });
-});
-
-describe("account deletion", () => {
-  it("soft-deletes (does not hard-delete) users", async () => {
-    const fs = await import("fs");
-    const source = fs.readFileSync("server/routes.ts", "utf-8");
-
-    const deleteRoute = source.slice(
-      source.indexOf('app.delete("/api/auth/account"'),
-      source.indexOf('app.get("/api/auth/export"')
-    );
-    expect(deleteRoute).toContain("deletedAt: new Date()");
-    expect(deleteRoute).not.toContain("db.delete(users)");
-    expect(deleteRoute).toContain("revokeAllRefreshTokens");
-  });
-});
-
 describe("expired access token handling", () => {
   const JWT_SECRET = process.env.SESSION_SECRET!;
 
@@ -285,5 +159,157 @@ describe("expired access token handling", () => {
     );
     const result = verifyAccessToken(wrongSecretToken);
     expect(result).toBeNull();
+  });
+});
+
+describe("refresh token lifecycle (behavioral, real DB)", () => {
+  it("createRefreshToken returns a hex string and stores SHA-256 hash", async () => {
+    const token = await createRefreshToken(testUserId);
+    expect(typeof token).toBe("string");
+    expect(token.length).toBe(128);
+
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const [row] = await db.select().from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, hash)).limit(1);
+    expect(row).toBeDefined();
+    expect(row.userId).toBe(testUserId);
+    expect(row.revokedAt).toBeNull();
+    expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now());
+
+    const daysUntilExpiry = (row.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    expect(daysUntilExpiry).toBeGreaterThan(29);
+    expect(daysUntilExpiry).toBeLessThanOrEqual(30.1);
+  });
+
+  it("rotateRefreshToken revokes old token and returns new one", async () => {
+    const oldToken = await createRefreshToken(testUserId);
+    const newToken = await rotateRefreshToken(oldToken, testUserId);
+
+    expect(newToken).not.toBeNull();
+    expect(newToken).not.toBe(oldToken);
+
+    const oldHash = crypto.createHash("sha256").update(oldToken).digest("hex");
+    const [oldRow] = await db.select().from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, oldHash)).limit(1);
+    expect(oldRow.revokedAt).not.toBeNull();
+
+    const newHash = crypto.createHash("sha256").update(newToken!).digest("hex");
+    const [newRow] = await db.select().from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, newHash)).limit(1);
+    expect(newRow).toBeDefined();
+    expect(newRow.revokedAt).toBeNull();
+  });
+
+  it("rotateRefreshToken returns null for already-revoked token (reuse detection)", async () => {
+    const token = await createRefreshToken(testUserId);
+    await rotateRefreshToken(token, testUserId);
+
+    const replayResult = await rotateRefreshToken(token, testUserId);
+    expect(replayResult).toBeNull();
+  });
+
+  it("reuse detection revokes ALL user tokens", async () => {
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, testUserId));
+
+    const token1 = await createRefreshToken(testUserId);
+    const token2 = await createRefreshToken(testUserId);
+
+    await rotateRefreshToken(token1, testUserId);
+    await rotateRefreshToken(token1, testUserId);
+
+    const hash2 = crypto.createHash("sha256").update(token2).digest("hex");
+    const [row2] = await db.select().from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, hash2)).limit(1);
+    expect(row2.revokedAt).not.toBeNull();
+  });
+
+  it("revokeAllRefreshTokens marks all active tokens as revoked", async () => {
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, testUserId));
+
+    await createRefreshToken(testUserId);
+    await createRefreshToken(testUserId);
+
+    await revokeAllRefreshTokens(testUserId);
+
+    const remaining = await db.select().from(refreshTokens)
+      .where(eq(refreshTokens.userId, testUserId));
+    for (const row of remaining) {
+      expect(row.revokedAt).not.toBeNull();
+    }
+  });
+
+  it("rotateRefreshToken returns null for a non-existent token", async () => {
+    const fakeToken = crypto.randomBytes(64).toString("hex");
+    const result = await rotateRefreshToken(fakeToken, testUserId);
+    expect(result).toBeNull();
+  });
+
+  it("rotateRefreshToken returns null for wrong userId", async () => {
+    const token = await createRefreshToken(testUserId);
+    const result = await rotateRefreshToken(token, testUserId + 99999);
+    expect(result).toBeNull();
+  });
+});
+
+describe("social auth and account deletion (source verification)", () => {
+  it("Google auth handles cross-provider conflict with 409", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+    const googleRoute = source.slice(
+      source.indexOf('app.post("/api/auth/google"'),
+      source.indexOf('app.post("/api/auth/apple"')
+    );
+    expect(googleRoute).toContain("ACCOUNT_LINKED_DIFFERENT_PROVIDER");
+    expect(googleRoute).toContain("status(409)");
+  });
+
+  it("Apple auth requires email for new accounts", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+    const appleRoute = source.slice(
+      source.indexOf('app.post("/api/auth/apple"'),
+      source.indexOf('app.post("/api/auth/refresh"')
+    );
+    expect(appleRoute).toContain("EMAIL_REQUIRED_FOR_NEW_ACCOUNT");
+    expect(appleRoute).toContain("status(400)");
+  });
+
+  it("account deletion is soft-delete with session revocation", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+    const deleteRoute = source.slice(
+      source.indexOf('app.delete("/api/auth/account"'),
+      source.indexOf('app.get("/api/auth/export"')
+    );
+    expect(deleteRoute).toContain("deletedAt: new Date()");
+    expect(deleteRoute).not.toContain("db.delete(users)");
+    expect(deleteRoute).toContain("revokeAllRefreshTokens");
+  });
+
+  it("findOrCreateSocialUser checks provider before email and excludes deleted users", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/auth.ts", "utf-8");
+    const findFn = source.slice(
+      source.indexOf("export async function findOrCreateSocialUser")
+    );
+    const providerCheckIdx = findFn.indexOf("existingByProvider");
+    const emailCheckIdx = findFn.indexOf("existingByEmail");
+    expect(providerCheckIdx).toBeLessThan(emailCheckIdx);
+    const deletedAtMatches = findFn.match(/isNull\(users\.deletedAt\)/g) || [];
+    expect(deletedAtMatches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("refresh route validates input, detects reuse, checks soft-delete", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("server/routes.ts", "utf-8");
+    const refreshRoute = source.slice(
+      source.indexOf('app.post("/api/auth/refresh"'),
+      source.indexOf('app.post("/api/auth/logout"')
+    );
+    expect(refreshRoute).toContain("refreshSchema.safeParse");
+    expect(refreshRoute).toContain("tokenRecord.revokedAt");
+    expect(refreshRoute).toContain("revokeAllRefreshTokens");
+    expect(refreshRoute).toContain("Token reuse detected");
+    expect(refreshRoute).toContain("isNull(users.deletedAt)");
   });
 });
