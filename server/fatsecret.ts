@@ -5,75 +5,6 @@ const TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 const API_BASE = "https://platform.fatsecret.com/rest/server.api";
 
 const TOKEN_TIMEOUT_MS = 10_000;
-
-let cachedToken: { value: string; expiresAt: number } | null = null;
-
-async function getAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
-    return cachedToken.value;
-  }
-
-  const clientId = process.env.FATSECRET_CLIENT_ID;
-  const clientSecret = process.env.FATSECRET_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error("FATSECRET_CLIENT_ID and FATSECRET_CLIENT_SECRET are required");
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-      },
-      body: "grant_type=client_credentials&scope=basic",
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      logger.error("FatSecret token request failed", { status: res.status, body: text });
-      throw new Error(`FatSecret OAuth failed: ${res.status}`);
-    }
-
-    const data = await res.json() as { access_token: string; expires_in: number };
-    cachedToken = {
-      value: data.access_token,
-      expiresAt: Date.now() + data.expires_in * 1000,
-    };
-
-    return cachedToken.value;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-interface FatSecretApiError {
-  error?: { code: number; message: string };
-}
-
-interface FatSecretBarcodeResponse extends FatSecretApiError {
-  food_id?: { value: string } | string;
-}
-
-interface FatSecretFoodResponse extends FatSecretApiError {
-  food?: {
-    food_id: string;
-    food_name: string;
-    brand_name?: string;
-    food_type?: string;
-    food_description?: string;
-    food_sub_categories?: { food_sub_category?: string[] };
-    servings?: {
-      serving: FatSecretServing | FatSecretServing[];
-    };
-  };
-}
-
 const API_TIMEOUT_MS = 10_000;
 const RETRY_BACKOFF_MS = 1_000;
 
@@ -98,6 +29,87 @@ function isTransientError(err: unknown): boolean {
   if (err instanceof DOMException && err.name === "AbortError") return true;
   const msg = String(err);
   return msg.includes("ECONNRESET") || msg.includes("ETIMEDOUT") || msg.includes("ENOTFOUND") || msg.includes("fetch failed");
+}
+
+let cachedToken: { value: string; expiresAt: number } | null = null;
+
+async function fetchToken(): Promise<string> {
+  const clientId = process.env.FATSECRET_CLIENT_ID;
+  const clientSecret = process.env.FATSECRET_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error("FATSECRET_CLIENT_ID and FATSECRET_CLIENT_SECRET are required");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TOKEN_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+      },
+      body: "grant_type=client_credentials&scope=basic",
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      logger.error("FatSecret token request failed", { status: res.status, body: text });
+      throw new HttpError(`FatSecret OAuth failed: ${res.status}`, res.status);
+    }
+
+    const data = await res.json() as { access_token: string; expires_in: number };
+    cachedToken = {
+      value: data.access_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    };
+
+    return cachedToken.value;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getAccessToken(): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
+    return cachedToken.value;
+  }
+
+  try {
+    return await fetchToken();
+  } catch (err) {
+    if (isTransientError(err)) {
+      logger.warn("FatSecret token fetch transient error, retrying once", { error: String(err) });
+      await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS));
+      return fetchToken();
+    }
+    throw err;
+  }
+}
+
+interface FatSecretApiError {
+  error?: { code: number; message: string };
+}
+
+interface FatSecretBarcodeResponse extends FatSecretApiError {
+  food_id?: { value: string } | string;
+}
+
+interface FatSecretFoodResponse extends FatSecretApiError {
+  food?: {
+    food_id: string;
+    food_name: string;
+    brand_name?: string;
+    food_type?: string;
+    food_description?: string;
+    food_sub_categories?: { food_sub_category?: string[] };
+    servings?: {
+      serving: FatSecretServing | FatSecretServing[];
+    };
+  };
 }
 
 async function apiCallOnce(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
