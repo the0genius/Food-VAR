@@ -287,7 +287,7 @@ export default function OnboardingScreen() {
             </View>
             <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
             <Text style={styles.stepSubtitle}>
-              Get personalized food scores based on your unique health profile
+              Scan any food product and get a health score personalized to your diet, allergies, and goals — in seconds.
             </Text>
             <View style={styles.socialButtonsWrap}>
               <TouchableOpacity
@@ -339,6 +339,11 @@ export default function OnboardingScreen() {
               >
                 <Text style={styles.loadingText}>Signing in...</Text>
               </MotiView>
+            )}
+            {!loading && (
+              <Text style={styles.trustLine}>
+                Your data stays private. We never share health information.
+              </Text>
             )}
           </MotiView>
         );
@@ -884,6 +889,13 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: theme.muted,
     fontWeight: "500",
+  },
+  trustLine: {
+    fontSize: 13,
+    color: theme.placeholder,
+    textAlign: "center",
+    marginTop: 20,
+    lineHeight: 18,
   },
   inputGroup: {
     marginBottom: 20,

@@ -483,7 +483,7 @@ export default function ResultScreen() {
   const [originalScore, setOriginalScore] = useState<number | null>(null);
   const [showFullNutrition, setShowFullNutrition] = useState(false);
 
-  const isDark = theme.bg === '#121212';
+
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
   const filteredHighlights = useMemo(() => {
@@ -720,7 +720,7 @@ export default function ResultScreen() {
         >
           <Animated.View entering={FadeInDown.duration(500)}>
             <LinearGradient
-              colors={isDark ? ['#3D1515', theme.card] : ['#FFEBEE', '#FFFFFF']}
+              colors={[theme.dangerBg, theme.card]}
               style={styles.scoreGradientCard}
             >
               <MotiView
@@ -738,7 +738,7 @@ export default function ResultScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150).duration(400)}>
-            <View style={[styles.allergenPill, { backgroundColor: theme.dangerBg, borderColor: isDark ? 'rgba(239,83,80,0.3)' : '#FFCDD2' }]}>
+            <View style={[styles.allergenPill, { backgroundColor: theme.dangerBg, borderColor: theme.scoreChipAllergen }]} accessible={true} accessibilityLabel={`Allergen alert: contains ${data.matchedAllergens.join(", ")}`} accessibilityRole="alert">
               <Warning size={18} color={theme.danger} weight="fill" />
               <Text style={[styles.allergenPillText, { color: theme.danger }]}>
                 Allergen Alert — {data.matchedAllergens.join(", ")}
@@ -810,15 +810,15 @@ export default function ResultScreen() {
     if (allergenState === "possible_risk") {
       return (
         <View style={[styles.allergenPill, {
-          backgroundColor: isDark ? '#2D2510' : '#FFF8E1',
-          borderColor: isDark ? 'rgba(255,183,77,0.3)' : '#FFE0B2',
-        }]}>
-          <Warning size={18} color={isDark ? '#FFB74D' : '#F57C00'} weight="fill" />
+          backgroundColor: theme.warningBg,
+          borderColor: theme.warningBorder,
+        }]} accessible={true} accessibilityLabel={`Possible allergen risk from ingredients: ${(data?.inferredAllergenWarnings || []).join(', ')}`}>
+          <Warning size={18} color={theme.possibleRiskIcon} weight="fill" />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.allergenPillText, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+            <Text style={[styles.allergenPillText, { color: theme.possibleRiskText }]}>
               Possible allergen risk
             </Text>
-            <Text style={[styles.allergenPillSubtext, { color: isDark ? '#FFB74D' : '#E65100' }]}>
+            <Text style={[styles.allergenPillSubtext, { color: theme.possibleRiskText }]}>
               Ingredients suggest possible risk for: {(data?.inferredAllergenWarnings || []).join(', ')}
             </Text>
           </View>
@@ -829,15 +829,15 @@ export default function ResultScreen() {
     if (allergenState === "product_contains_nonmatching") {
       return (
         <View style={[styles.allergenPill, {
-          backgroundColor: isDark ? '#1E2A35' : '#F0F4F8',
-          borderColor: isDark ? 'rgba(144,164,183,0.3)' : '#CFD8DC',
-        }]}>
-          <ShieldCheck size={18} color={isDark ? '#90A4AE' : '#546E7A'} weight="fill" />
+          backgroundColor: theme.neutralBg,
+          borderColor: theme.neutralBorder,
+        }]} accessible={true} accessibilityLabel={`Product contains allergens not in your profile: ${allProductAllergens.join(', ')}`}>
+          <ShieldCheck size={18} color={theme.neutralIcon} weight="fill" />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.allergenPillText, { color: isDark ? '#B0BEC5' : '#37474F' }]}>
+            <Text style={[styles.allergenPillText, { color: theme.neutralText }]}>
               Contains allergens not in your profile
             </Text>
-            <Text style={[styles.allergenPillSubtext, { color: isDark ? '#90A4AE' : '#546E7A' }]}>
+            <Text style={[styles.allergenPillSubtext, { color: theme.neutralSubtext }]}>
               This product contains: {allProductAllergens.join(', ')}
             </Text>
           </View>
@@ -896,7 +896,7 @@ export default function ResultScreen() {
 
         <Animated.View entering={FadeInDown.duration(500)}>
           <LinearGradient
-            colors={isDark ? ['#1B3A1D', theme.card] : ['#eafaf1', '#FFFFFF']}
+            colors={[theme.greenBg, theme.card]}
             style={styles.scoreGradientCard}
           >
             <ScoreRing
@@ -919,11 +919,11 @@ export default function ResultScreen() {
         {product.source === "fatsecret" && (
           <Animated.View entering={FadeInDown.delay(200).duration(400)}>
             <View style={[styles.allergenPill, {
-              backgroundColor: isDark ? '#1A1F24' : '#FAFAFA',
-              borderColor: isDark ? 'rgba(100,116,139,0.2)' : '#E0E0E0',
+              backgroundColor: theme.neutralBg,
+              borderColor: theme.neutralBorder,
             }]}>
-              <WarningCircle size={16} color={isDark ? '#78909C' : '#90A4AE'} weight="fill" />
-              <Text style={[styles.allergenPillSubtext, { color: isDark ? '#78909C' : '#78909C', flex: 1 }]}>
+              <WarningCircle size={16} color={theme.neutralIcon} weight="fill" />
+              <Text style={[styles.allergenPillSubtext, { color: theme.neutralSubtext, flex: 1 }]}>
                 Nutrition data from third-party database — verify package label for allergen certainty.
               </Text>
             </View>

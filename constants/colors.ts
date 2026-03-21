@@ -41,6 +41,15 @@ export const C = {
   warningBg: '#FFF8E1',
   warningBorder: '#FFA726',
   warningText: '#5D4037',
+  neutralBg: '#F0F4F8',
+  neutralBorder: '#CFD8DC',
+  neutralIcon: '#546E7A',
+  neutralText: '#37474F',
+  neutralSubtext: '#546E7A',
+  possibleRiskIcon: '#F57C00',
+  possibleRiskText: '#E65100',
+  chipBg: '#F0F0F0',
+  cardRaised: '#FFFFFF',
 };
 
 const darkTokens = {
@@ -83,6 +92,15 @@ const darkTokens = {
   warningBg: '#3D2E15',
   warningBorder: '#FFB74D',
   warningText: '#FFE0B2',
+  neutralBg: '#1E2A35',
+  neutralBorder: 'rgba(144,164,183,0.3)',
+  neutralIcon: '#90A4AE',
+  neutralText: '#B0BEC5',
+  neutralSubtext: '#90A4AE',
+  possibleRiskIcon: '#FFB74D',
+  possibleRiskText: '#FFB74D',
+  chipBg: '#2C2C2C',
+  cardRaised: '#3A3A3A',
 };
 
 export type ThemeColors = typeof C;

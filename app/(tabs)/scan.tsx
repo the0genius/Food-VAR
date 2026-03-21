@@ -604,7 +604,7 @@ const createStyles = (theme: ThemeColors) => {
     },
     modeToggle: {
       flexDirection: "row",
-      backgroundColor: isDark ? '#2C2C2C' : '#F0F0F0',
+      backgroundColor: theme.chipBg,
       borderRadius: 16,
       padding: 4,
     },
@@ -619,7 +619,7 @@ const createStyles = (theme: ThemeColors) => {
       borderRadius: 14,
     },
     modeBtnActive: {
-      backgroundColor: isDark ? '#3A3A3A' : theme.card,
+      backgroundColor: theme.cardRaised,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
@@ -703,7 +703,7 @@ const createStyles = (theme: ThemeColors) => {
       opacity: 0.5,
     },
     categoryChip: {
-      backgroundColor: isDark ? '#2C2C2C' : '#F0F0F0',
+      backgroundColor: theme.chipBg,
       borderRadius: 999,
       paddingHorizontal: 10,
       paddingVertical: 2,
