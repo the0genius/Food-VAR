@@ -660,6 +660,10 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
         </Animated.View>
+
+        <Text style={styles.wellnessDisclaimer}>
+          For informational purposes only — not medical advice.{'\n'}Always consult your healthcare provider.
+        </Text>
       </View>
     </ScrollView>
   );
@@ -1009,5 +1013,14 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     backgroundColor: theme.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
+  },
+  wellnessDisclaimer: {
+    fontSize: 11,
+    color: theme.muted,
+    textAlign: "center" as const,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 32,
+    lineHeight: 16,
   },
 });

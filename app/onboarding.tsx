@@ -389,6 +389,9 @@ export default function OnboardingScreen() {
               })}
             </View>
             <Text style={styles.skipHint}>Skip if none apply</Text>
+            <Text style={styles.wellnessNote}>
+              This is not a medical tool — scores are for general wellness only.
+            </Text>
           </MotiView>
         );
       case 2:
@@ -1024,6 +1027,14 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     fontSize: 13,
     color: theme.muted,
     marginTop: 20,
+  },
+  wellnessNote: {
+    textAlign: "center" as const,
+    fontSize: 11,
+    color: theme.muted,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    lineHeight: 15,
   },
   footer: {
     paddingHorizontal: 24,
