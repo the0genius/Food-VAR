@@ -303,10 +303,10 @@ export default function ContributeScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <LinearGradient
-            colors={["#3DD68C", "#2E7D32"]}
+            colors={[theme.mint, theme.primary]}
             style={styles.headerIconBg}
           >
-            <Package size={16} color="#fff" weight="fill" />
+            <Package size={16} color={theme.onPrimary} weight="fill" />
           </LinearGradient>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Add Product</Text>
         </View>
@@ -329,10 +329,10 @@ export default function ContributeScreen() {
               <View style={styles.filledSlot}>
                 <Image source={{ uri: frontImage.uri }} style={styles.slotImage} />
                 <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
+                  colors={[theme.mint, theme.primary]}
                   style={styles.slotCheckBadge}
                 >
-                  <Check size={14} color="#fff" weight="bold" />
+                  <Check size={14} color={theme.onPrimary} weight="bold" />
                 </LinearGradient>
               </View>
             ) : (
@@ -350,12 +350,12 @@ export default function ContributeScreen() {
           {!frontImage && (
             <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchFrontCamera} accessibilityLabel="Take photo of front label" accessibilityRole="button">
               <LinearGradient
-                colors={["#3DD68C", "#2E7D32"]}
+                colors={[theme.mint, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.captureBtn}
               >
-                <Camera size={22} color="#fff" weight="fill" />
+                <Camera size={22} color={theme.onPrimary} weight="fill" />
                 <Text style={styles.captureBtnText}>Open Camera</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -379,10 +379,10 @@ export default function ContributeScreen() {
               <View style={styles.thumbDone}>
                 <Image source={{ uri: frontImage.uri }} style={styles.thumbDoneImg} />
                 <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
+                  colors={[theme.mint, theme.primary]}
                   style={styles.thumbCheck}
                 >
-                  <Check size={12} color="#fff" weight="bold" />
+                  <Check size={12} color={theme.onPrimary} weight="bold" />
                 </LinearGradient>
               </View>
             )}
@@ -399,12 +399,12 @@ export default function ContributeScreen() {
           </Text>
           <TouchableOpacity style={styles.captureBtnWrapper} onPress={launchBackCamera} accessibilityLabel="Take photo of nutrition facts" accessibilityRole="button">
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.captureBtn}
             >
-              <Camera size={22} color="#fff" weight="fill" />
+              <Camera size={22} color={theme.onPrimary} weight="fill" />
               <Text style={styles.captureBtnText}>Open Camera</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -555,12 +555,12 @@ export default function ContributeScreen() {
               testID="review-submit-btn"
             >
               <LinearGradient
-                colors={["#3DD68C", "#2E7D32"]}
+                colors={[theme.mint, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.reviewSubmitBtn}
               >
-                <Check size={20} color="#fff" weight="bold" />
+                <Check size={20} color={theme.onPrimary} weight="bold" />
                 <Text style={styles.reviewSubmitText}>
                   {isSubmitting ? "Submitting..." : "Submit Product"}
                 </Text>
@@ -595,7 +595,7 @@ export default function ContributeScreen() {
                 transition={{ type: "timing", duration: 1200, delay: i * 80 }}
                 style={[styles.confettiDot, {
                   left: `${10 + (i * 7.5)}%` as any,
-                  backgroundColor: ["#3DD68C", "#2E7D32", "#FB8C00", "#E53935", "#2EC4B6", "#FFD700"][i % 6],
+                  backgroundColor: [theme.mint, theme.primary, theme.amber, theme.danger, theme.teal, theme.brandGold][i % 6],
                   width: 8 + Math.random() * 6,
                   height: 8 + Math.random() * 6,
                 }]}
@@ -622,12 +622,12 @@ export default function ContributeScreen() {
           <Text style={styles.errorText}>{errorMsg}</Text>
           <TouchableOpacity style={styles.retryBtnWrapper} onPress={handleRetry} accessibilityLabel="Try again" accessibilityRole="button">
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.retryBtn}
             >
-              <Camera size={20} color="#fff" weight="fill" />
+              <Camera size={20} color={theme.onPrimary} weight="fill" />
               <Text style={styles.retryBtnText}>Try Again</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -773,7 +773,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   captureBtnText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#fff",
+    color: theme.onPrimary,
   },
   thumbRow: {
     flexDirection: "row",
@@ -914,7 +914,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   retryBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#fff",
+    color: theme.onPrimary,
   },
   cancelBtn: {
     paddingVertical: 12,
@@ -1017,6 +1017,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   reviewSubmitText: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: "#fff",
+    color: theme.onPrimary,
   },
 });

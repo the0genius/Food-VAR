@@ -196,7 +196,7 @@ export default function HistoryScreen() {
       return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.8} accessibilityLabel={`Sort by ${label}, selected`} accessibilityRole="radio">
           <LinearGradient
-            colors={["#2E7D32", "#3DD68C"]}
+            colors={[theme.primary, theme.mint]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.sortChipGradient}
@@ -351,7 +351,7 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
               >
                 <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
+                  colors={[theme.mint, theme.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.emptyCTAButton}
@@ -380,7 +380,7 @@ export default function HistoryScreen() {
                 accessibilityRole="button"
               >
                 <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
+                  colors={[theme.mint, theme.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.emptyCTAButton}
@@ -397,7 +397,7 @@ export default function HistoryScreen() {
 }
 
 const createStyles = (theme: ThemeColors) => {
-  const isDark = theme.bg === '#121212';
+  const isDark = theme.isDark;
 
   const bentoShadow = isDark
     ? { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
@@ -465,7 +465,7 @@ const createStyles = (theme: ThemeColors) => {
     sortChipTextActive: {
       fontSize: 13,
       fontWeight: "600" as const,
-      color: "#FFFFFF",
+      color: theme.onPrimary,
     },
     sortChipTextInactive: {
       fontSize: 13,
@@ -517,7 +517,7 @@ const createStyles = (theme: ThemeColors) => {
       fontSize: 17,
       fontWeight: "700" as const,
       lineHeight: 20,
-      color: "white",
+      color: theme.onPrimary,
     },
     scoreBadgeLabelText: {
       fontSize: 8,
@@ -585,7 +585,7 @@ const createStyles = (theme: ThemeColors) => {
       alignItems: "center",
     },
     emptyCTAText: {
-      color: "#FFFFFF",
+      color: theme.onPrimary,
       fontWeight: "700" as const,
       fontSize: 15,
     },

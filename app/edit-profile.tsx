@@ -133,7 +133,7 @@ export default function EditProfileScreen() {
                 style={styles.savingDot}
               />
             ) : (
-              <Check size={22} color="#fff" weight="bold" />
+              <Check size={22} color={theme.onPrimary} weight="bold" />
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -172,7 +172,7 @@ export default function EditProfileScreen() {
                   accessibilityRole="checkbox"
                 >
                   {isActive ? (
-                    <CheckCircle size={18} color="#fff" weight="fill" />
+                    <CheckCircle size={18} color={theme.onPrimary} weight="fill" />
                   ) : (
                     <IconComp size={18} color={theme.primary} />
                   )}
@@ -223,7 +223,7 @@ export default function EditProfileScreen() {
                     {a.label}
                   </Text>
                   {isActive && (
-                    <CheckCircle size={14} color="#fff" weight="fill" />
+                    <CheckCircle size={14} color={theme.onPrimary} weight="fill" />
                   )}
                 </TouchableOpacity>
               );
@@ -257,7 +257,7 @@ export default function EditProfileScreen() {
                   accessibilityRole="radio"
                 >
                   {isActive ? (
-                    <CheckCircle size={24} color="#fff" weight="fill" />
+                    <CheckCircle size={24} color={theme.onPrimary} weight="fill" />
                   ) : (
                     <IconComp size={24} color={theme.primary} />
                   )}
@@ -384,7 +384,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "#fff",
+    backgroundColor: theme.onPrimary,
   },
   section: {
     marginTop: 24,
@@ -447,7 +447,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text,
   },
   chipTextActive: {
-    color: "#fff",
+    color: theme.onPrimary,
   },
   goalGrid: {
     flexDirection: "row",
@@ -479,7 +479,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text,
   },
   goalTextActive: {
-    color: "#fff",
+    color: theme.onPrimary,
   },
   dietList: {
     gap: 8,
@@ -524,6 +524,6 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   gradientSaveText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#fff",
+    color: theme.onPrimary,
   },
 });

@@ -193,7 +193,7 @@ export default function HomeScreen() {
       <View style={styles.progressBarTrack}>
         <Animated.View style={fillStyle}>
           <LinearGradient
-            colors={["#3DD68C", "#2EC4B6"]}
+            colors={[theme.mint, theme.teal]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{ flex: 1, borderTopRightRadius: 999, borderBottomRightRadius: 999 }}
@@ -336,7 +336,7 @@ export default function HomeScreen() {
                 </View>
                 <View>
                   <LinearGradient
-                    colors={["#2E7D32", "#3DD68C"]}
+                    colors={[theme.primary, theme.mint]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.avatarCircle}
@@ -353,12 +353,12 @@ export default function HomeScreen() {
 
               {user?.isPro && (
                 <LinearGradient
-                  colors={["#3DD68C", "#2E7D32"]}
+                  colors={[theme.mint, theme.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.proBadge}
                 >
-                  <Crown size={12} color="#FFD700" weight="fill" />
+                  <Crown size={12} color={theme.brandGold} weight="fill" />
                   <Text style={styles.proBadgeText}>PRO</Text>
                 </LinearGradient>
               )}
@@ -425,12 +425,12 @@ export default function HomeScreen() {
                     <Text style={styles.heroLine2}>Eat Right.</Text>
                     <Text style={styles.heroSub}>Discover healthier alternatives instantly.</Text>
                     <LinearGradient
-                      colors={["#3DD68C", "#2E7D32"]}
+                      colors={[theme.mint, theme.primary]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.heroCTA}
                     >
-                      <Barcode size={16} color="white" weight="bold" />
+                      <Barcode size={16} color={theme.onPrimary} weight="bold" />
                       <Text style={styles.heroCTAText}>Scan Product</Text>
                     </LinearGradient>
                   </View>
@@ -462,12 +462,12 @@ export default function HomeScreen() {
                   </Text>
                   <TouchableOpacity onPress={handleScanPress} activeOpacity={0.8} accessibilityLabel="Scan a product" accessibilityRole="button">
                     <LinearGradient
-                      colors={["#3DD68C", "#2E7D32"]}
+                      colors={[theme.mint, theme.primary]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.welcomeBtnGradient}
                     >
-                      <Barcode size={20} color="white" weight="bold" />
+                      <Barcode size={20} color={theme.onPrimary} weight="bold" />
                       <Text style={styles.welcomeBtnText}>Scan a Product</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -592,7 +592,7 @@ function getGreeting() {
 }
 
 const createStyles = (theme: ThemeColors) => {
-  const isDark = theme.bg === '#121212';
+  const isDark = theme.isDark;
 
   const bentoShadow = isDark
     ? {
@@ -613,7 +613,7 @@ const createStyles = (theme: ThemeColors) => {
   const BENTO_CARD = {
     backgroundColor: theme.card,
     borderRadius: 24,
-    borderWidth: theme.bg === '#121212' ? 1 : 0,
+    borderWidth: theme.isDark ? 1 : 0,
     borderColor: theme.subtleBorder,
     ...bentoShadow,
   } as const;
@@ -656,7 +656,7 @@ const createStyles = (theme: ThemeColors) => {
   avatarInitial: {
     fontSize: 20,
     fontWeight: "700",
-    color: "white",
+    color: theme.onPrimary,
   },
   avatarBadge: {
     position: "absolute",
@@ -692,7 +692,7 @@ const createStyles = (theme: ThemeColors) => {
   proBadgeText: {
     fontSize: 11,
     fontWeight: "800",
-    color: "white",
+    color: theme.onPrimary,
     letterSpacing: 1.2,
   },
   contentArea: {
@@ -783,7 +783,7 @@ const createStyles = (theme: ThemeColors) => {
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 8,
-    shadowColor: "#2E7D32",
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -792,7 +792,7 @@ const createStyles = (theme: ThemeColors) => {
   heroCTAText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "white",
+    color: theme.onPrimary,
   },
   heroGraphic: {
     width: 88,
@@ -879,7 +879,7 @@ const createStyles = (theme: ThemeColors) => {
   recentScoreText: {
     fontWeight: "700" as const,
     fontSize: 14,
-    color: "white",
+    color: theme.onPrimary,
   },
   recentName: {
     fontSize: 16,
@@ -995,7 +995,7 @@ const createStyles = (theme: ThemeColors) => {
   welcomeBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: "white",
+    color: theme.onPrimary,
   },
   contributeCard: {
     flexDirection: "row" as const,

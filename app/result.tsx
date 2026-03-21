@@ -649,7 +649,7 @@ export default function ResultScreen() {
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ArrowLeft size={18} color="white" />
+            <ArrowLeft size={18} color={theme.onPrimary} />
             <Text style={styles.limitBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -788,7 +788,7 @@ export default function ResultScreen() {
               accessibilityLabel="Scan another product"
               accessibilityRole="button"
             >
-              <Barcode size={20} color="white" weight="bold" />
+              <Barcode size={20} color={theme.onPrimary} weight="bold" />
               <Text style={styles.scanAnotherText}>Scan Another</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -1136,7 +1136,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   retryBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: "white",
+    color: theme.onPrimary,
   },
   limitCard: {
     backgroundColor: theme.card,
@@ -1197,7 +1197,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   limitBtnText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: "white",
+    color: theme.onPrimary,
   },
   reAnalyzedBanner: {
     flexDirection: "row" as const,
@@ -1592,7 +1592,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   scanAnotherText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: "white",
+    color: theme.onPrimary,
   },
   allergenTopBanner: {
     paddingVertical: 16,
@@ -1604,7 +1604,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   allergenTopBannerText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: "white",
+    color: theme.onPrimary,
     flex: 1,
   },
   allergenAlertCard: {

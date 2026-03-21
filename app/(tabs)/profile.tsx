@@ -110,7 +110,7 @@ export default function ProfileScreen() {
   const { user, updateProfile, logout } = useUser();
   const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
   const theme = useThemeColors();
-  const isDark = theme.bg === '#121212';
+  const isDark = theme.isDark;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
@@ -270,7 +270,7 @@ export default function ProfileScreen() {
         {editing ? (
           <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.identityCard}>
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               style={styles.avatarCircle}
             >
               <Text style={styles.avatarText}>
@@ -311,7 +311,7 @@ export default function ProfileScreen() {
                   <X size={18} color={theme.danger} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.editSaveBtn} onPress={handleSave} accessibilityLabel="Save profile changes" accessibilityRole="button">
-                  <Check size={18} color={Colors.white} />
+                  <Check size={18} color={theme.onPrimary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -329,7 +329,7 @@ export default function ProfileScreen() {
               accessibilityRole="button"
             >
               <LinearGradient
-                colors={["#3DD68C", "#2E7D32"]}
+                colors={[theme.mint, theme.primary]}
                 style={styles.avatarCircle}
               >
                 <Text style={styles.avatarText}>
@@ -691,7 +691,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.bg === '#121212' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)',
+    backgroundColor: theme.overlayBtn,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -720,7 +720,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   avatarText: {
     fontSize: 24,
     fontWeight: "800" as const,
-    color: Colors.white,
+    color: theme.onPrimary,
   },
   identityInfo: {
     flex: 1,
@@ -972,7 +972,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.onPrimary,
   },
   toggleThumbActive: {
     alignSelf: "flex-end" as const,

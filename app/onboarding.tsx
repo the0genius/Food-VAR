@@ -279,10 +279,10 @@ export default function OnboardingScreen() {
           >
             <View style={styles.stepIcon}>
               <LinearGradient
-                colors={["#3DD68C", "#2E7D32"]}
+                colors={[theme.mint, theme.primary]}
                 style={styles.stepIconCircle}
               >
-                <UserCircle size={56} color="#fff" weight="fill" />
+                <UserCircle size={56} color={theme.onPrimary} weight="fill" />
               </LinearGradient>
             </View>
             <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
@@ -307,7 +307,7 @@ export default function OnboardingScreen() {
                 <AppleAuthentication.AppleAuthenticationButton
                   buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
                   buttonStyle={
-                    theme.bg === '#121212'
+                    theme.isDark
                       ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
                       : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
                   }
@@ -325,7 +325,7 @@ export default function OnboardingScreen() {
                   accessibilityLabel="Continue with Apple"
                   accessibilityRole="button"
                 >
-                  <AppleLogo size={22} color="#fff" weight="fill" />
+                  <AppleLogo size={22} color={theme.onPrimary} weight="fill" />
                   <Text style={styles.appleBtnText}>Continue with Apple</Text>
                 </TouchableOpacity>
               )}
@@ -377,7 +377,7 @@ export default function OnboardingScreen() {
                     accessibilityRole="checkbox"
                   >
                     {isActive ? (
-                      <CheckCircle size={20} color="#fff" weight="fill" />
+                      <CheckCircle size={20} color={theme.onPrimary} weight="fill" />
                     ) : (
                       <IconComp size={20} color={theme.primary} />
                     )}
@@ -436,7 +436,7 @@ export default function OnboardingScreen() {
                       {a.label}
                     </Text>
                     {isActive && (
-                      <CheckCircle size={16} color="#fff" weight="fill" />
+                      <CheckCircle size={16} color={theme.onPrimary} weight="fill" />
                     )}
                   </TouchableOpacity>
                 );
@@ -478,7 +478,7 @@ export default function OnboardingScreen() {
                     accessibilityRole="radio"
                   >
                     {isActive ? (
-                      <CheckCircle size={28} color="#fff" weight="fill" />
+                      <CheckCircle size={28} color={theme.onPrimary} weight="fill" />
                     ) : (
                       <IconComp size={28} color={theme.primary} />
                     )}
@@ -580,10 +580,10 @@ export default function OnboardingScreen() {
           >
             <View style={styles.stepIcon}>
               <LinearGradient
-                colors={["#3DD68C", "#2E7D32"]}
+                colors={[theme.mint, theme.primary]}
                 style={styles.stepIconCircle}
               >
-                <ShieldCheck size={56} color="#fff" weight="fill" />
+                <ShieldCheck size={56} color={theme.onPrimary} weight="fill" />
               </LinearGradient>
             </View>
             <Text style={styles.stepTitle}>Before You Start</Text>
@@ -628,7 +628,7 @@ export default function OnboardingScreen() {
               accessibilityRole="checkbox"
             >
               <View style={[styles.checkbox, consentChecked && styles.checkboxChecked]}>
-                {consentChecked && <CheckCircle size={20} color="#fff" weight="fill" />}
+                {consentChecked && <CheckCircle size={20} color={theme.onPrimary} weight="fill" />}
               </View>
               <Text style={styles.consentCheckText}>
                 I agree to the Privacy Policy and Terms of Service, and understand that AI-generated advice is not medical advice.
@@ -666,7 +666,7 @@ export default function OnboardingScreen() {
         <View style={styles.progressBar} accessibilityLabel={`Step ${step + 1} of ${totalSteps}`} accessibilityRole="progressbar">
           <Animated.View style={[styles.progressFillContainer, progressAnimStyle]}>
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.progressGradient}
@@ -703,7 +703,7 @@ export default function OnboardingScreen() {
             accessibilityRole="button"
           >
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.nextBtn}
@@ -716,7 +716,7 @@ export default function OnboardingScreen() {
                     : "Continue"}
               </Text>
               {!loading && (
-                <ArrowRight size={20} color="#fff" weight="bold" />
+                <ArrowRight size={20} color={theme.onPrimary} weight="bold" />
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -875,7 +875,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   appleBtnText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
+    color: theme.onDark,
   },
   appleNativeBtn: {
     height: 54,
@@ -948,7 +948,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text,
   },
   conditionChipTextActive: {
-    color: "#fff",
+    color: theme.onPrimary,
   },
   allergyChip: {
     flexDirection: "row",
@@ -975,7 +975,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text,
   },
   allergyChipTextActive: {
-    color: "#fff",
+    color: theme.onPrimary,
   },
   goalGrid: {
     gap: 10,
@@ -1006,7 +1006,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     color: theme.text,
   },
   goalCardTextActive: {
-    color: "#fff",
+    color: theme.onPrimary,
   },
   dietList: {
     gap: 8,
@@ -1082,7 +1082,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   nextBtnText: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#fff",
+    color: theme.onPrimary,
   },
   skipBtn: {
     paddingVertical: 12,

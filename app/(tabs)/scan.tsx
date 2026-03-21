@@ -371,7 +371,7 @@ export default function ScanScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.searchLinkText}>{showManualEntry ? "Hide manual entry" : "Type barcode instead"}</Text>
-            <CaretRight size={13} color="white" />
+            <CaretRight size={13} color={theme.onPrimary} />
           </TouchableOpacity>
         </View>
         {showManualEntry && (
@@ -575,7 +575,7 @@ export default function ScanScreen() {
 }
 
 const createStyles = (theme: ThemeColors) => {
-  const isDark = theme.bg === '#121212';
+  const isDark = theme.isDark;
 
   const bentoShadow = isDark
     ? { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
@@ -853,7 +853,7 @@ const createStyles = (theme: ThemeColors) => {
     statusText: {
       fontSize: 13,
       fontWeight: "500" as const,
-      color: "white",
+      color: theme.onPrimary,
     },
     searchLinkPill: {
       flexDirection: "row",
@@ -866,7 +866,7 @@ const createStyles = (theme: ThemeColors) => {
     },
     searchLinkText: {
       fontSize: 13,
-      color: "white",
+      color: theme.onPrimary,
       fontWeight: "500" as const,
     },
     iconCircle: {

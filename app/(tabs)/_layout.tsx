@@ -102,12 +102,12 @@ export default function TabLayout() {
           tabBarAccessibilityLabel: "Scan a product",
           tabBarIcon: () => (
             <LinearGradient
-              colors={["#3DD68C", "#2E7D32"]}
+              colors={[theme.mint, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.scanPill}
             >
-              <Barcode size={18} color="white" weight="bold" />
+              <Barcode size={18} color={theme.onPrimary} weight="bold" />
               <Text style={styles.scanPillText}>Scan</Text>
             </LinearGradient>
           ),
@@ -193,7 +193,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   scanPillText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "white",
+    color: theme.onPrimary,
     letterSpacing: 0.5,
   },
 });

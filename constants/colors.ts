@@ -59,6 +59,10 @@ export const C = {
   purple: '#7C4DFF',
   purpleTint: '#F3E8FF',
   toggleTrack: '#D1D5DB',
+  onPrimary: '#FFFFFF',
+  onDark: '#FFFFFF',
+  brandGold: '#FFD700',
+  overlayBtn: 'rgba(255,255,255,0.5)',
 };
 
 const darkTokens = {
@@ -119,14 +123,18 @@ const darkTokens = {
   purple: '#7C4DFF',
   purpleTint: 'rgba(124,77,255,0.15)',
   toggleTrack: '#555555',
+  onPrimary: '#FFFFFF',
+  onDark: '#FFFFFF',
+  brandGold: '#FFD700',
+  overlayBtn: 'rgba(255,255,255,0.1)',
 };
 
-export type ThemeColors = typeof C;
+export type ThemeColors = typeof C & { isDark: boolean };
 
 export function useThemeColors(): ThemeColors {
   const { resolved } = useTheme();
-  if (resolved === 'dark') return darkTokens;
-  return C;
+  if (resolved === 'dark') return { ...darkTokens, isDark: true };
+  return { ...C, isDark: false };
 }
 
 const Colors = {
