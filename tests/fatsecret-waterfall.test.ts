@@ -143,6 +143,27 @@ describe("FatSecret waterfall: fetchByBarcode end-to-end", () => {
     expect(result).toBeNull();
   });
 
+  it("returns null when token fetch fails", async () => {
+    mockFetchSequence([
+      () => new Response("Unauthorized", { status: 401 }),
+    ]);
+
+    const { fetchByBarcode } = await import("../server/fatsecret");
+    const result = await fetchByBarcode("1234567890");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when barcode fetch returns network error", async () => {
+    mockFetchSequence([
+      () => tokenResponse(),
+      () => { throw new Error("Network error"); },
+    ]);
+
+    const { fetchByBarcode } = await import("../server/fatsecret");
+    const result = await fetchByBarcode("1234567890");
+    expect(result).toBeNull();
+  });
+
   it("FatSecret products always have empty declaredAllergens", async () => {
     const { getFoodDetails } = await import("../server/fatsecret");
 

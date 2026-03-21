@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import jwt from "jsonwebtoken";
 import { generateAccessToken, verifyAccessToken, stripSensitiveFields } from "../server/auth";
 import type { AuthPayload } from "../server/auth";
 
@@ -249,5 +250,40 @@ describe("account deletion", () => {
     expect(deleteRoute).toContain("deletedAt: new Date()");
     expect(deleteRoute).not.toContain("db.delete(users)");
     expect(deleteRoute).toContain("revokeAllRefreshTokens");
+  });
+});
+
+describe("expired access token handling", () => {
+  const JWT_SECRET = process.env.SESSION_SECRET!;
+
+  it("verifyAccessToken returns null for an expired token", () => {
+    const expiredToken = jwt.sign(
+      { userId: 1, email: "test@test.com", role: "user" },
+      JWT_SECRET,
+      { expiresIn: "-1s" }
+    );
+    const result = verifyAccessToken(expiredToken);
+    expect(result).toBeNull();
+  });
+
+  it("verifyAccessToken succeeds for a not-yet-expired token", () => {
+    const validToken = jwt.sign(
+      { userId: 1, email: "test@test.com", role: "user" },
+      JWT_SECRET,
+      { expiresIn: "5m" }
+    );
+    const result = verifyAccessToken(validToken);
+    expect(result).not.toBeNull();
+    expect(result!.userId).toBe(1);
+  });
+
+  it("token signed with wrong secret is rejected", () => {
+    const wrongSecretToken = jwt.sign(
+      { userId: 1, email: "test@test.com", role: "user" },
+      "completely-wrong-secret",
+      { expiresIn: "15m" }
+    );
+    const result = verifyAccessToken(wrongSecretToken);
+    expect(result).toBeNull();
   });
 });

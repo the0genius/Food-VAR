@@ -131,31 +131,49 @@ async function run() {
     assert(status === 404, `Expected 404, got ${status}`);
   });
 
-  await test("GET /api/products/search?q=test returns array", async () => {
-    const { status, body } = await fetchJSON("/api/products/search?q=test");
+  let seedProductId: number | null = null;
+
+  await test("GET /api/products/search?q= returns seeded products", async () => {
+    const { status, body } = await fetchJSON("/api/products/search?q=&limit=5");
+    assert(status === 200, `Expected 200, got ${status}`);
+    assert(Array.isArray(body), "Expected array response");
+    const products = body as Array<Record<string, unknown>>;
+    if (products.length > 0) {
+      seedProductId = products[0].id as number;
+      assert(typeof products[0].name === "string", "Product missing name");
+      assert(typeof products[0].barcode === "string", "Product missing barcode");
+    }
+  });
+
+  await test("GET /api/products/search?q=coca returns filtered results", async () => {
+    const { status, body } = await fetchJSON("/api/products/search?q=coca");
     assert(status === 200, `Expected 200, got ${status}`);
     assert(Array.isArray(body), "Expected array response");
   });
 
-  await test("GET /api/products/search returns array for short query", async () => {
-    const { status, body } = await fetchJSON("/api/products/search?q=a&limit=5");
-    assert(status === 200, `Expected 200, got ${status}`);
-    assert(Array.isArray(body), "Expected array response");
-  });
+  if (seedProductId) {
+    const knownBarcodes = ["0049000006346", "0078000113464", "0030000063170"];
+    await test("GET /api/products/barcode/:barcode returns product for seeded barcode", async () => {
+      let found = false;
+      for (const barcode of knownBarcodes) {
+        const { status, body } = await fetchJSON(`/api/products/barcode/${barcode}`);
+        if (status === 200) {
+          const data = body as Record<string, unknown>;
+          assert(typeof data.name === "string", "Missing product name");
+          assert(typeof data.barcode === "string", "Missing product barcode");
+          assert(typeof data.id === "number", "Missing product id");
+          found = true;
+          break;
+        }
+      }
+      assert(found, "No seeded product found via barcode lookup");
+    });
+  }
 
   if (accessToken) {
     console.log("\n--- Score ---");
 
-    let productId: number | null = null;
-
-    await test("Find a product via search to score", async () => {
-      const { status, body } = await fetchJSON("/api/products/search?q=&limit=1");
-      assert(status === 200, `Expected 200, got ${status}`);
-      const productList = body as Array<Record<string, unknown>>;
-      if (productList.length > 0) {
-        productId = productList[0].id as number;
-      }
-    });
+    const productId = seedProductId;
 
     if (productId) {
       await test("POST /api/score returns valid score shape", async () => {

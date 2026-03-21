@@ -150,6 +150,6 @@ Preferred communication style: Simple, everyday language.
 - Backfill script: `npx tsx scripts/backfill-inferred-allergens.ts` — recomputes `inferredAllergens` for all products with ingredients
 
 ## Testing
-- Unit tests: `npx vitest run` (167 tests across 10 files)
+- Unit tests: `npx vitest run` (188 tests across 11 files)
 - Smoke tests: `npx tsx scripts/smoke-test.ts` (post-deploy endpoint verification)
 - Seed products: `npx tsx scripts/seed-products.ts` (50 products, idempotent)
