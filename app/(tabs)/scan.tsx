@@ -578,8 +578,8 @@ const createStyles = (theme: ThemeColors) => {
   const isDark = theme.isDark;
 
   const bentoShadow = isDark
-    ? { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
-    : { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 };
+    ? { shadowColor: theme.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 }
+    : { shadowColor: theme.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 };
 
   return StyleSheet.create({
     container: {
@@ -620,7 +620,7 @@ const createStyles = (theme: ThemeColors) => {
     },
     modeBtnActive: {
       backgroundColor: theme.cardRaised,
-      shadowColor: "#000",
+      shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.08,
       shadowRadius: 6,
@@ -762,7 +762,7 @@ const createStyles = (theme: ThemeColors) => {
     },
     cameraContainer: {
       flex: 1,
-      backgroundColor: "#000",
+      backgroundColor: theme.cameraBlack,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       overflow: "hidden",

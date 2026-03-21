@@ -93,13 +93,15 @@ function dedupeProducts(products: StatsProduct[]): StatsProduct[] {
   });
 }
 
-function SkeletonBlock({ width, height, style, color = "#EBEBEB" }: { width: number | string; height: number; style?: any; color?: string }) {
+function SkeletonBlock({ width, height, style, color }: { width: number | string; height: number; style?: any; color?: string }) {
+  const skeletonTheme = useThemeColors();
+  const skeletonColor = color || skeletonTheme.skeleton;
   return (
     <MotiView
       from={{ opacity: 0.4 }}
       animate={{ opacity: 0.9 }}
       transition={{ loop: true, type: "timing" as const, duration: 850 }}
-      style={[{ backgroundColor: color, borderRadius: 12, width, height }, style]}
+      style={[{ backgroundColor: skeletonColor, borderRadius: 12, width, height }, style]}
     />
   );
 }

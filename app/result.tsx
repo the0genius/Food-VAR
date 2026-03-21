@@ -117,7 +117,7 @@ const CAUTION_WORDS = [
   "tricky", "sneaky", "loaded", "packed", "high",
 ];
 
-function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string, t: ThemeColors = C): string {
+function getHeadlineColor(score: number, isAllergenAlert: boolean, headline: string, adviceText?: string, t: ThemeColors): string {
   if (isAllergenAlert) return t.danger;
   if (score <= 35) return t.danger;
   const headlineLower = (headline || "").toLowerCase();
@@ -171,7 +171,7 @@ function getHighlightSeverity(text: string): "warning" | "neutral" | "positive" 
   return "neutral";
 }
 
-function getHighlightDotColor(severity: "warning" | "neutral" | "positive", tierColor: string, t: ThemeColors = C): string {
+function getHighlightDotColor(severity: "warning" | "neutral" | "positive", tierColor: string, t: ThemeColors): string {
   if (severity === "warning") return t.amber;
   if (severity === "positive") return t.green;
   return tierColor;
@@ -232,7 +232,7 @@ function getNutrientUnit(key: string): string {
   return "";
 }
 
-function getNutrientBarColor(key: string, value: number, t: ThemeColors = C): string {
+function getNutrientBarColor(key: string, value: number, t: ThemeColors): string {
   const dailyVal = DAILY_VALUES[key];
   if (!dailyVal) return t.muted;
   const pct = value / dailyVal;

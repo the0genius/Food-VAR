@@ -299,7 +299,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="Continue with Google"
                 accessibilityRole="button"
               >
-                <GoogleLogo size={22} color="#4285F4" weight="bold" />
+                <GoogleLogo size={22} color={theme.brandGoogle} weight="bold" />
                 <Text style={styles.googleBtnText}>Continue with Google</Text>
               </TouchableOpacity>
 
@@ -869,7 +869,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     gap: 12,
     height: 54,
     borderRadius: 16,
-    backgroundColor: "#000",
+    backgroundColor: theme.brandApple,
     ...cardShadow("medium"),
   },
   appleBtnText: {
@@ -1058,7 +1058,7 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     backgroundColor: theme.card,
     alignItems: "center",
     gap: 8,
-    shadowColor: "#000",
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.03,
     shadowRadius: 8,

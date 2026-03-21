@@ -67,7 +67,7 @@ export default function TabLayout() {
           paddingHorizontal: 12,
           ...Platform.select({
             ios: {
-              shadowColor: "#000",
+              shadowColor: theme.shadow,
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.02,
               shadowRadius: 24,
@@ -76,7 +76,7 @@ export default function TabLayout() {
               elevation: 4,
             },
             web: {
-              shadowColor: "#000",
+              shadowColor: theme.shadow,
               shadowOffset: { width: 0, height: -4 },
               shadowOpacity: 0.02,
               shadowRadius: 24,

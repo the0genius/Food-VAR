@@ -26,13 +26,15 @@ import {
   WarningCircle,
 } from "phosphor-react-native";
 
-function SkeletonBlock({ width, height, borderRadius = 12, style, color = "#EBEBEB" }: { width: number | string; height: number; borderRadius?: number; style?: any; color?: string }) {
+function SkeletonBlock({ width, height, borderRadius = 12, style, color }: { width: number | string; height: number; borderRadius?: number; style?: any; color?: string }) {
+  const theme = useThemeColors();
+  const skeletonColor = color || theme.skeleton;
   return (
     <MotiView
       from={{ opacity: 0.4 }}
       animate={{ opacity: 0.9 }}
       transition={{ loop: true, type: "timing" as const, duration: 850 }}
-      style={[{ backgroundColor: color, borderRadius, width: width as any, height }, style]}
+      style={[{ backgroundColor: skeletonColor, borderRadius, width: width as any, height }, style]}
     />
   );
 }
@@ -596,14 +598,14 @@ const createStyles = (theme: ThemeColors) => {
 
   const bentoShadow = isDark
     ? {
-        shadowColor: "#000",
+        shadowColor: theme.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 12,
         elevation: 6,
       }
     : {
-        shadowColor: "#000",
+        shadowColor: theme.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -870,7 +872,7 @@ const createStyles = (theme: ThemeColors) => {
     alignItems: "center" as const,
     justifyContent: "center" as const,
     alignSelf: "flex-end" as const,
-    shadowColor: "#000",
+    shadowColor: theme.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
