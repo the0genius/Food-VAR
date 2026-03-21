@@ -353,7 +353,7 @@ export default function OnboardingScreen() {
           >
             <Text style={styles.stepTitle}>Health Conditions</Text>
             <Text style={styles.stepSubtitle}>
-              Select any conditions you manage. We'll tailor scores to your needs.
+              Select any conditions you manage. We'll tailor wellness scores to your profile.
             </Text>
             <View style={styles.chipGrid}>
               {CONDITIONS.map((c) => {
@@ -402,7 +402,7 @@ export default function OnboardingScreen() {
           >
             <Text style={styles.stepTitle}>Allergies & Intolerances</Text>
             <Text style={styles.stepSubtitle}>
-              Products with your allergens will be flagged immediately
+              Products with your allergens will be flagged — always verify with the actual label
             </Text>
             <View style={styles.chipGrid}>
               {ALLERGIES.map((a) => {
