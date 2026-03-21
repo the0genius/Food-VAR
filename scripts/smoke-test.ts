@@ -153,24 +153,27 @@ async function run() {
     assert(Array.isArray(body), "Expected array response");
   });
 
-  if (seedProductId) {
-    const knownBarcodes = ["0049000006346", "0078000113464", "0030000063170"];
-    await test("GET /api/products/barcode/:barcode returns product for seeded barcode", async () => {
-      let found = false;
-      for (const barcode of knownBarcodes) {
-        const { status, body } = await fetchJSON(`/api/products/barcode/${barcode}`);
-        if (status === 200) {
-          const data = body as Record<string, unknown>;
-          assert(typeof data.name === "string", "Missing product name");
-          assert(typeof data.barcode === "string", "Missing product barcode");
-          assert(typeof data.id === "number", "Missing product id");
-          found = true;
-          break;
-        }
+  const knownBarcodes = ["0049000006346", "0078000113464", "0030000063170"];
+  await test("GET /api/products/barcode/:barcode returns product for seeded barcode", async () => {
+    assert(seedProductId !== null, "No seeded products found — seed data is required for full smoke test");
+    let found = false;
+    for (const barcode of knownBarcodes) {
+      const { status, body } = await fetchJSON(`/api/products/barcode/${barcode}`);
+      if (status === 200) {
+        const data = body as Record<string, unknown>;
+        assert(typeof data.name === "string", "Missing product name");
+        assert(typeof data.barcode === "string", "Missing product barcode");
+        assert(typeof data.id === "number", "Missing product id");
+        found = true;
+        break;
       }
-      assert(found, "No seeded product found via barcode lookup");
-    });
-  }
+    }
+    assert(found, "No seeded product found via barcode lookup");
+  });
+
+  await test("Auth token available for authenticated tests", async () => {
+    assert(!!accessToken, "No access token available — set SMOKE_TEST_ACCESS_TOKEN for production or ensure dev-login works");
+  });
 
   if (accessToken) {
     console.log("\n--- Score ---");
