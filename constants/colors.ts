@@ -50,6 +50,15 @@ export const C = {
   possibleRiskText: '#E65100',
   chipBg: '#F0F0F0',
   cardRaised: '#FFFFFF',
+  tealTint: 'rgba(46,196,182,0.1)',
+  mintTint: 'rgba(61,214,140,0.1)',
+  mintTintStrong: 'rgba(61,214,140,0.15)',
+  amberTint: 'rgba(251,140,0,0.1)',
+  progressTrack: 'rgba(0,0,0,0.04)',
+  subtleBorder: 'rgba(0,0,0,0.05)',
+  purple: '#7C4DFF',
+  purpleTint: '#F3E8FF',
+  toggleTrack: '#D1D5DB',
 };
 
 const darkTokens = {
@@ -101,6 +110,15 @@ const darkTokens = {
   possibleRiskText: '#FFB74D',
   chipBg: '#2C2C2C',
   cardRaised: '#3A3A3A',
+  tealTint: 'rgba(77,208,200,0.15)',
+  mintTint: 'rgba(61,214,140,0.15)',
+  mintTintStrong: 'rgba(61,214,140,0.2)',
+  amberTint: 'rgba(255,183,77,0.15)',
+  progressTrack: 'rgba(255,255,255,0.06)',
+  subtleBorder: 'rgba(255,255,255,0.1)',
+  purple: '#7C4DFF',
+  purpleTint: 'rgba(124,77,255,0.15)',
+  toggleTrack: '#555555',
 };
 
 export type ThemeColors = typeof C;

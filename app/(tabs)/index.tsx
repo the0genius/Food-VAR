@@ -380,7 +380,7 @@ export default function HomeScreen() {
                   <>
                     <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
                       <View style={styles.statHeader}>
-                        <View style={[styles.statIconBg, { backgroundColor: "rgba(46,196,182,0.1)" }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: theme.tealTint }]}>
                           <ChartLineUp size={16} color={theme.teal} />
                         </View>
                         <Text style={styles.statLabel}>Avg Score</Text>
@@ -394,7 +394,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.statCard} activeOpacity={0.7}>
                       <View style={styles.statHeader}>
-                        <View style={[styles.statIconBg, { backgroundColor: "rgba(61,214,140,0.1)" }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: theme.mintTint }]}>
                           <ScanSmiley size={16} color={theme.primary} />
                         </View>
                         <Text style={styles.statLabel}>Today</Text>
@@ -613,8 +613,8 @@ const createStyles = (theme: ThemeColors) => {
   const BENTO_CARD = {
     backgroundColor: theme.card,
     borderRadius: 24,
-    borderWidth: isDark ? 1 : 0,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'transparent',
+    borderWidth: theme.bg === '#121212' ? 1 : 0,
+    borderColor: theme.subtleBorder,
     ...bentoShadow,
   } as const;
 
@@ -677,7 +677,7 @@ const createStyles = (theme: ThemeColors) => {
   },
   progressBarTrack: {
     height: 3,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+    backgroundColor: theme.progressTrack,
   },
   proBadge: {
     flexDirection: "row",
@@ -798,7 +798,7 @@ const createStyles = (theme: ThemeColors) => {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: "rgba(61,214,140,0.15)",
+    backgroundColor: theme.mintTintStrong,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -818,7 +818,7 @@ const createStyles = (theme: ThemeColors) => {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(251,140,0,0.1)",
+    backgroundColor: theme.amberTint,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,

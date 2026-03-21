@@ -463,7 +463,7 @@ export default function ScanScreen() {
               accessibilityLabel="Search products"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => handleSearch("")} accessibilityLabel="Clear search" accessibilityRole="button">
+              <TouchableOpacity onPress={() => handleSearch("")} accessibilityLabel="Clear search" accessibilityRole="button" style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
                 <XCircle size={18} color={theme.placeholder} weight="fill" />
               </TouchableOpacity>
             )}
@@ -651,7 +651,7 @@ const createStyles = (theme: ThemeColors) => {
       backgroundColor: theme.card,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      borderColor: theme.subtleBorder,
       gap: 12,
       ...bentoShadow,
     },
@@ -669,7 +669,7 @@ const createStyles = (theme: ThemeColors) => {
       marginBottom: 12,
       gap: 16,
       borderWidth: isDark ? 1 : 0,
-      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'transparent',
+      borderColor: theme.subtleBorder,
       ...bentoShadow,
     },
     resultIcon: {

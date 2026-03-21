@@ -244,7 +244,7 @@ export default function ProfileScreen() {
     >
       {/* 1. Minimal Top Bar */}
       <LinearGradient
-        colors={isDark ? ['#1B3A1D', theme.bg] : ["#F0FAF4", theme.bg]}
+        colors={[theme.greenBg, theme.bg]}
         style={[styles.topBar, { paddingTop: (insets.top || webTopInset) + 12 }]}
       >
         <Animated.Text
@@ -603,13 +603,13 @@ export default function ProfileScreen() {
             accessibilityRole="switch"
             accessibilityState={{ checked: currentTheme === "dark" }}
           >
-            <View style={[styles.actionLeftBorder, { backgroundColor: '#7C4DFF' }]} />
+            <View style={[styles.actionLeftBorder, { backgroundColor: theme.purple }]} />
             <View style={styles.actionContent}>
-              <View style={[styles.actionIconCircle, { backgroundColor: isDark ? 'rgba(124,77,255,0.15)' : '#F3E8FF' }]}>
+              <View style={[styles.actionIconCircle, { backgroundColor: theme.purpleTint }]}>
                 {currentTheme === "dark" ? (
-                  <Sun size={16} color="#7C4DFF" weight="fill" />
+                  <Sun size={16} color={theme.purple} weight="fill" />
                 ) : (
-                  <Moon size={16} color="#7C4DFF" weight="fill" />
+                  <Moon size={16} color={theme.purple} weight="fill" />
                 )}
               </View>
               <Text style={[styles.actionText, { color: theme.text }]}>Dark Mode</Text>
@@ -961,12 +961,12 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     width: 44,
     height: 24,
     borderRadius: 12,
-    backgroundColor: theme.bg === '#121212' ? '#555555' : '#D1D5DB',
+    backgroundColor: theme.toggleTrack,
     justifyContent: "center" as const,
     padding: 2,
   },
   toggleTrackActive: {
-    backgroundColor: '#7C4DFF',
+    backgroundColor: theme.purple,
   },
   toggleThumb: {
     width: 20,
