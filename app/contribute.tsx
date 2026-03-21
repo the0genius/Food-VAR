@@ -16,6 +16,7 @@ import {
   Package,
   Camera,
   Check,
+  CheckCircle,
   WarningCircle,
   Confetti,
   PencilSimple,
@@ -485,73 +486,53 @@ export default function ContributeScreen() {
 
             <View style={[styles.reviewExtractedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={[styles.reviewExtractedTitle, { color: theme.text }]}>
-                Extracted Data
+                What We Found
               </Text>
-              {extractedData.brand ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Brand: {extractedData.brand}
-                </Text>
-              ) : null}
-              {extractedData.category ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Category: {extractedData.category}
-                </Text>
-              ) : null}
-              {extractedData.servingSize ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Serving: {extractedData.servingSize}
-                </Text>
-              ) : null}
-              {extractedData.calories != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Calories: {extractedData.calories}
-                </Text>
-              ) : null}
-              {extractedData.protein != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Protein: {extractedData.protein}g
-                </Text>
-              ) : null}
-              {extractedData.carbohydrates != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Carbs: {extractedData.carbohydrates}g
-                </Text>
-              ) : null}
-              {extractedData.sugar != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Sugar: {extractedData.sugar}g
-                </Text>
-              ) : null}
-              {extractedData.fat != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Fat: {extractedData.fat}g
-                </Text>
-              ) : null}
-              {extractedData.saturatedFat != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Saturated Fat: {extractedData.saturatedFat}g
-                </Text>
-              ) : null}
-              {extractedData.fiber != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Fiber: {extractedData.fiber}g
-                </Text>
-              ) : null}
-              {extractedData.sodium != null ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Sodium: {extractedData.sodium}mg
-                </Text>
-              ) : null}
-              {extractedData.allergens?.length > 0 ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]}>
-                  Allergens: {extractedData.allergens.join(", ")}
-                </Text>
-              ) : null}
-              {extractedData.ingredients ? (
-                <Text style={[styles.reviewExtractedRow, { color: theme.muted }]} numberOfLines={3}>
-                  Ingredients: {extractedData.ingredients}
-                </Text>
-              ) : null}
+              {[
+                { label: "Brand", value: extractedData.brand },
+                { label: "Category", value: extractedData.category },
+                { label: "Serving", value: extractedData.servingSize },
+                { label: "Calories", value: extractedData.calories != null ? `${extractedData.calories}` : null },
+                { label: "Protein", value: extractedData.protein != null ? `${extractedData.protein}g` : null },
+                { label: "Carbs", value: extractedData.carbohydrates != null ? `${extractedData.carbohydrates}g` : null },
+                { label: "Sugar", value: extractedData.sugar != null ? `${extractedData.sugar}g` : null },
+                { label: "Fat", value: extractedData.fat != null ? `${extractedData.fat}g` : null },
+                { label: "Sat. Fat", value: extractedData.saturatedFat != null ? `${extractedData.saturatedFat}g` : null },
+                { label: "Fiber", value: extractedData.fiber != null ? `${extractedData.fiber}g` : null },
+                { label: "Sodium", value: extractedData.sodium != null ? `${extractedData.sodium}mg` : null },
+              ].map(({ label, value }) => (
+                <View key={label} style={styles.reviewFieldRow} accessible={true} accessibilityLabel={`${label}: ${value || "not detected"}`}>
+                  {value ? (
+                    <CheckCircle size={14} color={theme.green} weight="fill" />
+                  ) : (
+                    <WarningCircle size={14} color={theme.placeholder} />
+                  )}
+                  <Text style={[styles.reviewFieldLabel, { color: value ? theme.text : theme.placeholder }]}>
+                    {label}
+                  </Text>
+                  <Text style={[styles.reviewFieldValue, { color: value ? theme.muted : theme.placeholder }]}>
+                    {value || "Not detected"}
+                  </Text>
+                </View>
+              ))}
+              {extractedData.allergens?.length > 0 && (
+                <View style={styles.reviewFieldRow} accessible={true} accessibilityLabel={`Allergens: ${extractedData.allergens.join(", ")}`}>
+                  <CheckCircle size={14} color={theme.green} weight="fill" />
+                  <Text style={[styles.reviewFieldLabel, { color: theme.text }]}>Allergens</Text>
+                  <Text style={[styles.reviewFieldValue, { color: theme.muted }]}>
+                    {extractedData.allergens.join(", ")}
+                  </Text>
+                </View>
+              )}
+              {extractedData.ingredients && (
+                <View style={[styles.reviewFieldRow, { alignItems: "flex-start" }]} accessible={true} accessibilityLabel={`Ingredients detected`}>
+                  <CheckCircle size={14} color={theme.green} weight="fill" style={{ marginTop: 3 }} />
+                  <Text style={[styles.reviewFieldLabel, { color: theme.text }]}>Ingredients</Text>
+                  <Text style={[styles.reviewFieldValue, { color: theme.muted, flex: 1 }]} numberOfLines={2}>
+                    {extractedData.ingredients}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <TouchableOpacity
@@ -678,9 +659,9 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     justifyContent: "center",
   },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.card,
     alignItems: "center",
     justifyContent: "center",
@@ -993,6 +974,21 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   reviewExtractedRow: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  reviewFieldRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    paddingVertical: 4,
+  },
+  reviewFieldLabel: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    width: 70,
+  },
+  reviewFieldValue: {
+    fontSize: 14,
+    flex: 1,
   },
   reviewSubmitWrapper: {
     marginTop: 12,

@@ -752,7 +752,7 @@ export default function OnboardingScreen() {
               accessibilityLabel="Skip sign up (dev only)"
               accessibilityRole="button"
             >
-              <Text style={[styles.skipBtnText, { color: "#FF9800" }]}>
+              <Text style={[styles.skipBtnText, { color: theme.amber }]}>
                 Skip Sign Up (Dev Only)
               </Text>
             </TouchableOpacity>
@@ -777,6 +777,10 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   backBtn: {
     padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
   progressBar: {
     flex: 1,
@@ -1070,6 +1074,8 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
   },
   skipBtn: {
     paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: "center" as const,
   },
   skipBtnText: {
     fontSize: 14,

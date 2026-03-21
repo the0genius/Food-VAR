@@ -614,7 +614,8 @@ const createStyles = (theme: ThemeColors) => {
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
-      paddingVertical: 10,
+      paddingVertical: 12,
+      minHeight: 44,
       borderRadius: 14,
     },
     modeBtnActive: {
@@ -909,7 +910,7 @@ const createStyles = (theme: ThemeColors) => {
       paddingVertical: 16,
       paddingHorizontal: 32,
       borderRadius: 18,
-      backgroundColor: "#3DD68C",
+      backgroundColor: theme.mint,
       marginTop: 12,
       ...cardShadow("medium"),
     },

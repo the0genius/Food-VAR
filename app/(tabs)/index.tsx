@@ -23,6 +23,7 @@ import {
   Package,
   Crown,
   Info,
+  WarningCircle,
 } from "phosphor-react-native";
 
 function SkeletonBlock({ width, height, borderRadius = 12, style, color = "#EBEBEB" }: { width: number | string; height: number; borderRadius?: number; style?: any; color?: string }) {
@@ -443,7 +444,7 @@ export default function HomeScreen() {
                 <Animated.View entering={FadeInDown.duration(300)}>
                   <View style={styles.insightCard}>
                     <View style={styles.insightIconWrap}>
-                      <Lightbulb size={20} color="#FB8C00" weight="fill" />
+                      <Lightbulb size={20} color={theme.amber} weight="fill" />
                     </View>
                     <Text style={styles.insightText}>{insightText}</Text>
                   </View>
@@ -535,14 +536,17 @@ export default function HomeScreen() {
                   </View>
                 )}
                 {popularQuery.isError && popular.length === 0 && (
-                  <View style={{ alignItems: "center", paddingVertical: 20, gap: 8 }}>
-                    <Text style={styles.emptyText}>Could not load products. Pull to refresh.</Text>
+                  <View style={{ alignItems: "center", paddingVertical: 24, gap: 10 }}>
+                    <WarningCircle size={28} color={theme.placeholder} />
+                    <Text style={styles.emptyText}>Could not load products</Text>
+                    <Text style={[styles.emptyText, { paddingVertical: 0, fontSize: 13 }]}>Pull down to refresh</Text>
                   </View>
                 )}
                 {popular.length === 0 && !popularQuery.isLoading && !popularQuery.isError && (
-                  <Text style={styles.emptyText}>
-                    No products yet. Start scanning to build the database!
-                  </Text>
+                  <View style={{ alignItems: "center", paddingVertical: 24, gap: 10 }}>
+                    <Package size={28} color={theme.placeholder} />
+                    <Text style={styles.emptyText}>No products yet — start scanning to build the database!</Text>
+                  </View>
                 )}
               </View>
 
@@ -673,7 +677,7 @@ const createStyles = (theme: ThemeColors) => {
   },
   progressBarTrack: {
     height: 3,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
   },
   proBadge: {
     flexDirection: "row",
@@ -808,7 +812,7 @@ const createStyles = (theme: ThemeColors) => {
     marginHorizontal: 20,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: "#FB8C00",
+    borderLeftColor: theme.amber,
   },
   insightIconWrap: {
     width: 40,
