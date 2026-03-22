@@ -24,11 +24,11 @@
       "package": "com.foodvar.app",
       "adaptiveIcon": {
         "backgroundColor": "#E8F5E9",
-        "foregroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       }
     },
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [

@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, FlatList, RefreshControl, ScrollView, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -455,8 +455,16 @@ export default function HomeScreen() {
 
               {recentScans.length === 0 && !historyQuery.isLoading && (
                 <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeCard}>
-                  <View style={styles.welcomeIconWrap}>
-                    <Barcode size={36} color={theme.primary} />
+                  <View style={styles.welcomeLogoWrap}>
+                    <Image
+                      source={
+                        theme.isDark
+                          ? require("@/assets/images/logo-dark.png")
+                          : require("@/assets/images/logo-light.png")
+                      }
+                      style={styles.welcomeLogo}
+                      resizeMode="contain"
+                    />
                   </View>
                   <Text style={styles.welcomeTitle}>Welcome to FoodVAR</Text>
                   <Text style={styles.welcomeSubtitle}>
@@ -969,6 +977,14 @@ const createStyles = (theme: ThemeColors) => {
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
+  },
+  welcomeLogoWrap: {
+    alignItems: "center" as const,
+    marginBottom: 16,
+  },
+  welcomeLogo: {
+    width: 200,
+    height: 72,
   },
   welcomeTitle: {
     fontSize: 20,

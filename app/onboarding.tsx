@@ -277,13 +277,16 @@ export default function OnboardingScreen() {
             key="step-0"
             style={styles.stepContent}
           >
-            <View style={styles.stepIcon}>
-              <LinearGradient
-                colors={[theme.mint, theme.primary]}
-                style={styles.stepIconCircle}
-              >
-                <UserCircle size={56} color={theme.onPrimary} weight="fill" />
-              </LinearGradient>
+            <View style={styles.stepLogoWrap}>
+              <Image
+                source={
+                  theme.isDark
+                    ? require("@/assets/images/logo-dark.png")
+                    : require("@/assets/images/logo-light.png")
+                }
+                style={styles.stepLogo}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.stepTitle}>Welcome to FoodVAR</Text>
             <Text style={styles.stepSubtitle}>
@@ -827,6 +830,14 @@ const createStyles = (theme: ThemeColors) => StyleSheet.create({
     borderRadius: 44,
     alignItems: "center",
     justifyContent: "center",
+  },
+  stepLogoWrap: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  stepLogo: {
+    width: 220,
+    height: 80,
   },
   stepTitle: {
     fontSize: 26,
