@@ -42,9 +42,6 @@
         width: auto;
         display: block;
       }
-      @media (prefers-color-scheme: dark) {
-        .logo-img { content: url('/assets/images/logo-dark.png'); }
-      }
       .hero h1 {
         font-size: 34px;
         font-weight: 800;
@@ -263,7 +260,10 @@
       <section class="hero">
         <div class="hero-inner">
           <div class="logo-badge">
-            <img src="/assets/images/logo-light.png" alt="FoodVAR" class="logo-img" />
+            <picture>
+              <source srcset="/assets/images/logo-dark.png" media="(prefers-color-scheme: dark)" />
+              <img src="/assets/images/logo-light.png" alt="FoodVAR" class="logo-img" />
+            </picture>
           </div>
           <h1>Know your food.<br/><span>Score your health.</span></h1>
           <p class="hero-subtitle">

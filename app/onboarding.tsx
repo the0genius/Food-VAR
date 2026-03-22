@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
-  UserCircle,
   ArrowLeft,
   ArrowRight,
   CheckCircle,
